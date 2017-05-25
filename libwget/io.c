@@ -36,10 +36,6 @@
 #include <errno.h>
 #ifdef HAVE_POLL
 	#include <poll.h>
-#elif defined _WIN32
-	#include <io.h>
-	#include <winsock2.h>
-	#include <msvc-nothrow.h> // make _get_osfhandle() return error
 #else
 	#include <sys/time.h>
 	#include <sys/select.h>
@@ -235,12 +231,6 @@ int wget_ready_2_transfer(int fd, int timeout, int mode)
 	}
 
 #else
-#ifdef _WIN32
-	//Get OS specific handle
-	int pfd = _get_osfhandle(fd);
-#else
-	int pfd = fd;
-#endif
 	fd_set fdset;
 	fd_set *rd = NULL, *wr = NULL;
 	struct timeval tmoval, *tmo = NULL;
@@ -251,7 +241,7 @@ int wget_ready_2_transfer(int fd, int timeout, int mode)
 	}
 
 	FD_ZERO(&fdset);
-	FD_SET(pfd, &fdset);
+	FD_SET(fd, &fdset);
 
 	if (mode & WGET_IO_READABLE)
 		rd = &fdset;
@@ -264,11 +254,11 @@ int wget_ready_2_transfer(int fd, int timeout, int mode)
 		tmo = &tmoval;
 	}
 
-	if ((rc = select (pfd + 1, rd, wr, NULL, tmo)) >= 0) {
+	if ((rc = select (fd + 1, rd, wr, NULL, tmo)) >= 0) {
 		rc = 0;
-		if (rd && FD_ISSET(pfd, rd))
+		if (rd && FD_ISSET(fd, rd))
 			rc |= WGET_IO_READABLE;
-		if (wr && FD_ISSET(pfd, wr))
+		if (wr && FD_ISSET(fd, wr))
 			rc |= WGET_IO_WRITABLE;
 	}
 
