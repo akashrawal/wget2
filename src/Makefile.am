@@ -10,6 +10,7 @@ bin_PROGRAMS = wget2 wget2_noinstall
 wget2_SOURCES =\
  bar.c wget_bar.h\
  blacklist.c wget_blacklist.h\
+ dl.c wget_dl.h\
  host.c wget_host.h\
  job.c wget_job.h\
  log.c wget_log.h\

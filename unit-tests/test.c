@@ -39,6 +39,7 @@
 #include <wget.h>
 #include "../libwget/private.h"
 
+#include "../src/wget_dl.h"
 #include "../src/wget_options.h"
 #include "../src/wget_log.h"
 
@@ -2202,6 +2203,17 @@ static void test_set_proxy(void)
 	}
 }
 
+static void test_dl()
+{
+	if (! dl_supported()) {
+		info_printf("Skipping dynamic loading tests\n");
+
+		return;
+	}
+
+	//TODO: Insert tests here
+}
+
 int main(int argc, const char **argv)
 {
 	// if VALGRIND testing is enabled, we have to call ourselves with valgrind checking
@@ -2260,6 +2272,7 @@ int main(int argc, const char **argv)
 	test_netrc();
 	test_robots();
 	test_set_proxy();
+	test_dl();
 
 	selftest_options() ? failed++ : ok++;
 
