@@ -31,6 +31,8 @@
 
 #if defined PLUGIN_SUPPORT_LIBDL
 #include <dlfcn.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 int dl_supported()
 {
@@ -130,3 +132,114 @@ void dl_file_close(dl_file_t *dm)
 }
 
 #endif
+
+#if defined _WIN32
+#define DL_NATIVE_PREFIX ""
+#define DL_NATIVE_SUFFIX ".dll"
+#elif defined __APPLE__
+#define DL_NATIVE_PREFIX "lib"
+#define DL_NATIVE_SUFFIX ".dylib"
+#else
+#define DL_NATIVE_PREFIX "lib"
+#define DL_NATIVE_SUFFIX ".so"
+#endif
+
+char *dl_build_filename(const char *dir, const char *name)
+{
+	if (dir) {
+		return wget_aprintf("%s/" DL_NATIVE_PREFIX "%s" DL_NATIVE_SUFFIX,
+				dir, name);
+	} else {
+		return wget_aprintf(DL_NATIVE_PREFIX "%s" DL_NATIVE_SUFFIX,
+				name);
+	}
+}
+
+static int is_regular_file(const char *filename)
+{
+	struct stat statbuf;	
+
+	if (stat(filename, &statbuf) < 0)
+		return 0;
+	if (S_ISREG(statbuf.st_mode))
+		return 1;
+	return 0;
+}
+
+char *dl_search(const char *name, char **dirs, int n_dirs)
+{
+	int i;
+
+	for (i = 0; i < n_dirs; i++) {
+		char *filename;
+
+		filename = dl_build_filename(dirs[i], name);
+		if (is_regular_file(filename))
+			return filename;
+
+		wget_free(filename);	
+	}
+	return NULL;
+}
+
+int dl_list(const char *dir, char ***names_out, int *n_names_out)
+{
+	DIR *dirp;
+	wget_buffer_t buf[1];
+
+	dirp = opendir(dir);
+	if (!dir)
+		return -1;
+
+	wget_buffer_init(buf, NULL, 0);
+
+	while(1) {
+		struct dirent *ent;
+		char *fname;
+		size_t fname_len;
+		char *name;
+		if ((ent = readdir(dirp)) == NULL)
+			break;
+
+		fname = ent->d_name;
+		fname_len = strlen(fname);
+
+		//Ignore entries that don't match with the pattern
+		{
+			size_t pl = strlen(DL_NATIVE_PREFIX);
+			size_t sl = strlen(DL_NATIVE_SUFFIX);
+			if (fname_len <= pl + sl)
+				continue;
+			if (strncmp(fname, DL_NATIVE_PREFIX, pl) != 0)
+				continue;
+			if (strcmp(fname + fname_len - sl,
+						DL_NATIVE_SUFFIX) != 0)
+				continue;
+
+			//Also trim prefix and suffix from fname
+			name = wget_strmemdup(fname + pl, fname_len - pl - sl);
+		}
+
+		//Ignore entries that are not regular files
+		{
+			char *sfname = wget_aprintf("%s/%s", dir, fname);
+			int x = is_regular_file(sfname);
+			wget_free(sfname);
+			if (!x) {
+				wget_free(name);
+				continue;
+			}
+		}
+
+		//Add to the list
+		wget_buffer_memcat(buf, &name, sizeof(void *));
+	}
+
+	closedir(dirp);
+	*names_out = (char **) wget_memdup(buf->data, buf->length);
+	*n_names_out = buf->length;
+	wget_buffer_deinit(buf);
+
+	return 0;
+}
+

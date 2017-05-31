@@ -80,15 +80,23 @@ void *dl_file_lookup(dl_file_t *dm, const char *symbol, dl_error_t *e);
 //Unloads the loaded object file
 void dl_file_close(dl_file_t *dm);
 
+/* Builds a filename for an object file by applying platform specific
+ * prefix and suffix.
+ * Free the returned string with wget_free().
+ */
+char *dl_build_filename(const char *dir, const char *name);
+
 /* Searches for an object file with a given name in the given list of
  * directories. If found it returns the filename, else returns NULL.
- * Free the returned string with free().
+ * Free the returned string with wget_free().
  */
-char *dl_file_search(const char *name, char **dirs, int n_dirs);
+char *dl_search(const char *name, char **dirs, int n_dirs);
 
 /* Creates a list of loadable object files in a given directory.
- * Free the returned array with free() after freeing individual elements.
+ * Free the returned array with wget_free() after freeing individual elements.
+ * if the function fails -1 is returned with errno set.
  */
-int dl_file_list(const char *dir, char **names_out, int n_names_out);
+int dl_list(const char *dir, char ***names_out, int *n_names_out);
+
 
 #endif //_WGET_DL_H
