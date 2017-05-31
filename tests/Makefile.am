@@ -46,3 +46,6 @@ clean-local:
 
 AM_TESTS_ENVIRONMENT = export VALGRIND_TESTS"=@VALGRIND_TESTS@";
 TESTS = $(WGET_TESTS)
+
+#Separate directory for dummy libraries for plugin tests
+SUBDIRS = test-dl-libs

@@ -157,7 +157,7 @@ char *dl_build_filename(const char *dir, const char *name)
 
 static int is_regular_file(const char *filename)
 {
-	struct stat statbuf;	
+	struct stat statbuf;
 
 	if (stat(filename, &statbuf) < 0)
 		return 0;
@@ -177,7 +177,7 @@ char *dl_search(const char *name, char **dirs, int n_dirs)
 		if (is_regular_file(filename))
 			return filename;
 
-		wget_free(filename);	
+		wget_free(filename);
 	}
 	return NULL;
 }
@@ -242,4 +242,3 @@ int dl_list(const char *dir, char ***names_out, int *n_names_out)
 
 	return 0;
 }
-
