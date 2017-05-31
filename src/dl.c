@@ -24,6 +24,8 @@
 #include <config.h>
 
 #include <string.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 #include <wget.h>
 
@@ -31,8 +33,6 @@
 
 #if defined PLUGIN_SUPPORT_LIBDL
 #include <dlfcn.h>
-#include <sys/stat.h>
-#include <dirent.h>
 
 int dl_supported()
 {
