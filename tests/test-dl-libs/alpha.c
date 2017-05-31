@@ -21,6 +21,8 @@
  *
  */
 
+#include <config.h>
+
 #include <string.h>
 
 #define stringify(x) (#x)
