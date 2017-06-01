@@ -33,7 +33,6 @@
 #include <fcntl.h>
 
 #include <wget.h>
-#include "../libwget/private.h"
 
 #include "../src/wget_dl.h"
 
