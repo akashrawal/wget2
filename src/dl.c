@@ -115,7 +115,7 @@ int dl_supported()
 	return 0;
 }
 
-dl_file_t *dl_file_load(const char *filename, dl_error_t *e)
+dl_file_t *dl_file_open(const char *filename, dl_error_t *e)
 {
 	dl_error_set(e, dl_unsupported);
 	return NULL;
