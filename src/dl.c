@@ -70,7 +70,7 @@ dl_file_t *dl_file_open(const char *filename, dl_error_t *e)
 		}
 	}
 
-	dm_st.handle = dlopen(rpl_filename, RTLD_LOCAL);
+	dm_st.handle = dlopen(rpl_filename, RTLD_LAZY | RTLD_LOCAL);
 	if (dm_st.handle)
 		dm = wget_memdup(&dm_st, sizeof(dl_file_t));
 	else

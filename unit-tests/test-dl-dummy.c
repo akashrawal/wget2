@@ -25,15 +25,19 @@
 
 #include <string.h>
 
-#define stringify(x) (#x)
-#define fn_name(x) dl_test_fn_ ## x
+#include <wget.h> //For WGET_EXPORT
 
-void dl_test_write_param(char buf[16])
+#define stringify2(x) #x
+#define stringify(x) stringify2(x)
+#define concat2(x, y) x ## y
+#define concat(x, y) concat2(x, y)
+
+WGET_EXPORT void dl_test_write_param(char buf[16])
 {
 	strcpy(buf, stringify(PARAM));
 }
 
-void fn_name(PARAM)(char buf[16])
+WGET_EXPORT void concat(dl_test_fn_, PARAM)(char buf[16])
 {
-	dl_test_write_param(buf);
+	strcpy(buf, stringify(PARAM));
 }

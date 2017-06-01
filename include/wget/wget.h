@@ -1926,6 +1926,18 @@ WGETAPI void
 WGETAPI void
 	wget_console_reset_fg_color(void);
 
+/*
+ * Plugin support
+ */
+
+#if HAVE_VISIBILITY
+#	define WGET_EXPORT __attribute__ ((__visibility__("default")))
+#elif defined _MSC_VER
+#	define WGET_EXPORT __declspec(dllexport)
+#else
+#	define WGET_EXPORT
+#endif
+
 WGET_END_DECLS
 
 #endif /* _LIBWGET_LIBWGET_H */

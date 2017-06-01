@@ -37,16 +37,23 @@
 
 #include "../src/wget_dl.h"
 
+#define abortmsg(...) \
+do { \
+	printf(__FILE__ ":%d: error: ", __LINE__); \
+	printf(__VA_ARGS__); \
+	printf("\n"); \
+	abort(); \
+} while (0)
+
 #define libassert(expr) \
 do { \
 	if (! (expr)) { \
-		error_printf_exit(__FILE__ ":%d: " \
-				"Failed assertion [" #expr "]: %s\n", \
-				__LINE__, strerror(errno)); \
+		abortmsg("Failed assertion [" #expr "]: %s", \
+				strerror(errno)); \
 	} \
 } while(0)
 
-#define OBJECT_DIR "./.test_dl_dir"
+#define OBJECT_DIR ".test_dl_dir"
 
 static void copy_file(const char *src, const char *dst)
 {
@@ -55,7 +62,6 @@ static void copy_file(const char *src, const char *dst)
 	char buf[256];
 	size_t size_remain;
 
-	debug_printf("  Copying %s --> %s\n", src, dst);
 	libassert(stat(src, &statbuf) == 0);
 	libassert((sfd = open(src, O_RDONLY | O_BINARY)) >= 0);
 	libassert((dfd = open(dst, O_WRONLY | O_CREAT | O_BINARY,
@@ -78,7 +84,7 @@ static void dump_list(char **list, size_t list_len)
 	size_t i;
 
 	for (i = 0; i < list_len; i++)
-		debug_printf("  %s\n", list[i]);
+		printf("  %s\n", list[i]);
 }
 
 static void free_list(char **list, size_t list_len)
@@ -89,39 +95,6 @@ static void free_list(char **list, size_t list_len)
 		wget_free(list[i]);
 
 	wget_free(list);
-}
-
-static void prepare_object_dir(const char *name1, ...)
-{
-	va_list arglist;
-	const char *one_name;
-
-	libassert(mkdir(OBJECT_DIR, 0755) == 0);
-
-	//Copy each library into directory
-	va_start(arglist, name1);
-	one_name = name1;
-	while(one_name) {
-		char *src = dl_build_filename(".libs", one_name);
-		char *dst = dl_build_filename(OBJECT_DIR, one_name);
-
-		copy_file(src, dst);
-
-		wget_free(src);
-		wget_free(dst);
-
-		one_name = va_arg(arglist, const char *);
-	}
-	va_end(arglist);
-}
-
-static void add_empty_file(const char *filename)
-{
-	char *rpl_filename = wget_aprintf(OBJECT_DIR "/%s", filename);
-	FILE *stream;
-	libassert(stream = fopen(rpl_filename, "w"));
-	fclose(stream);
-	wget_free(rpl_filename);
 }
 
 static void remove_object_dir()
@@ -147,10 +120,69 @@ static void remove_object_dir()
 	remove(OBJECT_DIR);
 }
 
+static void prepare_object_dir(const char *name1, ...)
+{
+	va_list arglist;
+	const char *one_name;
+
+	remove_object_dir();
+
+	libassert(mkdir(OBJECT_DIR, 0755) == 0);
+
+	//Copy each library into directory
+	va_start(arglist, name1);
+	one_name = name1;
+	while(one_name) {
+		char *src = dl_build_filename(".libs", one_name);
+		char *dst = dl_build_filename(OBJECT_DIR, one_name);
+		printf("  Copying %s --> %s\n", src, dst);
+
+		copy_file(src, dst);
+
+		wget_free(src);
+		wget_free(dst);
+
+		one_name = va_arg(arglist, const char *);
+	}
+	va_end(arglist);
+}
+
+static void add_empty_file(const char *filename)
+{
+	char *rpl_filename = wget_aprintf(OBJECT_DIR "/%s", filename);
+	FILE *stream;
+	printf("  Adding file %s\n", rpl_filename);
+	libassert(stream = fopen(rpl_filename, "w"));
+	fclose(stream);
+	wget_free(rpl_filename);
+}
+
+#define dl_assert(stmt) \
+do { \
+	dl_error_t e[1]; \
+	dl_error_init(e); \
+	stmt; \
+	if (dl_error_is_set(e)) {\
+		abortmsg("Failed dynamic loading operation " \
+				"[" #stmt "]: %s", dl_error_get_msg(e)); \
+	} \
+} while(0)
+
+typedef void (*test_fn)(char buf[16]);
+static void test_fn_check(test_fn fn, char *expected)
+{
+	char buf[16];
+	(*fn)(buf);
+	if (strncmp(buf, expected, 15) != 0)
+	{
+		abortmsg("Test function returned %s, expected %s",
+				buf, expected);
+	}
+}
+
 //Test whether dl_list() works
 static void test_dl_list()
 {
-	remove_object_dir();
 	char **names;
 	size_t names_len;
 	int fail = 0;
@@ -182,20 +214,78 @@ static void test_dl_list()
 			fail = 1;
 		}
 	}
-	if (fail == 1)
-	{
-		error_printf("dl_list() returned incorrect list\n");
-		error_printf("List contains\n");
+	if (fail == 1) {
+		printf("dl_list() returned incorrect list\n");
+		printf("List contains\n");
 		dump_list(names, names_len);
+		abort();
 	}
 
 	free_list(names, names_len);
 }
 
+
+//Test whether symbols from dynamically loaded libraries link as expected
+void test_linkage()
+{
+	char *filename;
+	dl_file_t *dm_alpha, *dm_beta;
+	test_fn fn;
+
+	//Create test directory
+	prepare_object_dir("alpha", "beta", NULL);
+
+	//Load both libraries
+	filename = dl_build_filename(OBJECT_DIR, "alpha");
+	dl_assert(dm_alpha = dl_file_open(filename, e));
+	wget_free(filename);
+
+	filename = dl_build_filename(OBJECT_DIR, "beta");
+	dl_assert(dm_beta = dl_file_open(filename, e));
+	wget_free(filename);
+
+	//Check whether symbols load
+	dl_assert(fn = dl_file_lookup(dm_alpha, "dl_test_fn_alpha", e));
+	test_fn_check(fn, "alpha");
+	dl_assert(fn = dl_file_lookup(dm_beta, "dl_test_fn_beta", e));
+	test_fn_check(fn, "beta");
+
+	//Check behavior in case of nonexistent symbol
+	{
+		dl_error_t e[1];
+
+		dl_error_init(e);
+
+		fn = dl_file_lookup(dm_alpha, "dl_test_fn_beta", e);
+		if (fn || (! dl_error_is_set(e)))
+			abortmsg("nonexistent symbols not returning error");
+
+		dl_error_set(e, NULL);
+	}
+
+	//Check behavior in case of multiple libraries exporting
+	//symbols with same name
+	dl_assert(fn = dl_file_lookup(dm_alpha, "dl_test_write_param", e));
+	test_fn_check(fn, "alpha");
+	dl_assert(fn = dl_file_lookup(dm_beta, "dl_test_write_param", e));
+	test_fn_check(fn, "beta");
+
+	dl_file_close(dm_alpha);
+	dl_file_close(dm_beta);
+}
+
+#define run_test(test) \
+do { \
+	printf("Running " #test "...\n"); \
+	test(); \
+	printf("PASS " #test "\n"); \
+} while (0)
+
+
 int main(int argc, const char **argv)
 {
 	if (! dl_supported()) {
-		info_printf("Skipping dynamic loading tests\n");
+		printf("Skipping dynamic loading tests\n");
 
 		return 77;
 	}
@@ -225,7 +315,8 @@ int main(int argc, const char **argv)
 	}
 
 	//TODO: write tests here
-	test_dl_list();
+	run_test(test_dl_list);
+	run_test(test_linkage);
 
 	remove_object_dir();
 
