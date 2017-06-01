@@ -110,7 +110,6 @@ void dl_file_close(dl_file_t *dm)
 	wget_free(dm);
 }
 
-//TODO: Implementation for windows
 #elif defined PLUGIN_SUPPORT_WINDOWS
 #include <windows.h>
 
@@ -128,14 +127,22 @@ static void dl_win32_set_last_error(dl_error_t *e)
 {
 	char *buf;
 
+	DWORD error_code = GetLastError();
+
 	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER
 			| FORMAT_MESSAGE_IGNORE_INSERTS
 			| FORMAT_MESSAGE_FROM_SYSTEM,
-			NULL, GetLastError(), 0,
+			NULL, error_code, 0,
 			(LPTSTR) &buf, 0, NULL);
 
-	if (buf)
+	if (buf) {
 		dl_error_set(e, buf);
+		LocalFree(buf);
+	} else {
+		char buf2[64];
+		snprintf(buf2, 64, "Unknown error %d", (int) error_code);
+		dl_error_set(e, buf);
+	}
 }
 
 dl_file_t *dl_file_open(const char *filename, dl_error_t *e)
