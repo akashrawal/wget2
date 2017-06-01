@@ -26,11 +26,85 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <assert.h>
 
 #include <wget.h>
 #include "../libwget/private.h"
 
 #include "../src/wget_dl.h"
+
+#define OBJECT_DIR "./.test_dl_objects"
+
+static void copy_file(const char *src, const char *dst)
+{
+	struct stat statbuf;
+	int sfd, dfd;
+	char buf[256];
+	size_t size_remain;
+
+	assert(stat(src, &statbuf) == 0);
+	assert(sfd = open(src, O_RDONLY | O_BINARY));
+	assert(dfd = open(dst, O_WRONLY | O_CREAT, statbuf.st_mode));
+	size_remain = statbuf.st_size;
+	while(size_remain > 0) {
+		size_t io_size = size_remain;
+		if (io_size > sizeof(buf))
+			io_size = sizeof(buf);
+		assert(read(sfd, buf, io_size) == io_size);
+		assert(write(dfd, buf, io_size) == io_size);
+		size_remain -= io_size;
+		printf("x\n");
+	}
+	close(sfd);
+	close(dfd);
+}
+
+static void prepare_object_dir(const char *name1, ...)
+{
+	va_list arglist;	
+	const char *one_name;
+
+	assert(mkdir(OBJECT_DIR, 0755) == 0);
+
+	//Copy each library into directory
+	va_start(arglist, name1);
+	one_name = name1;
+	while(one_name)
+	{
+		char *src = dl_build_filename(".libs", one_name);
+		char *dst = dl_build_filename(OBJECT_DIR, one_name);
+		
+		copy_file(src, dst);	
+
+		wget_free(src);
+		wget_free(dst);
+
+		one_name = va_arg(arglist, const char *);
+	}
+	va_end(arglist);
+}
+
+static void remove_object_dir()
+{
+	DIR *dirp;
+	struct dirent *ent;
+
+	assert(dirp = opendir(OBJECT_DIR));
+
+	while(ent = readdir(dirp))
+	{
+		char *filename = wget_aprintf(OBJECT_DIR "/%s", ent->d_name);
+		assert(remove(filename) == 0);
+		wget_free(filename);
+	}
+
+	closedir(dirp);
+
+	remove(OBJECT_DIR);
+}
 
 int main(int argc, const char **argv)
 {
@@ -65,6 +139,7 @@ int main(int argc, const char **argv)
 	}
 
 	//TODO: write tests here
+	prepare_object_dir("alpha", "beta", NULL);
 
 	return 0;
 }
