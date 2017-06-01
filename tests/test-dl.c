@@ -29,14 +29,24 @@
 #include <stdarg.h>
 #include <sys/stat.h>
 #include <dirent.h>
-#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
 
 #include <wget.h>
 #include "../libwget/private.h"
 
 #include "../src/wget_dl.h"
 
-#define OBJECT_DIR "./.test_dl_objects"
+#define libassert(expr) \
+do { \
+	if (! (expr)) { \
+		error_printf_exit(__FILE__ ":%d: " \
+				"Failed assertion [" #expr "]: %s\n", \
+				__LINE__, strerror(errno)); \
+	} \
+} while(0)
+
+#define OBJECT_DIR "./.test_dl_dir"
 
 static void copy_file(const char *src, const char *dst)
 {
@@ -45,39 +55,57 @@ static void copy_file(const char *src, const char *dst)
 	char buf[256];
 	size_t size_remain;
 
-	assert(stat(src, &statbuf) == 0);
-	assert(sfd = open(src, O_RDONLY | O_BINARY));
-	assert(dfd = open(dst, O_WRONLY | O_CREAT, statbuf.st_mode));
+	debug_printf("  Copying %s --> %s\n", src, dst);
+	libassert(stat(src, &statbuf) == 0);
+	libassert((sfd = open(src, O_RDONLY | O_BINARY)) >= 0);
+	libassert((dfd = open(dst, O_WRONLY | O_CREAT | O_BINARY,
+					statbuf.st_mode)) >= 0);
 	size_remain = statbuf.st_size;
 	while(size_remain > 0) {
 		size_t io_size = size_remain;
 		if (io_size > sizeof(buf))
 			io_size = sizeof(buf);
-		assert(read(sfd, buf, io_size) == io_size);
-		assert(write(dfd, buf, io_size) == io_size);
+		libassert(read(sfd, buf, io_size) == io_size);
+		libassert(write(dfd, buf, io_size) == io_size);
 		size_remain -= io_size;
-		printf("x\n");
 	}
 	close(sfd);
 	close(dfd);
 }
 
+static void dump_list(char **list, size_t list_len)
+{
+	size_t i;
+
+	for (i = 0; i < list_len; i++)
+		debug_printf("  %s\n", list[i]);
+}
+
+static void free_list(char **list, size_t list_len)
+{
+	size_t i;
+
+	for (i = 0; i < list_len; i++)
+		wget_free(list[i]);
+
+	wget_free(list);
+}
+
 static void prepare_object_dir(const char *name1, ...)
 {
-	va_list arglist;	
+	va_list arglist;
 	const char *one_name;
 
-	assert(mkdir(OBJECT_DIR, 0755) == 0);
+	libassert(mkdir(OBJECT_DIR, 0755) == 0);
 
 	//Copy each library into directory
 	va_start(arglist, name1);
 	one_name = name1;
-	while(one_name)
-	{
+	while(one_name) {
 		char *src = dl_build_filename(".libs", one_name);
 		char *dst = dl_build_filename(OBJECT_DIR, one_name);
-		
-		copy_file(src, dst);	
+
+		copy_file(src, dst);
 
 		wget_free(src);
 		wget_free(dst);
@@ -87,23 +115,81 @@ static void prepare_object_dir(const char *name1, ...)
 	va_end(arglist);
 }
 
+static void add_empty_file(const char *filename)
+{
+	char *rpl_filename = wget_aprintf(OBJECT_DIR "/%s", filename);
+	FILE *stream;
+	libassert(stream = fopen(rpl_filename, "w"));
+	fclose(stream);
+	wget_free(rpl_filename);
+}
+
 static void remove_object_dir()
 {
 	DIR *dirp;
 	struct dirent *ent;
 
-	assert(dirp = opendir(OBJECT_DIR));
+	dirp = opendir(OBJECT_DIR);
+	if (! dirp)
+		return;
 
-	while(ent = readdir(dirp))
-	{
+	while((ent = readdir(dirp)) != NULL) {
+		if (strcmp(ent->d_name, ".") == 0
+				|| strcmp(ent->d_name, "..") == 0)
+			continue;
 		char *filename = wget_aprintf(OBJECT_DIR "/%s", ent->d_name);
-		assert(remove(filename) == 0);
+		libassert(remove(filename) == 0);
 		wget_free(filename);
 	}
 
 	closedir(dirp);
 
 	remove(OBJECT_DIR);
+}
+
+//Test whether dl_list() works
+static void test_dl_list()
+{
+	remove_object_dir();
+	char **names;
+	size_t names_len;
+	int fail = 0;
+
+	prepare_object_dir("alpha", "beta", NULL);
+	add_empty_file("x");
+	add_empty_file("file_which_is_not_a_library");
+	add_empty_file("libreoffice.png");
+	add_empty_file("not_a_library.so");
+	add_empty_file("not_a_library.dll");
+	add_empty_file("not_a_library.dylib");
+	libassert(mkdir(OBJECT_DIR "/somedir", 0755) == 0);
+	libassert(mkdir(OBJECT_DIR "/libactuallyadir.so", 0755) == 0);
+	libassert(mkdir(OBJECT_DIR "/libactuallyadir.dll", 0755) == 0);
+	libassert(mkdir(OBJECT_DIR "/libactuallyadir.dylib", 0755) == 0);
+
+	libassert(dl_list(OBJECT_DIR, &names, &names_len) == 0);
+
+	if (names_len != 2) {
+		fail = 1;
+	} else {
+		if (strcmp(names[0], "alpha") == 0) {
+			if (strcmp(names[1], "beta") != 0)
+				fail = 1;
+		} else if (strcmp(names[0], "beta") == 0) {
+			if (strcmp(names[1], "alpha") != 0)
+				fail = 1;
+		} else {
+			fail = 1;
+		}
+	}
+	if (fail == 1)
+	{
+		error_printf("dl_list() returned incorrect list\n");
+		error_printf("List contains\n");
+		dump_list(names, names_len);
+	}
+
+	free_list(names, names_len);
 }
 
 int main(int argc, const char **argv)
@@ -139,7 +225,9 @@ int main(int argc, const char **argv)
 	}
 
 	//TODO: write tests here
-	prepare_object_dir("alpha", "beta", NULL);
+	test_dl_list();
+
+	remove_object_dir();
 
 	return 0;
 }

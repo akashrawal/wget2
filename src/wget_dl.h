@@ -90,13 +90,13 @@ char *dl_build_filename(const char *dir, const char *name);
  * directories. If found it returns the filename, else returns NULL.
  * Free the returned string with wget_free().
  */
-char *dl_search(const char *name, char **dirs, int n_dirs);
+char *dl_search(const char *name, char **dirs, size_t n_dirs);
 
 /* Creates a list of loadable object files in a given directory.
  * Free the returned array with wget_free() after freeing individual elements.
  * if the function fails -1 is returned with errno set.
  */
-int dl_list(const char *dir, char ***names_out, int *n_names_out);
+int dl_list(const char *dir, char ***names_out, size_t *n_names_out);
 
 
 #endif //_WGET_DL_H

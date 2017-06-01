@@ -166,7 +166,7 @@ static int is_regular_file(const char *filename)
 	return 0;
 }
 
-char *dl_search(const char *name, char **dirs, int n_dirs)
+char *dl_search(const char *name, char **dirs, size_t n_dirs)
 {
 	int i;
 
@@ -182,7 +182,7 @@ char *dl_search(const char *name, char **dirs, int n_dirs)
 	return NULL;
 }
 
-int dl_list(const char *dir, char ***names_out, int *n_names_out)
+int dl_list(const char *dir, char ***names_out, size_t *n_names_out)
 {
 	DIR *dirp;
 	wget_buffer_t buf[1];
@@ -237,7 +237,7 @@ int dl_list(const char *dir, char ***names_out, int *n_names_out)
 
 	closedir(dirp);
 	*names_out = (char **) wget_memdup(buf->data, buf->length);
-	*n_names_out = buf->length;
+	*n_names_out = buf->length / sizeof(void *);
 	wget_buffer_deinit(buf);
 
 	return 0;
