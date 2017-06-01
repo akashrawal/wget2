@@ -31,6 +31,30 @@
 
 #include "wget_dl.h"
 
+//If the string is not a path, converts to path by prepending "./" to it,
+//else returns NULL
+static char *convert_to_path_if_not(const char *str)
+{
+	if (str) {
+		char *buf;
+		int fw_slash_absent = 1;
+		int i, str_len;
+		for (i = 0; str[i]; i++)
+			if (str[i] == '/')
+				fw_slash_absent = 0;
+		str_len = i;
+		if (fw_slash_absent) {
+			buf = wget_malloc(str_len + 3);
+			buf[0] = '.';
+			buf[1] = '/';
+			strcpy(buf + 2, str);
+			return buf;
+		}
+	}
+
+	return NULL;
+}
+
 #if defined PLUGIN_SUPPORT_LIBDL
 #include <dlfcn.h>
 
@@ -47,36 +71,20 @@ struct dl_file_st
 //Opens an object file
 dl_file_t *dl_file_open(const char *filename, dl_error_t *e)
 {
-	const char *rpl_filename = filename;
 	char *buf = NULL;
 	dl_file_t *dm = NULL;
 	dl_file_t dm_st;
 
-	if (filename) {
-		//Prepend filename with "./" if there is no "/" in it
-		//because we don't want dlopen() to start searching.
-		int fw_slash_absent = 1;
-		int i, filename_len;
-		for (i = 0; filename[i]; i++)
-			if (filename[i] == '/')
-				fw_slash_absent = 0;
-		filename_len = i;
-		if (fw_slash_absent) {
-			buf = wget_malloc(filename_len + 3);
-			buf[0] = '.';
-			buf[1] = '/';
-			strcpy(buf + 2, filename);
-			rpl_filename = buf;
-		}
-	}
+	buf = convert_to_path_if_not(filename);
+	dm_st.handle = dlopen(buf ? buf : filename,
+			RTLD_LAZY | RTLD_LOCAL);
+	wget_xfree(buf);
 
-	dm_st.handle = dlopen(rpl_filename, RTLD_LAZY | RTLD_LOCAL);
 	if (dm_st.handle)
 		dm = wget_memdup(&dm_st, sizeof(dl_file_t));
 	else
 		dl_error_set(e, dlerror());
 
-	wget_xfree(buf);
 	return dm;
 }
 
@@ -103,7 +111,64 @@ void dl_file_close(dl_file_t *dm)
 }
 
 //TODO: Implementation for windows
-//#elif defined PLUGIN_SUPPORT_WINDOWS
+#elif defined PLUGIN_SUPPORT_WINDOWS
+#include <windows.h>
+
+int dl_supported()
+{
+	return 1;
+}
+
+struct dl_file_st
+{
+	HMODULE handle;
+};
+
+static void dl_win32_set_last_error(dl_error_t *e)
+{
+	char *buf;
+
+	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER
+			| FORMAT_MESSAGE_IGNORE_INSERTS
+			| FORMAT_MESSAGE_FROM_SYSTEM,
+			NULL, GetLastError(), 0,
+			(LPTSTR) &buf, 0, NULL);
+
+	if (buf)
+		dl_error_set(e, buf);
+}
+
+dl_file_t *dl_file_open(const char *filename, dl_error_t *e)
+{
+	char *buf = NULL;
+	dl_file_t *dm = NULL;
+	dl_file_t dm_st;
+
+	buf = convert_to_path_if_not(filename);
+	dm_st.handle = LoadLibrary(buf ? buf : filename);
+	wget_xfree(buf);
+
+	if (dm_st.handle)
+		dm = wget_memdup(&dm_st, sizeof(dl_file_t));
+	else
+		dl_win32_set_last_error(e);
+
+	return dm;
+}
+
+void *dl_file_lookup(dl_file_t *dm, const char *symbol, dl_error_t *e)
+{
+	void *res = GetProcAddress(dm->handle, symbol);
+	if (! res)
+		dl_win32_set_last_error(e);
+	return res;
+}
+
+void dl_file_close(dl_file_t *dm)
+{
+	FreeLibrary(dm->handle);
+	wget_free(dm);
+}
 
 #else
 
@@ -134,7 +199,7 @@ void dl_file_close(dl_file_t *dm)
 #endif
 
 #if defined _WIN32
-#define DL_NATIVE_PREFIX ""
+#define DL_NATIVE_PREFIX "lib"
 #define DL_NATIVE_SUFFIX ".dll"
 #elif defined __APPLE__
 #define DL_NATIVE_PREFIX "lib"

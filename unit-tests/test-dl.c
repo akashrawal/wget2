@@ -97,6 +97,18 @@ static void free_list(char **list, size_t list_len)
 	wget_free(list);
 }
 
+static int rpl_remove(const char *filename)
+{
+	int res;
+
+	res = remove(filename);
+	if (res < 0)
+		if (errno == EACCES)
+			res = rmdir(filename);
+
+	return res;
+}
+
 static void remove_object_dir()
 {
 	DIR *dirp;
@@ -111,13 +123,13 @@ static void remove_object_dir()
 				|| strcmp(ent->d_name, "..") == 0)
 			continue;
 		char *filename = wget_aprintf(OBJECT_DIR "/%s", ent->d_name);
-		libassert(remove(filename) == 0);
+		libassert(rpl_remove(filename) == 0);
 		wget_free(filename);
 	}
 
 	closedir(dirp);
 
-	remove(OBJECT_DIR);
+	rpl_remove(OBJECT_DIR);
 }
 
 static void prepare_object_dir(const char *name1, ...)
