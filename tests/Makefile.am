@@ -17,13 +17,19 @@ WGET_TESTS = test-wget-1$(EXEEXT) test-restrict-ascii$(EXEEXT) test-i-http$(EXEE
  test-auth-basic$(EXEEXT) test-parse-rss$(EXEEXT) test--page-requisites$(EXEEXT)\
  test--accept$(EXEEXT) test-k$(EXEEXT) test--follow-tags$(EXEEXT) test-directory-clash$(EXEEXT) test-redirection$(EXEEXT)\
  test-base$(EXEEXT) test-metalink$(EXEEXT) test-robots$(EXEEXT) test-parse-css$(EXEEXT) test-bad-chunk$(EXEEXT)\
- test-iri-subdir$(EXEEXT) test-chunked$(EXEEXT) test-cut-dirs$(EXEEXT) test-parse-html-css$(EXEEXT)
+ test-iri-subdir$(EXEEXT) test-chunked$(EXEEXT) test-cut-dirs$(EXEEXT) test-parse-html-css$(EXEEXT) \
+ test-dl$(EXEEXT)
 
 #test--post-file test-E-k test-cookies-http_state
 
 check_PROGRAMS = buffer_printf_perf stringmap_perf $(WGET_TESTS)
 
 test_cookies_http_state_LDADD = ../src/log.o ../src/options.o libtest.la\
+ $(LIBOBJS) $(GETADDRINFO_LIB) $(HOSTENT_LIB) $(INET_NTOP_LIB)\
+ $(LIBSOCKET) $(LIB_CLOCK_GETTIME) $(LIB_NANOSLEEP) $(LIB_POLL) $(LIB_PTHREAD)\
+ $(LIB_SELECT) $(LTLIBICONV) $(LTLIBINTL) $(LTLIBTHREAD) $(SERVENT_LIB) @INTL_MACOSX_LIBS@\
+ $(LIBS)
+test_dl_LDADD = ../src/dl.o libtest.la\
  $(LIBOBJS) $(GETADDRINFO_LIB) $(HOSTENT_LIB) $(INET_NTOP_LIB)\
  $(LIBSOCKET) $(LIB_CLOCK_GETTIME) $(LIB_NANOSLEEP) $(LIB_POLL) $(LIB_PTHREAD)\
  $(LIB_SELECT) $(LTLIBICONV) $(LTLIBINTL) $(LTLIBTHREAD) $(SERVENT_LIB) @INTL_MACOSX_LIBS@\
@@ -47,5 +53,16 @@ clean-local:
 AM_TESTS_ENVIRONMENT = export VALGRIND_TESTS"=@VALGRIND_TESTS@";
 TESTS = $(WGET_TESTS)
 
-#Separate directory for dummy libraries for plugin tests
-SUBDIRS = test-dl-libs
+#Dummy libraries for dynamic loading related testing
+check_LTLIBRARIES = libalpha.la libbeta.la
+
+dummy_ldflags = -avoid-version -module -shared -no-undefined \
+	-rpath $(abs_builddir)
+
+libalpha_la_SOURCES = libdummy.c
+libalpha_la_CPPFLAGS = -DPARAM=alpha
+libalpha_la_LDFLAGS = $(dummy_ldflags)
+
+libbeta_la_SOURCES = libdummy.c
+libbeta_la_CPPFLAGS = -DPARAM=beta
+libbeta_la_LDFLAGS = $(dummy_ldflags)
