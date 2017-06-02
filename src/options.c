@@ -611,9 +611,14 @@ static int parse_prefer_family(option_t opt, const char *val)
 	return 0;
 }
 
+static int plugin_loading_enabled = 0;
+
 static int parse_plugin(option_t opt, const char *val)
 {
 	dl_error_t e[1];
+
+	if (! plugin_loading_enabled)
+		return 0;
 
 	dl_error_init(e);
 
@@ -629,6 +634,9 @@ static int parse_plugin(option_t opt, const char *val)
 static int parse_plugin_local(option_t opt, const char *val)
 {
 	dl_error_t e[1];
+
+	if (! plugin_loading_enabled)
+		return 0;
 
 	dl_error_init(e);
 
@@ -2023,6 +2031,9 @@ int init(int argc, const char **argv)
 		config.netrc_file = wget_aprintf("%s/.netrc", home_dir);
 
 	xfree(home_dir);
+
+	//Enable plugin loading
+	plugin_loading_enabled = 1;
 
 	// read global config and user's config
 	// settings in user's config override global settings
