@@ -26,10 +26,38 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <stdarg.h>
 
 #include <wget.h>
 
 #include "wget_dl.h"
+
+//Error reporting functions
+
+//Set an error message. Call with msg=NULL to clear error.
+void dl_error_set(dl_error_t *e, const char *msg)
+{
+	if (msg && e->msg)
+		wget_error_printf_exit
+			("Piling up error '%s' over error '%s'", msg, e->msg);
+
+	wget_xfree(e->msg);
+	if (msg)
+		e->msg = wget_strdup(msg);
+}
+//Set an error message with printf format.
+void dl_error_set_printf
+	(dl_error_t *e, const char *format, ...)
+{
+	va_list arglist;
+	va_start(arglist, format);
+	if (e->msg)
+		wget_error_printf_exit
+			("Piling up error '%s' over error '%s'", format, e->msg);
+
+	e->msg = wget_vaprintf(format, arglist);
+	va_end(arglist);
+}
 
 //If the string is not a path, converts to path by prepending "./" to it,
 //else returns NULL
@@ -216,7 +244,7 @@ void dl_file_close(dl_file_t *dm)
 #define DL_NATIVE_SUFFIX ".so"
 #endif
 
-char *dl_build_filename(const char *dir, const char *name)
+char *dl_build_path(const char *dir, const char *name)
 {
 	if (dir) {
 		return wget_aprintf("%s/" DL_NATIVE_PREFIX "%s" DL_NATIVE_SUFFIX,
@@ -225,6 +253,50 @@ char *dl_build_filename(const char *dir, const char *name)
 		return wget_aprintf(DL_NATIVE_PREFIX "%s" DL_NATIVE_SUFFIX,
 				name);
 	}
+}
+
+char *dl_get_name_from_path(const char *path, int strict)
+{
+	size_t i, mark;
+	size_t pl = strlen(DL_NATIVE_PREFIX);
+	size_t sl = strlen(DL_NATIVE_SUFFIX);
+	size_t start, len;
+	int fail;
+
+	//Strip everything but the filename
+	mark = 0;
+	for (i = 0; path[i]; i++) {
+		if (path[i] == '/')
+			mark = i + 1;
+#ifdef _WIN32
+		if (path[i] == '\\')
+			mark = i + 1;
+#endif //_WIN32
+	}
+	start = mark;
+	len = i - start;
+
+	//Match for and remove the prefix and suffix
+	fail = 1;
+	if (len > pl + sl)
+	{
+		fail = 0;
+		if (strncmp(path + start, DL_NATIVE_PREFIX, pl) == 0) {
+			start += pl;
+			len -= pl;
+		} else {
+			fail = 1;
+		}
+		if (strcmp(path + start + len - sl, DL_NATIVE_SUFFIX) == 0) {
+			len -= sl;
+		} else {
+			fail = 1;
+		}
+	}
+
+	if (strict && fail)
+		return NULL;
+	return wget_strmemdup(path + start, len);
 }
 
 static int is_regular_file(const char *filename)
@@ -245,7 +317,7 @@ char *dl_search(const char *name, char **dirs, size_t n_dirs)
 	for (i = 0; i < n_dirs; i++) {
 		char *filename;
 
-		filename = dl_build_filename(dirs[i], name);
+		filename = dl_build_path(dirs[i], name);
 		if (is_regular_file(filename))
 			return filename;
 
@@ -268,29 +340,16 @@ int dl_list(const char *dir, char ***names_out, size_t *n_names_out)
 	while(1) {
 		struct dirent *ent;
 		char *fname;
-		size_t fname_len;
 		char *name;
 		if ((ent = readdir(dirp)) == NULL)
 			break;
 
 		fname = ent->d_name;
-		fname_len = strlen(fname);
 
-		//Ignore entries that don't match with the pattern
-		{
-			size_t pl = strlen(DL_NATIVE_PREFIX);
-			size_t sl = strlen(DL_NATIVE_SUFFIX);
-			if (fname_len <= pl + sl)
-				continue;
-			if (strncmp(fname, DL_NATIVE_PREFIX, pl) != 0)
-				continue;
-			if (strcmp(fname + fname_len - sl,
-						DL_NATIVE_SUFFIX) != 0)
-				continue;
-
-			//Also trim prefix and suffix from fname
-			name = wget_strmemdup(fname + pl, fname_len - pl - sl);
-		}
+		//Ignore entries that don't match the pattern
+		name = dl_get_name_from_path(fname, 1);
+		if (! name)
+			continue;
 
 		//Ignore entries that are not regular files
 		{

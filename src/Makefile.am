@@ -3,7 +3,8 @@ DEFS = @DEFS@ -DSYSCONFDIR=\"$(sysconfdir)/@PACKAGE@\" -DLOCALEDIR=\"$(localedir
 LDADD = $(LIBOBJS) ../lib/libgnu.a
 AM_CFLAGS = $(WERROR_CFLAGS) $(WARN_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)/include/wget -I$(srcdir) -I$(top_builddir)/lib -I$(top_srcdir)/lib \
- -DWGETVER_FILE=\"$(top_builddir)/include/wget/wgetver.h\"
+ -DWGETVER_FILE=\"$(top_builddir)/include/wget/wgetver.h\" \
+ -DWGET_PLUGIN_DIR=\"$(libdir)/wget2/plugins\"
 
 bin_PROGRAMS = wget2 wget2_noinstall
 
@@ -14,6 +15,7 @@ wget2_SOURCES =\
  host.c wget_host.h\
  job.c wget_job.h\
  log.c wget_log.h\
+ plugin.c wget_plugin.h\
  wget.c wget_main.h\
  options.c wget_options.h\
  wget_xattr.h

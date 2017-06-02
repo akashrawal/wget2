@@ -1930,13 +1930,56 @@ WGETAPI void
  * Plugin support
  */
 
-#if HAVE_VISIBILITY
-#	define WGET_EXPORT __attribute__ ((__visibility__("default")))
-#elif defined _MSC_VER
+///Declares a function to be exported.
+#ifdef _WIN32
 #	define WGET_EXPORT __declspec(dllexport)
+#elif __GNUC__ > 4
+#	define WGET_EXPORT __attribute__ ((__visibility__("default")))
 #else
 #	define WGET_EXPORT
 #endif
+
+struct wget_plugin_vtable;
+
+//TODO: Move documentation to the right place
+
+///Abstract handle used to identify the plugin.
+typedef struct
+{
+	///Plugin specific data. Plugins are free to assign any value to this.
+	void *plugin_data;
+
+	///Pointer to the vtable. Used by wget to implement functions.
+	struct wget_plugin_vtable *vtable;
+} wget_plugin_t;
+
+
+/**Prototype for the initializer function
+* \param[in] plugin Used to identify the plugin
+* \return Should return 0 if initialization succeded,
+*         or any other value to indicate failure.
+*         On failure, wget2 will continue without the plugin
+*         and will not call the finalizer function even if registered.
+*/
+typedef int
+(*wget_plugin_initializer_t)(wget_plugin_t *plugin);
+
+/**Prototype of the finalizer function
+* \param[in] plugin Used to identify the plugin
+* \param[in] exit_status The exit status wget will exit with
+*/
+typedef void
+(*wget_plugin_finalizer_t)(wget_plugin_t *plugin, int exit_status);
+
+WGETAPI void
+wget_plugin_register_finalizer
+		(wget_plugin_t *plugin, wget_plugin_finalizer_t fn);
+
+///vtable for implementing plugin API in wget
+struct wget_plugin_vtable
+{
+	void (* register_finalizer)(wget_plugin_t *, wget_plugin_finalizer_t);
+};
 
 WGET_END_DECLS
 

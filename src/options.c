@@ -58,6 +58,8 @@
 #include "wget_main.h"
 #include "wget_log.h"
 #include "wget_options.h"
+#include "wget_dl.h"
+#include "wget_plugin.h"
 
 typedef enum {
 	SECTION_STARTUP = 0,
@@ -609,6 +611,44 @@ static int parse_prefer_family(option_t opt, const char *val)
 	return 0;
 }
 
+static int parse_plugin(option_t opt, const char *val)
+{
+	dl_error_t e[1];
+
+	dl_error_init(e);
+
+	if (! plugin_db_load_from_name(val, e)) {
+		error_printf("Plugin %s failed to load: %s\n",
+				val, dl_error_get_msg(e));
+		dl_error_set(e, NULL);
+	}
+
+	return 0;
+}
+
+static int parse_plugin_local(option_t opt, const char *val)
+{
+	dl_error_t e[1];
+
+	dl_error_init(e);
+
+	if (! plugin_db_load_from_path(val, e)) {
+		error_printf("Plugin %s failed to load: %s\n",
+				val, dl_error_get_msg(e));
+		dl_error_set(e, NULL);
+	}
+
+	return 0;
+}
+
+static int parse_plugin_dirs(option_t opt, const char *val)
+{
+	plugin_db_clear_search_paths();
+	plugin_db_add_search_paths(val, ',');
+
+	return 0;
+}
+
 // default values for config options (if not 0 or NULL)
 struct config config = {
 	.connect_timeout = -1,
@@ -1084,6 +1124,11 @@ static const struct optionw options[] = {
 		{ "Character encoding of environment and filenames.\n"
 		}
 	},
+	{ "local-plugin", NULL, parse_plugin_local, 1, 0,
+		SECTION_STARTUP,
+		{ "Loads a plugin with a given path.\n"
+		}
+	},
 	{ "max-redirect", &config.max_redirect, parse_integer, 1, 0,
 		SECTION_DOWNLOAD,
 		{ "Max. number of redirections to follow.\n",
@@ -1169,6 +1214,17 @@ static const struct optionw options[] = {
 		SECTION_DOWNLOAD,
 		{ "Password for Authentication.\n",
 		  "(default: empty password)\n"
+		}
+	},
+	{ "plugin", NULL, parse_plugin, 1, 0,
+		SECTION_STARTUP,
+		{ "Loads a plugin with a given name.\n"
+		}
+	},
+	{ "plugin-dirs", NULL, parse_plugin_dirs, 1, 0,
+		SECTION_STARTUP,
+		{ "Specify alternative directories to look\n",
+		  "for plugins, separated by ','\n"
 		}
 	},
 	{ "post-data", &config.post_data, parse_string, 1, 0,

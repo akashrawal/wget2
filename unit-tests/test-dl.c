@@ -144,8 +144,8 @@ static void prepare_object_dir(const char *name1, ...)
 	va_start(arglist, name1);
 	one_name = name1;
 	while(one_name) {
-		char *src = dl_build_filename(".libs", one_name);
-		char *dst = dl_build_filename(OBJECT_DIR, one_name);
+		char *src = dl_build_path(".libs", one_name);
+		char *dst = dl_build_path(OBJECT_DIR, one_name);
 		printf("  Copying %s --> %s\n", src, dst);
 
 		copy_file(src, dst);
@@ -247,11 +247,11 @@ void test_linkage()
 	prepare_object_dir("alpha", "beta", NULL);
 
 	//Load both libraries
-	filename = dl_build_filename(OBJECT_DIR, "alpha");
+	filename = dl_build_path(OBJECT_DIR, "alpha");
 	dl_assert(dm_alpha = dl_file_open(filename, e));
 	wget_free(filename);
 
-	filename = dl_build_filename(OBJECT_DIR, "beta");
+	filename = dl_build_path(OBJECT_DIR, "beta");
 	dl_assert(dm_beta = dl_file_open(filename, e));
 	wget_free(filename);
 

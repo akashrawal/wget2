@@ -39,17 +39,6 @@ static inline int dl_error_is_set(dl_error_t *e)
 {
 	return e->msg ? 1 : 0;
 }
-//Set an error message. Call with msg=NULL to clear error.
-static inline void dl_error_set(dl_error_t *e, const char *msg)
-{
-	if (msg && e->msg)
-		wget_error_printf_exit
-			("Piling up error '%s' over error '%s'", msg, e->msg);
-
-	wget_xfree(e->msg);
-	if (msg)
-		e->msg = wget_strdup(msg);
-}
 //Gets the error message if error is set, else NULL
 //Error string is owned by the error object and will be freed when error is
 //unset.
@@ -57,7 +46,12 @@ static inline char *dl_error_get_msg(dl_error_t *e)
 {
 	return e->msg;
 }
+//Set an error message. Call with msg=NULL to clear error.
+void dl_error_set(dl_error_t *e, const char *msg);
 
+//Set an error message with printf format.
+void dl_error_set_printf
+	(dl_error_t *e, const char *format, ...) G_GNUC_WGET_PRINTF_FORMAT(2, 3);
 
 
 //The dynamically loaded object file handle
@@ -84,7 +78,14 @@ void dl_file_close(dl_file_t *dm);
  * prefix and suffix.
  * Free the returned string with wget_free().
  */
-char *dl_build_filename(const char *dir, const char *name);
+char *dl_build_path(const char *dir, const char *name);
+
+/* Builds a module name given a path to the object file.
+ * Returns NULL if path does not match the pattern for object files and
+ * strict is set to 1.
+ * Free the returned string with wget_free().
+ */
+char *dl_get_name_from_path(const char *path, int strict);
 
 /* Searches for an object file with a given name in the given list of
  * directories. If found it returns the filename, else returns NULL.
