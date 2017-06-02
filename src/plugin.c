@@ -72,6 +72,10 @@ void plugin_db_add_search_paths(const char *paths, char separator)
 			mark = i + 1;
 		}
 	}
+	if (i > mark) {
+		ptr_array_append(search_paths,
+			wget_strmemdup(paths + mark, i - mark));
+	}
 }
 
 //Clears list of directories to search for plugins
@@ -189,4 +193,35 @@ void plugin_db_finalize(int exitcode)
 		plugin_free(plugins[i]);
 	}
 	wget_buffer_memset(plugin_list, 0, 0);
+}
+
+void plugin_db_list(char ***names_out, size_t *n_names_out)
+{
+	char **paths;
+	size_t n_paths, i, n_names;
+	wget_buffer_t buf[1];
+
+	wget_buffer_init(buf, NULL, 0);
+
+	paths = (char **) search_paths->data;
+	n_paths = ptr_array_size(search_paths);
+
+	for (i = 0; i < n_paths; i++) {
+		char **inames = NULL;
+		size_t n_inames = 0;
+		if (dl_list(paths[i], &inames, &n_inames) < 0)
+			continue;
+		if (inames) {
+			wget_buffer_memcat(buf, inames, sizeof(void *) * n_inames);
+			wget_free(inames);
+		}
+	}
+
+	n_names = ptr_array_size(buf);
+	*n_names_out = n_names;
+	if (n_names > 0)
+		*names_out = wget_memdup(buf->data, buf->length);
+	else
+		*names_out = NULL;
+	wget_buffer_deinit(buf);
 }

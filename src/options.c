@@ -649,6 +649,22 @@ static int parse_plugin_dirs(option_t opt, const char *val)
 	return 0;
 }
 
+static int list_plugins(option_t opt, const char *val)
+{
+	char **names = NULL;
+	size_t n_names = 0, i;
+
+	plugin_db_list(&names, &n_names);
+	for (i = 0; i < n_names; i++) {
+		printf("%s\n", names[i]);
+		wget_free(names[i]);
+	}
+	wget_xfree(names);
+
+	exit(EXIT_SUCCESS);
+	return 0;
+}
+
 // default values for config options (if not 0 or NULL)
 struct config config = {
 	.connect_timeout = -1,
@@ -1112,6 +1128,11 @@ static const struct optionw options[] = {
 	{ "level", &config.level, parse_integer, 1, 'l',
 		SECTION_DOWNLOAD,
 		{ "Maximum recursion depth. (default: 5)\n"
+		}
+	},
+	{ "list-plugins", NULL, list_plugins, 0, 0,
+		SECTION_STARTUP,
+		{ "Lists all the plugins in the plugin search paths.\n"
 		}
 	},
 	{ "load-cookies", &config.load_cookies, parse_string, 1, 0,

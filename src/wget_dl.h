@@ -99,5 +99,7 @@ char *dl_search(const char *name, char **dirs, size_t n_dirs);
  */
 int dl_list(const char *dir, char ***names_out, size_t *n_names_out);
 
+// Creates a list of all the plugins available in the plugin search paths.
+void plugin_db_list(char ***names_out, size_t *n_names_out);
 
 #endif //_WGET_DL_H
