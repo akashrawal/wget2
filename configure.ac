@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
-#CFLAGS=$CFLAGS
-#LDFLAGS=$LDFLAGS
+CFLAGS=$CFLAGS
+LDFLAGS=$LDFLAGS
 
 AC_PREREQ([2.67])
 AC_INIT([wget2], [1.0.0], [bug-wget@gnu.org], [wget2], [https://savannah.gnu.org/projects/wget])
@@ -11,7 +11,7 @@ AC_CONFIG_AUX_DIR([build-aux])
 
 AM_INIT_AUTOMAKE([subdir-objects parallel-tests gnu dist-xz])
 
-#CFLAGS=$CFLAGS
+CFLAGS=$CFLAGS
 AC_USE_SYSTEM_EXTENSIONS
 AC_GNU_SOURCE
 
