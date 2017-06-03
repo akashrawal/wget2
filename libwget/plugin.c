@@ -26,8 +26,18 @@
 #include <wget.h>
 #include "private.h"
 
+/**Gets the name the plugin is known as.
+ * \param[in] plugin The plugin handle
+ * \return the name of this plugin. The returned string is owned by wget2
+ *         and should not be freed or altered.
+ */
+const char *wget_plugin_get_name(wget_plugin_t *plugin)
+{
+	return (* plugin->vtable->get_name)(plugin);
+}
+
 /**Registers a function to be called when wget exits.
-* \param[in] plugin Used to identify the plugin
+* \param[in] plugin The plugin handle
 * \param[in] fn A function pointer to be called
 */
 void wget_plugin_register_finalizer

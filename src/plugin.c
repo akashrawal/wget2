@@ -112,7 +112,15 @@ static void impl_register_finalizer
 	plugin->finalizer = fn;
 }
 
+static const char *impl_get_name(wget_plugin_t *p_plugin)
+{
+	plugin_t *plugin = (plugin_t *) p_plugin;
+
+	return plugin->name;
+}
+
 static struct wget_plugin_vtable vtable = {
+	.get_name = impl_get_name,
 	.register_finalizer = impl_register_finalizer
 };
 

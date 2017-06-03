@@ -1955,7 +1955,7 @@ typedef struct
 
 
 /**Prototype for the initializer function
-* \param[in] plugin Used to identify the plugin
+* \param[in] plugin The plugin handle
 * \return Should return 0 if initialization succeded,
 *         or any other value to indicate failure.
 *         On failure, wget2 will continue without the plugin
@@ -1965,11 +1965,14 @@ typedef int
 (*wget_plugin_initializer_t)(wget_plugin_t *plugin);
 
 /**Prototype of the finalizer function
-* \param[in] plugin Used to identify the plugin
+* \param[in] plugin The plugin handle
 * \param[in] exit_status The exit status wget will exit with
 */
 typedef void
 (*wget_plugin_finalizer_t)(wget_plugin_t *plugin, int exit_status);
+
+WGETAPI const char *
+wget_plugin_get_name(wget_plugin_t *plugin);
 
 WGETAPI void
 wget_plugin_register_finalizer
@@ -1978,6 +1981,7 @@ wget_plugin_register_finalizer
 ///vtable for implementing plugin API in wget
 struct wget_plugin_vtable
 {
+	const char * (* get_name)(wget_plugin_t *);
 	void (* register_finalizer)(wget_plugin_t *, wget_plugin_finalizer_t);
 };
 
