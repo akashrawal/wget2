@@ -17,17 +17,19 @@ fi
 
 # On OSX we are unable to find the Wget2 dylibs without installing first
 # However `make install` on linux systems fail due to insufficient permissions
-if [[ $TRAVIS_OS_NAME = 'osx' ]]; then
-	./configure -C
-	make install -j3
-fi
+#if [[ $TRAVIS_OS_NAME = 'osx' ]]; then
+#	./configure -C
+#	make install -j3
+#fi
 
 for OPTS in "${CONFIGURE_OPTIONS[@]}"; do
 	./configure -C $OPTS
+	test "$TRAVIS_OS_NAME" = 'osx' && make install -j3
 	if make clean check -j3; then :; else
-		cat unit-tests/test-suite.log
-		cat tests/test-suite.log
+		test -f unit-tests/test-suite.log && cat unit-tests/test-suite.log
+		test -f tests/test-suite.log && cat tests/test-suite.log
 		find unit-tests -print
+		exit 1
 	fi
 done
 
