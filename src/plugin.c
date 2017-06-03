@@ -270,7 +270,12 @@ void plugin_db_finalize(int exitcode)
 				((wget_plugin_t *) plugins[i], exitcode);
 		plugin_free(plugins[i]);
 	}
-	wget_buffer_memset(plugin_list, 0, 0);
+	wget_buffer_deinit(plugin_list);
+	char **paths = (char **) search_paths->data;
+	size_t n_paths = ptr_array_size(search_paths);
+	for (i = 0; i < n_paths; i++)
+		wget_free(paths[i]);
+	wget_buffer_deinit(search_paths);
 }
 
 //Creates a list of all plugins found in plugin search paths.

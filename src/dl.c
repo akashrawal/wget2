@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #include <wget.h>
 
@@ -333,10 +334,13 @@ char *dl_get_name_from_path(const char *path, int strict)
 char *dl_search(const char *name, char **dirs, size_t n_dirs)
 {
 	int i;
+	char *res = NULL;
 
-	for (i = 0; i < n_dirs; i++) {
+	for (i = 0; res == NULL && i < n_dirs; i++) {
 		struct dirent *ent;
 		DIR *dirp = opendir(dirs[i]);
+		if (! dirp)
+			continue;
 		while ((ent = readdir(dirp)) != NULL) {
 			size_t start, len;
 			char *filename;
@@ -360,10 +364,12 @@ char *dl_search(const char *name, char **dirs, size_t n_dirs)
 				wget_free(filename);
 				continue;
 			}
-			return filename;
+			res = filename;
+			break;
 		}
+		closedir(dirp);
 	}
-	return NULL;
+	return res;
 }
 
 int dl_list(const char *dir, char ***names_out, size_t *n_names_out)

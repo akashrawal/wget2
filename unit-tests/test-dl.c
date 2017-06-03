@@ -203,7 +203,6 @@ static void test_dl_list()
 	add_empty_file("file_which_is_not_a_library");
 	add_empty_file("libreoffice.png");
 	add_empty_file("not_a_library.so");
-	add_empty_file("not_a_library.dll");
 	add_empty_file("not_a_library.dylib");
 	add_empty_file("not_a_library.bundle");
 	libassert(mkdir(OBJECT_DIR "/somedir", 0755) == 0);
