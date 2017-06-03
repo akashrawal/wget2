@@ -26,6 +26,21 @@
 #include <wget.h>
 #include "private.h"
 
+/**
+ * \file
+ * \brief Plugin API for wget2
+ * \defgroup libwget-plugin Plugin API for wget2
+ * \{
+ *
+ * This is the plugin API for wget2.
+ *
+ * Each plugin must define wget_plugin_initializer() function which will be
+ * called when the plugin is loaded.
+ * See wget_plugin_initializer_t for the prototype.
+ * wget_plugin_initializer() must also be declared to be exported
+ * using WGET_EXPORT.
+ */
+
 /**Gets the name the plugin is known as.
  * \param[in] plugin The plugin handle
  * \return the name of this plugin. The returned string is owned by wget2
@@ -45,3 +60,6 @@ void wget_plugin_register_finalizer
 {
 	(* plugin->vtable->register_finalizer)(plugin, fn);
 }
+
+
+///\}
