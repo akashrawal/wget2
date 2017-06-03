@@ -31,8 +31,6 @@
 
 #if defined _WIN32
 #define LOCAL_NAME(x) OBJECT_DIR "/lib" x ".dll"
-#elif defined __APPLE__
-#define LOCAL_NAME(x) OBJECT_DIR "/lib" x ".dylib"
 #else
 #define LOCAL_NAME(x) OBJECT_DIR "/lib" x ".so"
 #endif

@@ -205,10 +205,12 @@ static void test_dl_list()
 	add_empty_file("not_a_library.so");
 	add_empty_file("not_a_library.dll");
 	add_empty_file("not_a_library.dylib");
+	add_empty_file("not_a_library.bundle");
 	libassert(mkdir(OBJECT_DIR "/somedir", 0755) == 0);
 	libassert(mkdir(OBJECT_DIR "/libactuallyadir.so", 0755) == 0);
 	libassert(mkdir(OBJECT_DIR "/libactuallyadir.dll", 0755) == 0);
 	libassert(mkdir(OBJECT_DIR "/libactuallyadir.dylib", 0755) == 0);
+	libassert(mkdir(OBJECT_DIR "/libactuallyadir.bundle", 0755) == 0);
 
 	libassert(dl_list(OBJECT_DIR, &names, &names_len) == 0);
 

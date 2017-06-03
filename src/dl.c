@@ -234,34 +234,23 @@ void dl_file_close(dl_file_t *dm)
 #endif
 
 #if defined _WIN32
-#define DL_NATIVE_PREFIX "lib"
-#define DL_NATIVE_SUFFIX ".dll"
+const static char *dl_prefixes[] = {"lib", "", NULL};
+const static char *dl_suffixes[] = {".dll", NULL};
 #elif defined __APPLE__
-#define DL_NATIVE_PREFIX "lib"
-#define DL_NATIVE_SUFFIX ".dylib"
+const static char *dl_prefixes[] = {"lib", NULL};
+const static char *dl_suffixes[] = {".so", ".bundle", ".dylib", NULL};
 #else
-#define DL_NATIVE_PREFIX "lib"
-#define DL_NATIVE_SUFFIX ".so"
+const static char *dl_prefixes[] = {"lib", NULL};
+const static char *dl_suffixes[] = {".so", NULL};
 #endif
 
-char *dl_build_path(const char *dir, const char *name)
-{
-	if (dir) {
-		return wget_aprintf("%s/" DL_NATIVE_PREFIX "%s" DL_NATIVE_SUFFIX,
-				dir, name);
-	} else {
-		return wget_aprintf(DL_NATIVE_PREFIX "%s" DL_NATIVE_SUFFIX,
-				name);
-	}
-}
-
-char *dl_get_name_from_path(const char *path, int strict)
+//Matches the given path with the patterns of a loadable object file
+//and returns a range to use as a name
+static int dl_match(const char *path, size_t *start_out, size_t *len_out)
 {
 	size_t i, mark;
-	size_t pl = strlen(DL_NATIVE_PREFIX);
-	size_t sl = strlen(DL_NATIVE_SUFFIX);
 	size_t start, len;
-	int fail;
+	int match = 1;
 
 	//Strip everything but the filename
 	mark = 0;
@@ -276,27 +265,36 @@ char *dl_get_name_from_path(const char *path, int strict)
 	start = mark;
 	len = i - start;
 
-	//Match for and remove the prefix and suffix
-	fail = 1;
-	if (len > pl + sl)
-	{
-		fail = 0;
-		if (strncmp(path + start, DL_NATIVE_PREFIX, pl) == 0) {
-			start += pl;
-			len -= pl;
-		} else {
-			fail = 1;
-		}
-		if (strcmp(path + start + len - sl, DL_NATIVE_SUFFIX) == 0) {
-			len -= sl;
-		} else {
-			fail = 1;
+	//Match for and remove the suffix
+	for (i = 0; dl_suffixes[i]; i++) {
+		size_t l = strlen(dl_suffixes[i]);
+		if (l >= len)
+			continue;
+		if (memcmp(path + start + len - l, dl_suffixes[i], l) == 0) {
+			len -= l;
+			break;
 		}
 	}
+	if (! dl_suffixes[i])
+		match = 0;
 
-	if (strict && fail)
-		return NULL;
-	return wget_strmemdup(path + start, len);
+	//Match for and remove the prefix
+	for (i = 0; dl_prefixes[i]; i++) {
+		size_t l = strlen(dl_prefixes[i]);
+		if (l >= len)
+			continue;
+		if (memcmp(path + start, dl_prefixes[i], l) == 0) {
+			start += l;
+			len -= l;
+			break;
+		}
+	}
+	if (! dl_prefixes[i])
+		match = 0;
+
+	*start_out = start;
+	*len_out = len;
+	return match;
 }
 
 static int is_regular_file(const char *filename)
@@ -310,18 +308,60 @@ static int is_regular_file(const char *filename)
 	return 0;
 }
 
+char *dl_build_path(const char *dir, const char *name)
+{
+	if (dir) {
+		return wget_aprintf("%s/%s%s%s", dir,
+			dl_prefixes[0], name, dl_suffixes[0]);
+	} else {
+		return wget_aprintf("%s%s%s",
+			dl_prefixes[0], name, dl_suffixes[0]);
+	}
+}
+
+char *dl_get_name_from_path(const char *path, int strict)
+{
+	size_t start, len;
+	int match = dl_match(path, &start, &len);
+
+	if (!match && strict)
+		return NULL;
+	else
+		return wget_strmemdup(path + start, len);
+}
+
 char *dl_search(const char *name, char **dirs, size_t n_dirs)
 {
 	int i;
 
 	for (i = 0; i < n_dirs; i++) {
-		char *filename;
+		struct dirent *ent;
+		DIR *dirp = opendir(dirs[i]);
+		while ((ent = readdir(dirp)) != NULL) {
+			size_t start, len;
+			char *filename;
 
-		filename = dl_build_path(dirs[i], name);
-		if (is_regular_file(filename))
+			//Check whether the filename matches the pattern
+			if (! dl_match(ent->d_name, &start, &len))
+				continue;
+			if (strlen(name) != len)
+				continue;
+			if (memcmp(ent->d_name + start, name, len) != 0)
+				continue;
+
+			//Check whether it is a regular file
+			if (dirs[i] && *dirs[i]) {
+				filename = wget_aprintf
+					("%s/%s", dirs[i], ent->d_name);
+			} else {
+				filename = wget_aprintf("%s", ent->d_name);
+			}
+			if (! is_regular_file(filename)) {
+				wget_free(filename);
+				continue;
+			}
 			return filename;
-
-		wget_free(filename);
+		}
 	}
 	return NULL;
 }
