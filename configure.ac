@@ -526,7 +526,6 @@ AS_IF([test "x$with_libidn2" != xyes], [
 AM_CONDITIONAL([WITH_LIBIDN], [test "x$with_libidn" = xyes])
 
 # Check for plugin support
-#TODO: I wonder if this works for MSVC
 AC_CANONICAL_HOST
 case "$host_os" in
 	mingw*)

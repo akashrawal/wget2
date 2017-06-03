@@ -301,7 +301,6 @@ int main(int argc, const char **argv)
 		return 77;
 	}
 
-	//TODO: Move common code between test.c into a library?
 	// if VALGRIND testing is enabled, we have to call ourselves with
 	// valgrind checking
 	const char *valgrind = getenv("VALGRIND_TESTS");
@@ -325,7 +324,6 @@ int main(int argc, const char **argv)
 		return system(cmd) != 0;
 	}
 
-	//TODO: write tests here
 	run_test(test_dl_list);
 	run_test(test_linkage);
 
