@@ -27,7 +27,6 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <stdarg.h>
-#include <errno.h>
 
 #include <wget.h>
 
@@ -168,9 +167,7 @@ static void dl_win32_set_last_error(dl_error_t *e)
 		dl_error_set(e, buf);
 		LocalFree(buf);
 	} else {
-		char buf2[64];
-		snprintf(buf2, 64, "Unknown error %d", (int) error_code);
-		dl_error_set(e, buf);
+		dl_error_set_printf("Unknown error %d", (int) error_code);
 	}
 }
 
