@@ -651,6 +651,9 @@ static int parse_plugin_local(option_t opt, const char *val)
 
 static int parse_plugin_dirs(option_t opt, const char *val)
 {
+	if (! plugin_loading_enabled)
+		return 0;
+
 	plugin_db_clear_search_paths();
 	plugin_db_add_search_paths(val, ',');
 
@@ -661,6 +664,9 @@ static int list_plugins(option_t opt, const char *val)
 {
 	char **names = NULL;
 	size_t n_names = 0, i;
+
+	if (! plugin_loading_enabled)
+		return 0;
 
 	plugin_db_list(&names, &n_names);
 	for (i = 0; i < n_names; i++) {
@@ -2033,8 +2039,22 @@ int init(int argc, const char **argv)
 	xfree(home_dir);
 
 	//Enable plugin loading
-	plugin_loading_enabled = 1;
-	plugin_db_load_from_envvar();
+	{
+		const char *env;
+
+		plugin_loading_enabled = 1;
+		env = getenv("WGET2_PLUGIN_DIRS");
+		if (env) {
+			plugin_db_clear_search_paths();
+#ifdef _WIN32
+			plugin_db_add_search_paths(env, ';');
+#else
+			plugin_db_add_search_paths(env, ':');
+#endif
+		}
+
+		plugin_db_load_from_envvar();
+	}
 
 	// read global config and user's config
 	// settings in user's config override global settings
