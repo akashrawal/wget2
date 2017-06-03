@@ -24,7 +24,10 @@ fi
 
 for OPTS in "${CONFIGURE_OPTIONS[@]}"; do
 	./configure -C $OPTS
-	make clean check -j3 || (cat tests/test-suite.log && exit 1)
+	if make clean check -j3; then :; else 
+		cat unit-tests/test-suite.log
+		cat tests/test-suite.log
+	fi
 done
 
 make distcheck -j3
