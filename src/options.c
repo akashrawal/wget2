@@ -623,7 +623,7 @@ static int parse_plugin(option_t opt, const char *val)
 	dl_error_init(e);
 
 	if (! plugin_db_load_from_name(val, e)) {
-		error_printf("Plugin %s failed to load: %s\n",
+		error_printf("Plugin '%s' failed to load: %s\n",
 				val, dl_error_get_msg(e));
 		dl_error_set(e, NULL);
 	}
@@ -641,7 +641,7 @@ static int parse_plugin_local(option_t opt, const char *val)
 	dl_error_init(e);
 
 	if (! plugin_db_load_from_path(val, e)) {
-		error_printf("Plugin %s failed to load: %s\n",
+		error_printf("Plugin '%s' failed to load: %s\n",
 				val, dl_error_get_msg(e));
 		dl_error_set(e, NULL);
 	}
@@ -2034,6 +2034,7 @@ int init(int argc, const char **argv)
 
 	//Enable plugin loading
 	plugin_loading_enabled = 1;
+	plugin_db_load_from_envvar();
 
 	// read global config and user's config
 	// settings in user's config override global settings

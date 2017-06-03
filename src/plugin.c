@@ -23,13 +23,16 @@
 
 #include <config.h>
 
+#include <string.h>
+
 #include <wget.h>
 
 #include "wget_dl.h"
 #include "wget_plugin.h"
 
-//Name of the initializer function
+//Strings
 const static char *init_fn_name = "wget_plugin_initializer";
+const static char *plugin_list_envvar = "WGET2_PLUGINS";
 
 //Pointer array manipulation functions on wget_buffer_t
 static inline size_t ptr_array_size(wget_buffer_t *buf)
@@ -41,9 +44,30 @@ static inline void ptr_array_append(wget_buffer_t *buf, void *ent)
 	wget_buffer_memcat(buf, (void *) &ent, sizeof(void *));
 }
 
+//Splits string using the given separator and appends the array to buf.
+static void split_string(const char *str, char separator, wget_buffer_t *buf)
+{
+	int i, mark;
+
+	mark = 0;
+	for (i = 0; str[i]; i++) {
+		if (str[i] == separator) {
+			if (i > mark) {
+				ptr_array_append(buf,
+					wget_strmemdup(str + mark, i - mark));
+			}
+			mark = i + 1;
+		}
+	}
+	if (i > mark) {
+		ptr_array_append(buf,
+			wget_strmemdup(str + mark, i - mark));
+	}
+}
+
 //Plugin search paths
-wget_buffer_t search_paths[1];
-wget_buffer_t plugin_list[1];
+static wget_buffer_t search_paths[1];
+static wget_buffer_t plugin_list[1];
 static int initialized;
 
 //Initializes buffer objects if not already
@@ -60,22 +84,7 @@ void plugin_db_init()
 //_separator_.
 void plugin_db_add_search_paths(const char *paths, char separator)
 {
-	int i, mark;
-
-	mark = 0;
-	for (i = 0; paths[i]; i++) {
-		if (paths[i] == separator) {
-			if (i > mark) {
-				ptr_array_append(search_paths,
-					wget_strmemdup(paths + mark, i - mark));
-			}
-			mark = i + 1;
-		}
-	}
-	if (i > mark) {
-		ptr_array_append(search_paths,
-			wget_strmemdup(paths + mark, i - mark));
-	}
+	split_string(paths, separator, search_paths);
 }
 
 //Clears list of directories to search for plugins
@@ -151,6 +160,8 @@ static plugin_t *load_plugin_internal
 	return plugin;
 }
 
+//Loads a plugin using its path. On failure it sets error and
+//returns NULL.
 plugin_t *plugin_db_load_from_path(const char *path, dl_error_t *e)
 {
 	char *name = dl_get_name_from_path(path, 0);
@@ -159,6 +170,8 @@ plugin_t *plugin_db_load_from_path(const char *path, dl_error_t *e)
 	return plugin;
 }
 
+//Loads a plugin using its name. On failure it sets error and
+//returns NULL.
 plugin_t *plugin_db_load_from_name(const char *name, dl_error_t *e)
 {
 	//Search where the plugin is
@@ -168,7 +181,7 @@ plugin_t *plugin_db_load_from_name(const char *name, dl_error_t *e)
 
 	char *filename = dl_search(name, dirs, n_dirs);
 	if (! filename) {
-		dl_error_set_printf(e, "Plugin %s not found in any of the "
+		dl_error_set_printf(e, "Plugin '%s' not found in any of the "
 				"plugin search paths.",
 				name);
 		return NULL;
@@ -180,6 +193,63 @@ plugin_t *plugin_db_load_from_name(const char *name, dl_error_t *e)
 	return plugin;
 }
 
+//Loads all plugins from environment variables. On any errors it
+//logs them using wget_error_printf().
+void plugin_db_load_from_envvar()
+{
+	dl_error_t e[1];
+	wget_buffer_t buf[1];
+	const char *str;
+#ifdef _WIN32
+	char sep = ';';
+#else
+	char sep = ':';
+#endif
+
+	//Fetch from environment variable
+	str = getenv(plugin_list_envvar);
+
+	if (str) {
+		char **strings = NULL;
+		size_t n_strings = 0, i;
+		plugin_t *plugin;
+
+		dl_error_init(e);
+
+		//Split the value
+		wget_buffer_init(buf, NULL, 0);
+		split_string(str, sep, buf);
+		strings = (char **) buf->data;
+		n_strings = ptr_array_size(buf);
+
+		//Load each plugin
+		for (i = 0; i < n_strings; i++) {
+			int local = 0;
+			if (strchr(strings[i], '/'))
+				local = 1;
+#ifdef _WIN32
+			if (strchr(strings[i], '\\'))
+				local = 1;
+#endif
+			if (local)
+				plugin = plugin_db_load_from_path(strings[i], e);
+			else
+				plugin = plugin_db_load_from_name(strings[i], e);
+
+			if (! plugin) {
+				wget_error_printf("Plugin '%s' failed to load: %s",
+						strings[i], dl_error_get_msg(e));
+				dl_error_set(e, NULL);
+			}
+
+			wget_free(strings[i]);
+		}
+
+		wget_buffer_deinit(buf);
+	}
+}
+
+//Sends 'finalize' signal to all plugins and unloads all plugins
 void plugin_db_finalize(int exitcode)
 {
 	int i;
@@ -195,6 +265,7 @@ void plugin_db_finalize(int exitcode)
 	wget_buffer_memset(plugin_list, 0, 0);
 }
 
+//Creates a list of all plugins found in plugin search paths.
 void plugin_db_list(char ***names_out, size_t *n_names_out)
 {
 	char **paths;

@@ -55,7 +55,14 @@ plugin_t *plugin_db_load_from_path(const char *path, dl_error_t *e);
 //returns NULL.
 plugin_t *plugin_db_load_from_name(const char *name, dl_error_t *e);
 
+//Loads all plugins from environment variables. On any errors it
+//logs them using wget_error_printf().
+void plugin_db_load_from_envvar();
+
 //Sends 'finalize' signal to all plugins and unloads all plugins
 void plugin_db_finalize(int exitcode);
+
+//Creates a list of all plugins found in plugin search paths.
+void plugin_db_list(char ***names_out, size_t *n_names_out);
 
 #endif //_WGET_PLUGIN_H
