@@ -27,6 +27,7 @@ for OPTS in "${CONFIGURE_OPTIONS[@]}"; do
 	if make clean check -j3; then :; else
 		cat unit-tests/test-suite.log
 		cat tests/test-suite.log
+		find unit-tests -print
 	fi
 done
 
