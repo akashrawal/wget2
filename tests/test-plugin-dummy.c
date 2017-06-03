@@ -29,11 +29,6 @@
 
 #include <wget.h>
 
-#define stringify2(x) #x
-#define stringify(x) stringify2(x)
-#define concat2(x, y) x ## y
-#define concat(x, y) concat2(x, y)
-
 #if defined TEST_SELECT_NAME
 WGET_EXPORT int wget_plugin_initializer(wget_plugin_t *plugin)
 {
