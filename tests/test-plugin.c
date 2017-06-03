@@ -54,6 +54,11 @@ int main()
 		}
 	};
 
+	//Skip when plugin support is not available
+#ifndef PLUGIN_SUPPORT
+	return 77;
+#endif
+
 	wget_test_start_server
 		(WGET_TEST_RESPONSE_URLS, &urls, countof(urls), 0);
 
