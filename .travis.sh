@@ -27,6 +27,7 @@ for OPTS in "${CONFIGURE_OPTIONS[@]}"; do
 	make clean check -j3 || (cat tests/test-suite.log && exit 1)
 done
 
+
 make distcheck -j3
 
 if [[ $CC = 'gcc' && $TRAVIS_OS_NAME = 'linux' ]]; then
