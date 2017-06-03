@@ -54,29 +54,13 @@ do { \
 
 #define OBJECT_DIR ".test_dl_dir"
 
-static void copy_file(const char *src, const char *dst)
-{
-	struct stat statbuf;
-	int sfd, dfd;
-	char buf[256];
-	size_t size_remain;
-
-	libassert(stat(src, &statbuf) == 0);
-	libassert((sfd = open(src, O_RDONLY | O_BINARY)) >= 0);
-	libassert((dfd = open(dst, O_WRONLY | O_CREAT | O_BINARY,
-					statbuf.st_mode)) >= 0);
-	size_remain = statbuf.st_size;
-	while(size_remain > 0) {
-		size_t io_size = size_remain;
-		if (io_size > sizeof(buf))
-			io_size = sizeof(buf);
-		libassert(read(sfd, buf, io_size) == io_size);
-		libassert(write(dfd, buf, io_size) == io_size);
-		size_remain -= io_size;
-	}
-	close(sfd);
-	close(dfd);
-}
+#if defined _WIN32
+#define BUILD_NAME(x) ".libs" "/lib" x ".dll"
+#define LOCAL_NAME(x) OBJECT_DIR "/lib" x ".dll"
+#else
+#define BUILD_NAME(x) ".libs" "/lib" x ".so"
+#define LOCAL_NAME(x) OBJECT_DIR "/lib" x ".so"
+#endif
 
 static void dump_list(char **list, size_t list_len)
 {
@@ -131,31 +115,30 @@ static void remove_object_dir()
 	rpl_remove(OBJECT_DIR);
 }
 
-static void prepare_object_dir(const char *name1, ...)
+static void copy_file(const char *src, const char *dst)
 {
-	va_list arglist;
-	const char *one_name;
+	struct stat statbuf;
+	int sfd, dfd;
+	char buf[256];
+	size_t size_remain;
 
-	remove_object_dir();
+	printf("  Copying %s --> %s\n", src, dst);
 
-	libassert(mkdir(OBJECT_DIR, 0755) == 0);
-
-	//Copy each library into directory
-	va_start(arglist, name1);
-	one_name = name1;
-	while(one_name) {
-		char *src = dl_build_path(".libs", one_name);
-		char *dst = dl_build_path(OBJECT_DIR, one_name);
-		printf("  Copying %s --> %s\n", src, dst);
-
-		copy_file(src, dst);
-
-		wget_free(src);
-		wget_free(dst);
-
-		one_name = va_arg(arglist, const char *);
+	libassert(stat(src, &statbuf) == 0);
+	libassert((sfd = open(src, O_RDONLY | O_BINARY)) >= 0);
+	libassert((dfd = open(dst, O_WRONLY | O_CREAT | O_BINARY,
+					statbuf.st_mode)) >= 0);
+	size_remain = statbuf.st_size;
+	while(size_remain > 0) {
+		size_t io_size = size_remain;
+		if (io_size > sizeof(buf))
+			io_size = sizeof(buf);
+		libassert(read(sfd, buf, io_size) == io_size);
+		libassert(write(dfd, buf, io_size) == io_size);
+		size_remain -= io_size;
 	}
-	va_end(arglist);
+	close(sfd);
+	close(dfd);
 }
 
 static void add_empty_file(const char *filename)
@@ -198,7 +181,10 @@ static void test_dl_list()
 	size_t names_len;
 	int fail = 0;
 
-	prepare_object_dir("alpha", "beta", NULL);
+	remove_object_dir();
+	libassert(mkdir(OBJECT_DIR, 0755) == 0);
+	copy_file(BUILD_NAME("alpha"), LOCAL_NAME("alpha"));
+	copy_file(BUILD_NAME("beta"), LOCAL_NAME("beta"));
 	add_empty_file("x");
 	add_empty_file("file_which_is_not_a_library");
 	add_empty_file("libreoffice.png");
@@ -240,21 +226,18 @@ static void test_dl_list()
 //Test whether symbols from dynamically loaded libraries link as expected
 void test_linkage()
 {
-	char *filename;
 	dl_file_t *dm_alpha, *dm_beta;
 	test_fn fn;
 
 	//Create test directory
-	prepare_object_dir("alpha", "beta", NULL);
+	remove_object_dir();
+	libassert(mkdir(OBJECT_DIR, 0755) == 0);
+	copy_file(BUILD_NAME("alpha"), LOCAL_NAME("alpha"));
+	copy_file(BUILD_NAME("beta"), LOCAL_NAME("beta"));
 
 	//Load both libraries
-	filename = dl_build_path(OBJECT_DIR, "alpha");
-	dl_assert(dm_alpha = dl_file_open(filename, e));
-	wget_free(filename);
-
-	filename = dl_build_path(OBJECT_DIR, "beta");
-	dl_assert(dm_beta = dl_file_open(filename, e));
-	wget_free(filename);
+	dl_assert(dm_alpha = dl_file_open(LOCAL_NAME("alpha"), e));
+	dl_assert(dm_beta = dl_file_open(LOCAL_NAME("beta"), e));
 
 	//Check whether symbols load
 	dl_assert(fn = dl_file_lookup(dm_alpha, "dl_test_fn_alpha", e));

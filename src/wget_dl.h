@@ -74,12 +74,6 @@ void *dl_file_lookup(dl_file_t *dm, const char *symbol, dl_error_t *e);
 //Unloads the loaded object file
 void dl_file_close(dl_file_t *dm);
 
-/* Builds a filename for an object file by applying platform specific
- * prefix and suffix.
- * Free the returned string with wget_free().
- */
-char *dl_build_path(const char *dir, const char *name);
-
 /* Builds a module name given a path to the object file.
  * Returns NULL if path does not match the pattern for object files and
  * strict is set to 1.

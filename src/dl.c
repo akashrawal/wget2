@@ -167,7 +167,7 @@ static void dl_win32_set_last_error(dl_error_t *e)
 		dl_error_set(e, buf);
 		LocalFree(buf);
 	} else {
-		dl_error_set_printf("Unknown error %d", (int) error_code);
+		dl_error_set_printf(e, "Unknown error %d", (int) error_code);
 	}
 }
 
@@ -304,17 +304,6 @@ static int is_regular_file(const char *filename)
 	if (S_ISREG(statbuf.st_mode))
 		return 1;
 	return 0;
-}
-
-char *dl_build_path(const char *dir, const char *name)
-{
-	if (dir) {
-		return wget_aprintf("%s/%s%s%s", dir,
-			dl_prefixes[0], name, dl_suffixes[0]);
-	} else {
-		return wget_aprintf("%s%s%s",
-			dl_prefixes[0], name, dl_suffixes[0]);
-	}
 }
 
 char *dl_get_name_from_path(const char *path, int strict)
