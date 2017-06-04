@@ -46,6 +46,70 @@ static int
 	ok,
 	failed;
 
+static void check(int result, const char *msg)
+{
+	if (result) {
+		ok++;
+	} else {
+		failed++;
+		wget_info_printf("%s\n", msg);
+	}
+}
+
+#define CHECK(e) check(!!(e), #e)
+
+static void test_mem(void)
+{
+	void *p;
+
+	CHECK(!wget_memdup(NULL, 0));
+	CHECK(!wget_memdup(NULL, 4));
+	CHECK(p = wget_memdup("xxx", 0)); xfree(p);
+	CHECK(p = wget_memdup("xxx", 4));
+	CHECK(!memcmp(p, "xxx", 4)); xfree(p);
+
+	CHECK(!wget_strdup(NULL));
+	CHECK(p = wget_strdup("xxx"));
+	CHECK(!strcmp(p, "xxx")); xfree(p);
+
+	CHECK(!wget_strmemdup(NULL, 0));
+	CHECK(p = wget_strmemdup("xxx", 1));
+	CHECK(!strcmp(p, "x")); xfree(p);
+	CHECK(p = wget_strmemdup("xxx", 0));
+	CHECK(!strcmp(p, "")); xfree(p);
+
+	wget_strmemcpy(NULL, 0, NULL, 0);
+	wget_strmemcpy(NULL, 5, NULL, 3);
+
+	char buf[32] = "x";
+	wget_strmemcpy(buf, 0, "xxx", 0);
+	CHECK(!strcmp(buf, "x"));
+	wget_strmemcpy(buf, 0, "xxx", 1);
+	CHECK(!strcmp(buf, "x"));
+	wget_strmemcpy(buf, sizeof(buf), "xxx", 0);
+	CHECK(!strcmp(buf, ""));
+	wget_strmemcpy(buf, 1, "xxx", 3);
+	CHECK(!strcmp(buf, ""));
+	wget_strmemcpy(buf, 2, "xxx", 3);
+	CHECK(!strcmp(buf, "x"));
+	wget_strmemcpy(buf, 2, NULL, 3);
+	CHECK(!strcmp(buf, ""));
+}
+
+static void test_strlcpy(void)
+{
+	char buf[4] = "x";
+
+	CHECK(wget_strlcpy(buf, NULL, 5) == 0);
+	CHECK(!strcmp(buf, "x"));
+	CHECK(wget_strlcpy(NULL, "x", sizeof(buf)) == 1);
+	CHECK(!strcmp(buf, "x"));
+	CHECK(wget_strlcpy(buf, "xx", sizeof(buf)) == 2);
+	CHECK(!strcmp(buf, "xx"));
+	CHECK(wget_strlcpy(buf, "xxxxx", sizeof(buf)) == 5);
+	CHECK(!strcmp(buf, "xxx"));
+}
+
 static void _test_buffer(wget_buffer_t *buf, const char *name)
 {
 	char test[256];
@@ -934,7 +998,6 @@ static void test_parser(void)
 	DIR *dirp;
 	struct dirent *dp;
 	const char *ext;
-	char fname[296];
 	int xml = 0, html = 0, css = 0;
 
 	// test the XML / HTML parser, you should start the test with valgrind
@@ -943,6 +1006,7 @@ static void test_parser(void)
 		while ((dp = readdir(dirp)) != NULL) {
 			if (*dp->d_name == '.') continue;
 			if ((ext = strrchr(dp->d_name, '.'))) {
+				char fname[strlen(SRCDIR) + strlen(dp->d_name) + 8];
 				snprintf(fname, sizeof(fname), "%s/files/%s", SRCDIR, dp->d_name);
 				if (!wget_strcasecmp_ascii(ext, ".xml")) {
 					info_printf("parsing %s\n", fname);
@@ -2165,6 +2229,8 @@ int main(int argc, const char **argv)
 	wget_set_oomfunc(abort);
 
 	// testing basic library functionality
+	test_mem();
+	test_strlcpy();
 	test_buffer();
 	test_buffer_printf();
 	test_utils();

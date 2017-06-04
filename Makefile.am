@@ -6,7 +6,7 @@ else
 SUBDIRS =
 endif
 
-SUBDIRS += lib include libwget examples src data $(LIBWGET_DOCS) tests
+SUBDIRS += lib include libwget examples src data $(LIBWGET_DOCS) fuzz unit-tests tests
 
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
@@ -34,7 +34,7 @@ check-valgrind:
 	TESTS_ENVIRONMENT="VALGRIND_TESTS=1" $(MAKE) check
 
 clean-lcov:
-	rm -rf wget2_base.info wget2_test.info wget2_total.info */*.gc?? lcov/
+	rm -rf wget2.info */*.gc?? */.libs/*.gc?? lcov/
 	lcov --zerocounters --directory src/ --directory libwget/
 
 LCOV_INFO=wget2.info
@@ -45,6 +45,19 @@ check-coverage: clean clean-lcov
 	lcov --capture --directory src/ --directory libwget/.libs --output-file $(LCOV_INFO)
 	lcov --remove $(LCOV_INFO) '*/test_linking.c' '*/css_tokenizer.lex' '*/<stdout>' -o $(LCOV_INFO)
 	genhtml --prefix . --ignore-errors source $(LCOV_INFO) --legend --title "Wget2" --output-directory=lcov
+	@echo
+	@echo "You can now view the coverage report with 'xdg-open lcov/index.html'"
+
+fuzz-coverage: clean clean-lcov
+	$(MAKE) -C lib
+	$(MAKE) -C libwget CFLAGS="$(CFLAGS) --coverage" LDFLAGS="$(LDFLAGS) --coverage"
+	$(MAKE) -C fuzz fuzz-coverage CFLAGS="$(CFLAGS) --coverage" LDFLAGS="$(LDFLAGS) --coverage"
+	lcov --capture --initial --directory libwget/.libs --directory fuzz --output-file $(LCOV_INFO)
+	lcov --capture --directory libwget/.libs --directory fuzz --output-file $(LCOV_INFO)
+	lcov --remove $(LCOV_INFO) '*/test_linking.c' '*/css_tokenizer.lex' '*/<stdout>' -o $(LCOV_INFO)
+	genhtml --prefix . --ignore-errors source $(LCOV_INFO) --legend --title "Wget2-fuzz" --output-directory=lcov
+	@echo
+	@echo "You can now view the coverage report with 'xdg-open lcov/index.html'"
 
 check-local:
 	$(MAKE) -s syntax-check >/dev/null

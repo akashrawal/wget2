@@ -423,7 +423,7 @@ WGETAPI char *
 WGETAPI char *
 	wget_strmemdup(const void *m, size_t n) G_GNUC_WGET_ALLOC_SIZE(2);
 WGETAPI void
-	wget_strmemcpy(char *s, size_t ssize, const void *m, size_t n) G_GNUC_WGET_NONNULL_ALL;
+	wget_strmemcpy(char *s, size_t ssize, const void *m, size_t n);
 
 /*
  * Base64 routines
@@ -482,8 +482,6 @@ WGETAPI void
 	wget_buffer_free(wget_buffer_t **buf);
 WGETAPI void
 	wget_buffer_free_data(wget_buffer_t *buf);
-WGETAPI void
-	wget_buffer_realloc(wget_buffer_t *buf, size_t size) G_GNUC_WGET_NONNULL((1)) G_GNUC_WGET_ALLOC_SIZE(2);
 WGETAPI void
 	wget_buffer_reset(wget_buffer_t *buf);
 WGETAPI size_t
