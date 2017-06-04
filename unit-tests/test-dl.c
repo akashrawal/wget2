@@ -92,7 +92,7 @@ static int rpl_remove(const char *filename)
 	return res;
 }
 
-static void remove_object_dir()
+static void remove_object_dir(void)
 {
 	DIR *dirp;
 	struct dirent *ent;
@@ -130,8 +130,8 @@ static void copy_file(const char *src, const char *dst)
 					statbuf.st_mode)) >= 0);
 	size_remain = statbuf.st_size;
 	while(size_remain > 0) {
-		size_t io_size = size_remain;
-		if (io_size > sizeof(buf))
+		ssize_t io_size = size_remain;
+		if (io_size > (ssize_t) sizeof(buf))
 			io_size = sizeof(buf);
 		libassert(read(sfd, buf, io_size) == io_size);
 		libassert(write(dfd, buf, io_size) == io_size);
@@ -163,10 +163,12 @@ do { \
 } while(0)
 
 typedef void (*test_fn)(char buf[16]);
-static void test_fn_check(test_fn fn, char *expected)
+static void test_fn_check(void *fn, const char *expected)
 {
 	char buf[16];
-	(*fn)(buf);
+	test_fn fn_p;
+	*((void **) &fn_p) = fn;
+	(*fn_p)(buf);
 	if (strncmp(buf, expected, 15) != 0)
 	{
 		abortmsg("Test function returned %s, expected %s",
@@ -175,7 +177,7 @@ static void test_fn_check(test_fn fn, char *expected)
 }
 
 //Test whether dl_list1() works
-static void test_dl_list()
+static void test_dl_list(void)
 {
 	char **names;
 	size_t names_len;
@@ -224,10 +226,10 @@ static void test_dl_list()
 
 
 //Test whether symbols from dynamically loaded libraries link as expected
-void test_linkage()
+static void test_linkage(void)
 {
 	dl_file_t *dm_alpha, *dm_beta;
-	test_fn fn;
+	void *fn;
 
 	//Create test directory
 	remove_object_dir();
@@ -277,7 +279,7 @@ do { \
 } while (0)
 
 
-int main(int argc, const char **argv)
+int main(G_GNUC_WGET_UNUSED int argc, char **argv)
 {
 	if (! dl_supported()) {
 		printf("Skipping dynamic loading tests\n");

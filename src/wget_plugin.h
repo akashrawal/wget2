@@ -25,14 +25,14 @@
 #define _WGET_PLUGIN_H
 
 //Initializes the plugin framework
-void plugin_db_init();
+void plugin_db_init(void);
 
 //Sets a list of directories to search for plugins, separated by
 //_separator_.
 void plugin_db_add_search_paths(const char *paths, char separator);
 
 //Clears list of directories to search for plugins
-void plugin_db_clear_search_paths();
+void plugin_db_clear_search_paths(void);
 
 //Extended plugin handle
 typedef struct
@@ -57,7 +57,7 @@ plugin_t *plugin_db_load_from_name(const char *name, dl_error_t *e);
 
 //Loads all plugins from environment variables. On any errors it
 //logs them using wget_error_printf().
-void plugin_db_load_from_envvar();
+void plugin_db_load_from_envvar(void);
 
 //Sends 'finalize' signal to all plugins and unloads all plugins
 void plugin_db_finalize(int exitcode);

@@ -30,7 +30,8 @@
 #include <wget.h>
 
 #if defined TEST_SELECT_NAME
-WGET_EXPORT int wget_plugin_initializer(wget_plugin_t *plugin)
+WGET_EXPORT int wget_plugin_initializer(wget_plugin_t *plugin);
+int wget_plugin_initializer(wget_plugin_t *plugin)
 {
 	const char *name = wget_plugin_get_name(plugin);
 	if (strcmp(name, "pluginname") != 0) {
@@ -49,7 +50,8 @@ WGET_EXPORT int wget_plugin_initializer(wget_plugin_t *plugin)
 	return 0;
 }
 #elif defined TEST_SELECT_EXITSTATUS
-static void finalizer(wget_plugin_t *plugin, int exit_status)
+static void finalizer
+	(G_GNUC_WGET_UNUSED wget_plugin_t *plugin, int exit_status)
 {
 	FILE *stream = fopen("exit-status.txt", "wb");
 	if (! stream)
@@ -58,7 +60,8 @@ static void finalizer(wget_plugin_t *plugin, int exit_status)
 	fprintf(stream, "exit(%d)\n", exit_status);
 	fclose(stream);
 }
-WGET_EXPORT int wget_plugin_initializer(wget_plugin_t *plugin)
+WGET_EXPORT int wget_plugin_initializer(wget_plugin_t *plugin);
+int wget_plugin_initializer(wget_plugin_t *plugin)
 {
 	wget_plugin_register_finalizer(plugin, finalizer);
 	return 0;

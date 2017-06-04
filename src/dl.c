@@ -86,7 +86,7 @@ static char *convert_to_path_if_not(const char *str)
 #if defined PLUGIN_SUPPORT_LIBDL
 #include <dlfcn.h>
 
-int dl_supported()
+int dl_supported(void)
 {
 	return 1;
 }
@@ -141,7 +141,7 @@ void dl_file_close(dl_file_t *dm)
 #elif defined PLUGIN_SUPPORT_WINDOWS
 #include <windows.h>
 
-int dl_supported()
+int dl_supported(void)
 {
 	return 1;
 }
@@ -208,7 +208,7 @@ void dl_file_close(dl_file_t *dm)
 const static char *dl_unsupported
 	= "Dynamic loading is not supported on the current platform.";
 
-int dl_supported()
+int dl_supported(void)
 {
 	return 0;
 }
@@ -232,14 +232,14 @@ void dl_file_close(dl_file_t *dm)
 #endif
 
 #if defined _WIN32
-const static char *dl_prefixes[] = {"lib", "", NULL};
-const static char *dl_suffixes[] = {".dll", NULL};
+static const char *dl_prefixes[] = {"lib", "", NULL};
+static const char *dl_suffixes[] = {".dll", NULL};
 #elif defined __APPLE__
-const static char *dl_prefixes[] = {"lib", NULL};
-const static char *dl_suffixes[] = {".so", ".bundle", ".dylib", NULL};
+static const char *dl_prefixes[] = {"lib", NULL};
+static const char *dl_suffixes[] = {".so", ".bundle", ".dylib", NULL};
 #else
-const static char *dl_prefixes[] = {"lib", NULL};
-const static char *dl_suffixes[] = {".so", NULL};
+static const char *dl_prefixes[] = {"lib", NULL};
+static const char *dl_suffixes[] = {".so", NULL};
 #endif
 
 //Matches the given path with the patterns of a loadable object file
@@ -340,7 +340,7 @@ char *dl_search1(const char *name, char *dir)
 
 char *dl_search(const char *name, char **dirs, size_t n_dirs)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < n_dirs; i++) {
 		char *filename = dl_search1(name, dirs[i]);
@@ -417,7 +417,7 @@ void dl_list(char **dirs, size_t n_dirs,
 		char ***names_out, size_t *n_names_out)
 {
 	wget_buffer_t buf[1];
-	int i;
+	size_t i;
 
 	wget_buffer_init(buf, NULL, 0);
 

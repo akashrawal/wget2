@@ -58,7 +58,7 @@ void dl_error_set_printf
 typedef struct dl_file_st dl_file_t;
 
 //Returns 1 if dynamic loader will work on the current platform, 0 otherwise
-int dl_supported();
+int dl_supported(void);
 
 /* Opens an object file. If the operation fails NULL is returned
  * and error is set.

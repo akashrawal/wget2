@@ -31,8 +31,8 @@
 #include "wget_plugin.h"
 
 //Strings
-const static char *init_fn_name = "wget_plugin_initializer";
-const static char *plugin_list_envvar = "WGET2_PLUGINS";
+static const char *init_fn_name = "wget_plugin_initializer";
+static const char *plugin_list_envvar = "WGET2_PLUGINS";
 
 //Pointer array manipulation functions on wget_buffer_t
 static inline size_t ptr_array_size(wget_buffer_t *buf)
@@ -71,7 +71,7 @@ static wget_buffer_t plugin_list[1];
 static int initialized;
 
 //Initializes buffer objects if not already
-void plugin_db_init()
+void plugin_db_init(void)
 {
 	if (! initialized) {
 		wget_buffer_init(search_paths, NULL, 0);
@@ -88,9 +88,9 @@ void plugin_db_add_search_paths(const char *paths, char separator)
 }
 
 //Clears list of directories to search for plugins
-void plugin_db_clear_search_paths()
+void plugin_db_clear_search_paths(void)
 {
-	int i;
+	size_t i;
 	char **paths;
 	size_t paths_len;
 
@@ -151,7 +151,7 @@ static plugin_t *load_plugin_internal
 	plugin->finalizer = NULL;
 
 	//Call initializer
-	init_fn = dl_file_lookup(dm, init_fn_name, e);
+	*((void **)(&init_fn)) = dl_file_lookup(dm, init_fn_name, e);
 	if (! init_fn) {
 		plugin_free(plugin);
 		return NULL;
@@ -203,7 +203,7 @@ plugin_t *plugin_db_load_from_name(const char *name, dl_error_t *e)
 
 //Loads all plugins from environment variables. On any errors it
 //logs them using wget_error_printf().
-void plugin_db_load_from_envvar()
+void plugin_db_load_from_envvar(void)
 {
 	dl_error_t e[1];
 	wget_buffer_t buf[1];
@@ -260,7 +260,7 @@ void plugin_db_load_from_envvar()
 //Sends 'finalize' signal to all plugins and unloads all plugins
 void plugin_db_finalize(int exitcode)
 {
-	int i;
+	size_t i;
 	plugin_t **plugins = (plugin_t **) plugin_list->data;
 	size_t n_plugins = ptr_array_size(plugin_list);
 

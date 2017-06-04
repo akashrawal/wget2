@@ -613,7 +613,7 @@ static int parse_prefer_family(option_t opt, const char *val)
 
 static int plugin_loading_enabled = 0;
 
-static int parse_plugin(option_t opt, const char *val)
+static int parse_plugin(G_GNUC_WGET_UNUSED option_t opt, const char *val)
 {
 	dl_error_t e[1];
 
@@ -631,7 +631,7 @@ static int parse_plugin(option_t opt, const char *val)
 	return 0;
 }
 
-static int parse_plugin_local(option_t opt, const char *val)
+static int parse_plugin_local(G_GNUC_WGET_UNUSED option_t opt, const char *val)
 {
 	dl_error_t e[1];
 
@@ -649,7 +649,7 @@ static int parse_plugin_local(option_t opt, const char *val)
 	return 0;
 }
 
-static int parse_plugin_dirs(option_t opt, const char *val)
+static int parse_plugin_dirs(G_GNUC_WGET_UNUSED option_t opt, const char *val)
 {
 	if (! plugin_loading_enabled)
 		return 0;
@@ -660,7 +660,8 @@ static int parse_plugin_dirs(option_t opt, const char *val)
 	return 0;
 }
 
-static int list_plugins(option_t opt, const char *val)
+static int list_plugins(G_GNUC_WGET_UNUSED option_t opt,
+		G_GNUC_WGET_UNUSED const char *val)
 {
 	char **names = NULL;
 	size_t n_names = 0, i;

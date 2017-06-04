@@ -40,7 +40,7 @@
 #define unsetenv(name) _putenv(name "=")
 #endif
 
-int main()
+int main(void)
 {
 	wget_test_url_t urls[]={
 		{	.name = "/index.html",
