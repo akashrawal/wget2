@@ -81,6 +81,12 @@ void dl_file_close(dl_file_t *dm);
  */
 char *dl_get_name_from_path(const char *path, int strict);
 
+/* Searches for an object file with a given name in the given
+ * directory. If found it returns the filename, else returns NULL.
+ * Free the returned string with wget_free().
+ */
+char *dl_search1(const char *name, char *dir);
+
 /* Searches for an object file with a given name in the given list of
  * directories. If found it returns the filename, else returns NULL.
  * Free the returned string with wget_free().
@@ -91,9 +97,12 @@ char *dl_search(const char *name, char **dirs, size_t n_dirs);
  * Free the returned array with wget_free() after freeing individual elements.
  * if the function fails -1 is returned with errno set.
  */
-int dl_list(const char *dir, char ***names_out, size_t *n_names_out);
+int dl_list1(const char *dir, char ***names_out, size_t *n_names_out);
 
-// Creates a list of all the plugins available in the plugin search paths.
-void plugin_db_list(char ***names_out, size_t *n_names_out);
+/* Creates a list of loadable object files in a given list of directories.
+ * Free the returned array with wget_free() after freeing individual elements.
+ */
+void dl_list(char **dirs, size_t n_dirs,
+		char ***names_out, size_t *n_names_out);
 
 #endif //_WGET_DL_H

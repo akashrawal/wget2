@@ -174,7 +174,7 @@ static void test_fn_check(test_fn fn, char *expected)
 	}
 }
 
-//Test whether dl_list() works
+//Test whether dl_list1() works
 static void test_dl_list()
 {
 	char **names;
@@ -197,7 +197,7 @@ static void test_dl_list()
 	libassert(mkdir(OBJECT_DIR "/libactuallyadir.dylib", 0755) == 0);
 	libassert(mkdir(OBJECT_DIR "/libactuallyadir.bundle", 0755) == 0);
 
-	libassert(dl_list(OBJECT_DIR, &names, &names_len) == 0);
+	libassert(dl_list1(OBJECT_DIR, &names, &names_len) == 0);
 
 	if (names_len != 2) {
 		fail = 1;
@@ -213,7 +213,7 @@ static void test_dl_list()
 		}
 	}
 	if (fail == 1) {
-		printf("dl_list() returned incorrect list\n");
+		printf("dl_list1() returned incorrect list\n");
 		printf("List contains\n");
 		dump_list(names, names_len);
 		abort();

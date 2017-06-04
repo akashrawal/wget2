@@ -281,31 +281,8 @@ void plugin_db_finalize(int exitcode)
 //Creates a list of all plugins found in plugin search paths.
 void plugin_db_list(char ***names_out, size_t *n_names_out)
 {
-	char **paths;
-	size_t n_paths, i, n_names;
-	wget_buffer_t buf[1];
+	char **paths = (char **) search_paths->data;
+	size_t n_paths = ptr_array_size(search_paths);
 
-	wget_buffer_init(buf, NULL, 0);
-
-	paths = (char **) search_paths->data;
-	n_paths = ptr_array_size(search_paths);
-
-	for (i = 0; i < n_paths; i++) {
-		char **inames = NULL;
-		size_t n_inames = 0;
-		if (dl_list(paths[i], &inames, &n_inames) < 0)
-			continue;
-		if (inames) {
-			wget_buffer_memcat(buf, inames, sizeof(void *) * n_inames);
-			wget_free(inames);
-		}
-	}
-
-	n_names = ptr_array_size(buf);
-	*n_names_out = n_names;
-	if (n_names > 0)
-		*names_out = wget_memdup(buf->data, buf->length);
-	else
-		*names_out = NULL;
-	wget_buffer_deinit(buf);
+	dl_list(paths, n_paths, names_out, n_names_out);
 }

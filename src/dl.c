@@ -317,64 +317,52 @@ char *dl_get_name_from_path(const char *path, int strict)
 		return wget_strmemdup(path + start, len);
 }
 
+char *dl_search1(const char *name, char *dir)
+{
+	int i, j;
+	for (i = 0; dl_prefixes[i]; i++) {
+		for (j = 0; dl_suffixes[j]; j++) {
+			char *filename;
+			if (dir && *dir) {
+				filename = wget_aprintf("%s/%s%s%s", dir,
+					 dl_prefixes[i], name, dl_suffixes[j]);
+			} else {
+				filename = wget_aprintf("%s%s%s",
+					 dl_prefixes[i], name, dl_suffixes[j]);
+			}
+			if (is_regular_file(filename))
+				return filename;
+			wget_free(filename);
+		}
+	}
+	return NULL;
+}
+
 char *dl_search(const char *name, char **dirs, size_t n_dirs)
 {
 	int i;
-	char *res = NULL;
 
-	for (i = 0; res == NULL && i < n_dirs; i++) {
-		struct dirent *ent;
-		DIR *dirp = opendir(dirs[i]);
-		if (! dirp)
-			continue;
-		while ((ent = readdir(dirp)) != NULL) {
-			size_t start, len;
-			char *filename;
-
-			//Check whether the filename matches the pattern
-			if (! dl_match(ent->d_name, &start, &len))
-				continue;
-			if (strlen(name) != len)
-				continue;
-			if (memcmp(ent->d_name + start, name, len) != 0)
-				continue;
-
-			//Check whether it is a regular file
-			if (dirs[i] && *dirs[i]) {
-				filename = wget_aprintf
-					("%s/%s", dirs[i], ent->d_name);
-			} else {
-				filename = wget_aprintf("%s", ent->d_name);
-			}
-			if (! is_regular_file(filename)) {
-				wget_free(filename);
-				continue;
-			}
-			res = filename;
-			break;
-		}
-		closedir(dirp);
+	for (i = 0; i < n_dirs; i++) {
+		char *filename = dl_search1(name, dirs[i]);
+		if (filename)
+			return filename;
 	}
-	return res;
+
+	return NULL;
 }
 
-int dl_list(const char *dir, char ***names_out, size_t *n_names_out)
+static int list_internal(const char *dir, wget_buffer_t *buf)
 {
 	DIR *dirp;
-	wget_buffer_t buf[1];
+	struct dirent *ent;
 
 	dirp = opendir(dir);
 	if (!dir)
 		return -1;
 
-	wget_buffer_init(buf, NULL, 0);
-
-	while(1) {
-		struct dirent *ent;
+	while((ent = readdir(dirp)) != NULL) {
 		char *fname;
 		char *name;
-		if ((ent = readdir(dirp)) == NULL)
-			break;
 
 		fname = ent->d_name;
 
@@ -399,9 +387,48 @@ int dl_list(const char *dir, char ***names_out, size_t *n_names_out)
 	}
 
 	closedir(dirp);
-	*names_out = (char **) wget_memdup(buf->data, buf->length);
-	*n_names_out = buf->length / sizeof(void *);
-	wget_buffer_deinit(buf);
 
 	return 0;
+}
+
+int dl_list1(const char *dir, char ***names_out, size_t *n_names_out)
+{
+	wget_buffer_t buf[1];
+	int status;
+
+	wget_buffer_init(buf, NULL, 0);
+
+	status = list_internal(dir, buf);
+	if (status == 0) {
+		*n_names_out = buf->length / sizeof(void *);
+		if (buf->length)
+			*names_out = (char **) wget_memdup
+				(buf->data, buf->length);
+		else
+			*names_out = NULL;
+	}
+
+	wget_buffer_deinit(buf);
+
+	return status;
+}
+
+void dl_list(char **dirs, size_t n_dirs,
+		char ***names_out, size_t *n_names_out)
+{
+	wget_buffer_t buf[1];
+	int i;
+
+	wget_buffer_init(buf, NULL, 0);
+
+	for (i = 0; i < n_dirs; i++)
+		list_internal(dirs[i], buf);
+
+	*n_names_out = buf->length / sizeof(void *);
+	if (buf->length)
+		*names_out = (char **) wget_memdup(buf->data, buf->length);
+	else
+		*names_out = NULL;
+
+	wget_buffer_deinit(buf);
 }
