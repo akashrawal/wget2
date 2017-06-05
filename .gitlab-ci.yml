@@ -47,6 +47,9 @@ Debian GNU/Linux build:
     expire_in: 2 weeks
     when: on_failure
     paths:
+      - ./*.log
+      - fuzz/*.log
+      - unit-tests/*.log
       - tests/*.log
 
 clang/Fedora:
@@ -118,4 +121,6 @@ MinGW64:
     when: on_failure
     paths:
       - ./*.log
+      - fuzz/*.log
+      - unit-tests/*.log
       - tests/*.log
