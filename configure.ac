@@ -236,7 +236,7 @@ fi
 if test "$gl_cc_sanitize_msan" = yes; then
   # clang options
   gl_WARN_ADD([-fsanitize=memory], [SANITIZE_CFLAGS])
-  gl_WARN_ADD([-fsanitize-memory-track-origins])
+  gl_WARN_ADD([-fsanitize-memory-track-origins], [SANITIZE_CFLAGS])
 
   # gcc options
   gl_WARN_ADD([-fsanitize=leak], [SANITIZE_CFLAGS])
