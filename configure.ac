@@ -222,28 +222,31 @@ if test "$gl_cc_sanitize_msan" = yes; then
   fi
 fi
 
-
+SFLAGS=""
 if test "$gl_cc_sanitize_ubsan" = yes; then
-  gl_WARN_ADD([-fsanitize=undefined])
-  gl_WARN_ADD([-fno-sanitize-recover=undefined])
+  SFLAGS="$SFLAGS -fsanitize=undefined"
+  SFLAGS="$SFLAGS -fno-sanitize-recover=undefined"
 fi
 
 if test "$gl_cc_sanitize_asan" = yes; then
-  gl_WARN_ADD([-fsanitize=address])
-  gl_WARN_ADD([-fno-omit-frame-pointer])
+  SFLAGS="$SFLAGS -fsanitize=address"
+  SFLAGS="$SFLAGS -fno-omit-frame-pointer"
 fi
 
 if test "$gl_cc_sanitize_msan" = yes; then
   # clang options
-  gl_WARN_ADD([-fsanitize=memory])
-  gl_WARN_ADD([-fsanitize-memory-track-origins])
+  SFLAGS="$SFLAGS -fsanitize=memory"
+  SFLAGS="$SFLAGS -fsanitize-memory-track-origins"
 
   # gcc options
-  gl_WARN_ADD([-fsanitize=leak])
+  SFLAGS="$SFLAGS -fsanitize=leak"
 
-  gl_WARN_ADD([-fno-omit-frame-pointer])
-  gl_WARN_ADD([-fPIE])
+  SFLAGS="$SFLAGS -fno-omit-frame-pointer"
+  SFLAGS="$SFLAGS -fPIE"
 fi
+
+CFLAGS="$CFLAGS $SFLAGS"
+CXXFLAGS="$CXXFLAGS $SFLAGS"
 
 if test "$gl_cc_sanitize_tsan" = yes; then
   gl_WARN_ADD([-fsanitize=thread -fPIC -pie])
