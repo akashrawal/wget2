@@ -58,6 +58,7 @@ clang/Fedora:
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
   script:
     - export CC=clang
+    - export CXX=clang++
     - ./bootstrap && touch .manywarnings
     - ./configure $CONFIGURE_BASE_FLAGS --enable-valgrind-tests
     - make -j$(nproc) check
