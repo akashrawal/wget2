@@ -4,7 +4,7 @@ set -e
 
 BOOTSTRAP_OPTIONS=
 CONFIGURE_OPTIONS=()
-export CFLAGS="-O0 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+export CFLAGS="-O0 -g"
 
 test "$CC" = "clang" && export CXX="clang++"
 
@@ -12,7 +12,6 @@ if [[ $TRAVIS_OS_NAME = 'osx' ]]; then
 	CONFIGURE_OPTIONS+=("")
 else
 	CONFIGURE_OPTIONS+=("--enable-valgrind-tests")
-	CONFIGURE_OPTIONS+=("--enable-fsanitize-asan --enable-fsanitize-ubsan")
 fi
 
 ./bootstrap ${BOOTSTRAP_OPTIONS}
@@ -32,7 +31,6 @@ for OPTS in "${CONFIGURE_OPTIONS[@]}"; do
 	fi
 done
 
-./configure -C
 make distcheck -j3
 
 if [[ $CC = 'gcc' && $TRAVIS_OS_NAME = 'linux' ]]; then
