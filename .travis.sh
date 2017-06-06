@@ -11,8 +11,8 @@ test "$CC" = "clang" && export CXX="clang++"
 if [[ $TRAVIS_OS_NAME = 'osx' ]]; then
 	CONFIGURE_OPTIONS+=("")
 else
-	CONFIGURE_OPTIONS+=("--enable-fsanitize-asan --enable-fsanitize-ubsan")
 	CONFIGURE_OPTIONS+=("--enable-valgrind-tests")
+	CONFIGURE_OPTIONS+=("--enable-fsanitize-asan --enable-fsanitize-ubsan")
 fi
 
 ./bootstrap ${BOOTSTRAP_OPTIONS}
