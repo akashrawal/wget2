@@ -32,6 +32,7 @@ for OPTS in "${CONFIGURE_OPTIONS[@]}"; do
 	fi
 done
 
+./configure -C
 make distcheck -j3
 
 if [[ $CC = 'gcc' && $TRAVIS_OS_NAME = 'linux' ]]; then
