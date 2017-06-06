@@ -4,7 +4,7 @@ set -e
 
 BOOTSTRAP_OPTIONS=
 CONFIGURE_OPTIONS=()
-export CFLAGS="-O0 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+export CFLAGS="-O0 -g"
 
 test "$CC" = "clang" && export CXX="clang++"
 
