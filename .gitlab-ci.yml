@@ -38,9 +38,11 @@ Debian GNU/Linux build:
   script:
     - ./bootstrap && touch .manywarnings
     - ./configure $CONFIGURE_BASE_FLAGS --enable-fsanitize-asan --enable-fsanitize-ubsan -C
-    - make -j$(nproc) distcheck
+    - make -j$(nproc) check
+    - make -j$(nproc) clean
     - ./configure -C --enable-fsanitize-msan
-    - make clean check
+    - make -j$(nproc) check
+    - make -j$(nproc) distcheck
   tags:
     - shared
   artifacts:
