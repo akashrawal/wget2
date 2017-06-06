@@ -566,6 +566,7 @@ AC_MSG_NOTICE([Summary of build options:
   Install prefix:     ${prefix}
   Compiler:           ${CC}
   CFlags:             ${CFLAGS} ${CPPFLAGS} ${WARN_CFLAGS}
+  CXXFlags:           ${CXXFLAGS} ${CPPFLAGS}
   LDFlags:            ${LDFLAGS}
   Libs:               ${LIBS}
   SSL/TLS support:    $with_gnutls
