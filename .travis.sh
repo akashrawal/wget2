@@ -6,6 +6,8 @@ BOOTSTRAP_OPTIONS=
 CONFIGURE_OPTIONS=()
 export CFLAGS="-O0 -g"
 
+test "$CC" = "clang" && export CXX="clang++"
+
 if [[ $TRAVIS_OS_NAME = 'osx' ]]; then
 	CONFIGURE_OPTIONS+=("")
 else
