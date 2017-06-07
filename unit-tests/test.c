@@ -62,7 +62,7 @@ static void test_mem(void)
 {
 	void *p;
 
-#if defined __GNUC__
+#if __GNUC__ >= 7
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Walloc-zero"
 #endif
@@ -100,7 +100,7 @@ static void test_mem(void)
 	wget_strmemcpy(buf, 2, NULL, 3);
 	CHECK(!strcmp(buf, ""));
 
-#if defined __GNUC__
+#if __GNUC__ >= 7
 #pragma GCC diagnostic pop
 #endif
 
