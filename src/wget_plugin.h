@@ -43,8 +43,6 @@ typedef struct
 	char *name;
 	//Object file associated with the plugin
 	dl_file_t *dm;
-	//Finalizer function, to be called when wget2 exits
-	wget_plugin_finalizer_t finalizer;
 } plugin_t;
 
 //Loads a plugin using its path. On failure it sets error and

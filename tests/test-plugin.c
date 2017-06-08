@@ -86,13 +86,8 @@ int main(void)
 		0);
 
 	//Check whether WGET2_PLUGINS works
-<<<<<<< HEAD
-	setenv("WGET2_PLUGIN_DIRS", OBJECT_DIR, 1);
-	setenv("WGET2_PLUGINS", "pluginname", 1);
-=======
 	setenv_rpl("WGET2_PLUGIN_DIRS", OBJECT_DIR, 1);
 	setenv_rpl("WGET2_PLUGINS", "pluginname", 1);
->>>>>>> master
 	wget_test(
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
@@ -101,15 +96,9 @@ int main(void)
 			{ "plugin-loaded.txt", "Plugin loaded\n" },
 			{	NULL } },
 		0);
-<<<<<<< HEAD
-	unsetenv("WGET2_PLUGIN_DIRS");
-	unsetenv("WGET2_PLUGINS");
-	setenv("WGET2_PLUGINS", LOCAL_NAME("pluginname") , 1);
-=======
 	unsetenv_rpl("WGET2_PLUGIN_DIRS");
 	unsetenv_rpl("WGET2_PLUGINS");
 	setenv_rpl("WGET2_PLUGINS", LOCAL_NAME("pluginname") , 1);
->>>>>>> master
 	wget_test(
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
@@ -118,11 +107,7 @@ int main(void)
 			{ "plugin-loaded.txt", "Plugin loaded\n" },
 			{	NULL } },
 		0);
-<<<<<<< HEAD
-	unsetenv("WGET2_PLUGINS");
-=======
 	unsetenv_rpl("WGET2_PLUGINS");
->>>>>>> master
 
 	//Check whether wget_plugin_register_finalizer works properly
 	wget_test(

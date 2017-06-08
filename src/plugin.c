@@ -25,6 +25,9 @@
 
 #include <string.h>
 
+#include <gl_avltree_list.h>
+#include <gl_xlist.h>
+
 #include <wget.h>
 
 #include "wget_dl.h"
@@ -65,20 +68,58 @@ static void split_string(const char *str, char separator, wget_buffer_t *buf)
 	}
 }
 
+//Plugin name, used for searching in tree
+typedef struct {
+	char *name;
+	size_t name_len;
+} plugin_name_t;
+
+static int plugin_name_compare_fn(const void *a, const void *b)
+{
+	const plugin_name_t *st_a = a;
+	const plugin_name_t *st_b = b;
+	int res;
+
+	res = memcmp(st_a->name, st_b->name,
+			st_a->name_len > st_b->name_len 
+			? st_b->name_len : st_a->name_len);
+	if (res == 0)
+		res = st_a->name_len - st_b->name_len;
+
+	return res;
+}
+
+static bool plugin_name_equal_fn(const void *a, const void *b)
+{
+	const plugin_name_t *st_a = a;
+	const plugin_name_t *st_b = b;
+
+	if (st_a->name_len != st_b->name_len)
+		return false;
+	if (memcmp(st_a->name, st_b->name, st_a->name_len) != 0)
+		return false;
+	return true;
+}
+
+//Private members of the plugin
+typedef struct {
+	plugin_t parent;
+	//Finalizer function, to be called when wget2 exits
+	wget_plugin_finalizer_t finalizer;
+	//The name structure inserted in tree
+	plugin_name_t name_hd;
+	//Buffer to store plugin name
+	char name_buf[];
+} plugin_priv_t;
+
+static int initialized;
 //Plugin search paths
 static wget_buffer_t search_paths[1];
+//List of loaded plugins
 static wget_buffer_t plugin_list[1];
-static int initialized;
+//AVL tree for fast lookup by name
+gl_list_t plugin_name_index;
 
-//Initializes buffer objects if not already
-void plugin_db_init(void)
-{
-	if (! initialized) {
-		wget_buffer_init(search_paths, NULL, 0);
-		wget_buffer_init(plugin_list, NULL, 0);
-		initialized = 1;
-	}
-}
 
 //Sets a list of directories to search for plugins, separated by
 //_separator_.
@@ -103,13 +144,29 @@ void plugin_db_clear_search_paths(void)
 	wget_buffer_memset(search_paths, 0, 0);
 }
 
+//Searches for a given plugin by name. 
+//The name does not need to be null-terminated.
+static plugin_t *plugin_search_internal(const char *name, size_t name_len)
+{
+	plugin_name_t name_hd;
+	gl_list_node_t node;
+
+	name_hd.name = (char *) name;
+	name_hd.name_len = name_len;
+	node = gl_sortedlist_search
+		(plugin_name_index, plugin_name_compare_fn, &name_hd);
+	if (! node)
+		return NULL;
+	return (plugin_t *) gl_list_node_value(plugin_name_index, node);
+}
+
 //vtable
 static void impl_register_finalizer
 	(wget_plugin_t *p_plugin, wget_plugin_finalizer_t fn)
 {
-	plugin_t *plugin = (plugin_t *) p_plugin;
+	plugin_priv_t *priv = (plugin_priv_t *) p_plugin;
 
-	plugin->finalizer = fn;
+	priv->finalizer = fn;
 }
 
 static const char *impl_get_name(wget_plugin_t *p_plugin)
@@ -127,28 +184,40 @@ static struct wget_plugin_vtable vtable = {
 static void plugin_free(plugin_t *plugin)
 {
 	dl_file_close(plugin->dm);
-	wget_free(plugin->name);
 	wget_free(plugin);
 }
 
 static plugin_t *load_plugin_internal
 	(const char *name, const char *path, dl_error_t *e)
 {
+	size_t name_len;
 	dl_file_t *dm;
 	plugin_t *plugin;
+	plugin_priv_t *priv;
 	wget_plugin_initializer_t init_fn;
+	gl_list_node_t node;
+
+	name_len = strlen(name);
 
 	dm = dl_file_open(path, e);
 	if (! dm)
 		return NULL;
 
 	//Create plugin object
-	plugin = wget_malloc(sizeof(plugin_t));
+	plugin = wget_malloc(sizeof(plugin_priv_t) + name_len + 1);
+
+	//Initialize private members
+	priv = (plugin_priv_t *) plugin;
+	priv->finalizer = NULL;
+	strcpy(priv->name_buf, name);
+	priv->name_hd.name = priv->name_buf;
+	priv->name_hd.name_len = name_len;
+
+	//Initialize public members
 	plugin->parent.plugin_data = NULL;
 	plugin->parent.vtable = &vtable;
-	plugin->name = wget_strdup(name);
+	plugin->name = priv->name_buf;
 	plugin->dm = dm;
-	plugin->finalizer = NULL;
 
 	//Call initializer
 	*((void **)(&init_fn)) = dl_file_lookup(dm, init_fn_name, e);
@@ -164,6 +233,11 @@ static plugin_t *load_plugin_internal
 
 	//Add to plugin list
 	ptr_array_append(plugin_list, (void *) plugin);
+
+	//Add to tree
+	node = gl_sortedlist_add(plugin_name_index, plugin_name_compare_fn,
+			&priv->name_hd);
+	gl_list_node_set_value(plugin_name_index, node, plugin);	
 
 	return plugin;
 }
@@ -257,6 +331,27 @@ void plugin_db_load_from_envvar(void)
 	}
 }
 
+//Creates a list of all plugins found in plugin search paths.
+void plugin_db_list(char ***names_out, size_t *n_names_out)
+{
+	char **paths = (char **) search_paths->data;
+	size_t n_paths = ptr_array_size(search_paths);
+
+	dl_list(paths, n_paths, names_out, n_names_out);
+}
+
+//Initializes buffer objects if not already
+void plugin_db_init(void)
+{
+	if (! initialized) {
+		wget_buffer_init(search_paths, NULL, 0);
+		wget_buffer_init(plugin_list, NULL, 0);
+		plugin_name_index = gl_list_create_empty
+			(GL_AVLTREE_LIST, plugin_name_equal_fn, NULL, NULL, false);
+		initialized = 1;
+	}
+}
+
 //Sends 'finalize' signal to all plugins and unloads all plugins
 void plugin_db_finalize(int exitcode)
 {
@@ -265,24 +360,16 @@ void plugin_db_finalize(int exitcode)
 	size_t n_plugins = ptr_array_size(plugin_list);
 
 	for (i = 0; i < n_plugins; i++) {
-		if (plugins[i]->finalizer)
-			(* plugins[i]->finalizer)
+		if (((plugin_priv_t *) plugins[i])->finalizer)
+			(* ((plugin_priv_t *) plugins[i])->finalizer)
 				((wget_plugin_t *) plugins[i], exitcode);
 		plugin_free(plugins[i]);
 	}
 	wget_buffer_deinit(plugin_list);
+	gl_list_free(plugin_name_index);
 	char **paths = (char **) search_paths->data;
 	size_t n_paths = ptr_array_size(search_paths);
 	for (i = 0; i < n_paths; i++)
 		wget_free(paths[i]);
 	wget_buffer_deinit(search_paths);
-}
-
-//Creates a list of all plugins found in plugin search paths.
-void plugin_db_list(char ***names_out, size_t *n_names_out)
-{
-	char **paths = (char **) search_paths->data;
-	size_t n_paths = ptr_array_size(search_paths);
-
-	dl_list(paths, n_paths, names_out, n_names_out);
 }
