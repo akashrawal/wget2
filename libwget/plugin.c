@@ -61,5 +61,13 @@ void wget_plugin_register_finalizer
 	(* plugin->vtable->register_finalizer)(plugin, fn);
 }
 
+/**Registers a function for argument forwarding.
+ * \param[in] plugin The plugin handle
+ * \param[in] fn The function pointer to register
+ */
+void wget_plugin_register_argp(wget_plugin_t *plugin, wget_plugin_argp_t fn)
+{
+	(* plugin->vtable->register_argp)(plugin, fn);
+}
 
 ///\}

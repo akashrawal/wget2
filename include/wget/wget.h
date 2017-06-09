@@ -1984,12 +1984,29 @@ typedef int
 typedef void
 (*wget_plugin_finalizer_t)(wget_plugin_t *plugin, int exit_status);
 
+//Gets the name the plugin is known as.
 WGETAPI const char *
 wget_plugin_get_name(wget_plugin_t *plugin);
 
+//Registers a function to be called when wget exits.
 WGETAPI void
 wget_plugin_register_finalizer
 		(wget_plugin_t *plugin, wget_plugin_finalizer_t fn);
+
+/**Prototype for the function that will accept forwarded command line
+ * arguments.
+ * \param[in] plugin The plugin handle
+ * \param[in] option Option name. If the option is "help",
+ *                   a help message must be printed to stdout.
+ * \param[in] value  The value of the option if provided, or NULL
+ * \return Must return 0 if option and its value is valid, or any other value
+ *         if invalid. In that case wget will exit.
+ */
+typedef int (*wget_plugin_argp_t)
+	(wget_plugin_t *plugin, const char *option, const char *value);
+
+//Registers a function for argument forwarding.
+void wget_plugin_register_argp(wget_plugin_t *plugin, wget_plugin_argp_t fn);
 
 /**\ingroup libwget-plugin
  *
@@ -1999,6 +2016,7 @@ struct wget_plugin_vtable
 {
 	const char * (* get_name)(wget_plugin_t *);
 	void (* register_finalizer)(wget_plugin_t *, wget_plugin_finalizer_t);
+	void (* register_argp)(wget_plugin_t *, wget_plugin_argp_t);
 };
 
 WGET_END_DECLS

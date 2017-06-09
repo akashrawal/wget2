@@ -660,6 +660,25 @@ static int parse_plugin_dirs(G_GNUC_WGET_UNUSED option_t opt, const char *val)
 	return 0;
 }
 
+static int parse_plugin_option
+		(G_GNUC_WGET_UNUSED option_t opt, const char *val)
+{
+	dl_error_t e[1];
+
+	if (! plugin_loading_enabled)
+		return 0;
+
+	dl_error_init(e);
+
+	if (! plugin_db_forward_arg(val, e)) {
+		error_printf("Cannot set plugin option '%s': %s\n",
+				val, dl_error_get_msg(e));
+		dl_error_set(e, NULL);
+	}
+
+	return 0;
+}
+
 static int list_plugins(G_GNUC_WGET_UNUSED option_t opt,
 		G_GNUC_WGET_UNUSED const char *val)
 {
@@ -1261,6 +1280,12 @@ static const struct optionw options[] = {
 		SECTION_STARTUP,
 		{ "Specify alternative directories to look\n",
 		  "for plugins, separated by ','\n"
+		}
+	},
+	{ "plugin-opt", NULL, parse_plugin_option, 1, 0,
+		SECTION_STARTUP,
+		{ "Forward an option to a loaded plugin.\n",
+		  "The option should be in format <plugin_name>.<option>[=value]\n"
 		}
 	},
 	{ "post-data", &config.post_data, parse_string, 1, 0,

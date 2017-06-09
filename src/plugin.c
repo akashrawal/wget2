@@ -81,7 +81,7 @@ static int plugin_name_compare_fn(const void *a, const void *b)
 	int res;
 
 	res = memcmp(st_a->name, st_b->name,
-			st_a->name_len > st_b->name_len 
+			st_a->name_len > st_b->name_len
 			? st_b->name_len : st_a->name_len);
 	if (res == 0)
 		res = st_a->name_len - st_b->name_len;
@@ -106,6 +106,8 @@ typedef struct {
 	plugin_t parent;
 	//Finalizer function, to be called when wget2 exits
 	wget_plugin_finalizer_t finalizer;
+	//The plugin's option processor
+	wget_plugin_argp_t argp;
 	//The name structure inserted in tree
 	plugin_name_t name_hd;
 	//Buffer to store plugin name
@@ -144,7 +146,7 @@ void plugin_db_clear_search_paths(void)
 	wget_buffer_memset(search_paths, 0, 0);
 }
 
-//Searches for a given plugin by name. 
+//Searches for a given plugin by name.
 //The name does not need to be null-terminated.
 static plugin_t *plugin_search_internal(const char *name, size_t name_len)
 {
@@ -176,9 +178,18 @@ static const char *impl_get_name(wget_plugin_t *p_plugin)
 	return plugin->name;
 }
 
+static void impl_register_argp
+	(wget_plugin_t *p_plugin, wget_plugin_argp_t fn)
+{
+	plugin_priv_t *priv = (plugin_priv_t *) p_plugin;
+
+	priv->argp = fn;
+}
+
 static struct wget_plugin_vtable vtable = {
 	.get_name = impl_get_name,
-	.register_finalizer = impl_register_finalizer
+	.register_finalizer = impl_register_finalizer,
+	.register_argp = impl_register_argp
 };
 
 static void plugin_free(plugin_t *plugin)
@@ -209,6 +220,7 @@ static plugin_t *load_plugin_internal
 	//Initialize private members
 	priv = (plugin_priv_t *) plugin;
 	priv->finalizer = NULL;
+	priv->argp = NULL;
 	strcpy(priv->name_buf, name);
 	priv->name_hd.name = priv->name_buf;
 	priv->name_hd.name_len = name_len;
@@ -237,7 +249,7 @@ static plugin_t *load_plugin_internal
 	//Add to tree
 	node = gl_sortedlist_add(plugin_name_index, plugin_name_compare_fn,
 			&priv->name_hd);
-	gl_list_node_set_value(plugin_name_index, node, plugin);	
+	gl_list_node_set_value(plugin_name_index, node, plugin);
 
 	return plugin;
 }
@@ -338,6 +350,72 @@ void plugin_db_list(char ***names_out, size_t *n_names_out)
 	size_t n_paths = ptr_array_size(search_paths);
 
 	dl_list(paths, n_paths, names_out, n_names_out);
+}
+
+//Forwards a command line argument to appropriate plugin.
+int plugin_db_forward_arg(const char *plugin_option, dl_error_t *e)
+{
+	const char *predicate;
+	size_t plugin_name_len;
+	plugin_t *plugin;
+	plugin_priv_t *priv;
+	size_t i;
+	int op_res;
+
+	//Get the plugin name
+	for (i = 0; plugin_option[i] && plugin_option[i] != '.'; i++)
+		;
+	if (! plugin_option[i]) {
+		dl_error_set(e, "Plugin name and plugin option should be "
+				"separated by '.'");
+		return -1;
+	}
+	plugin_name_len = i;
+	predicate = plugin_option + plugin_name_len + 1;
+
+	//Search for plugin
+	plugin = plugin_search_internal(plugin_option, plugin_name_len);
+	if (! plugin) {
+		char plugin_name[plugin_name_len + 1];
+		memcpy(plugin_name, plugin_option, plugin_name_len);
+		plugin_name[plugin_name_len] = 0;
+		dl_error_set_printf(e, "Plugin '%s' is not loaded.",
+				plugin_name);
+		return -1;
+	}
+	priv = (plugin_priv_t *) plugin;
+
+	if (! priv->argp) {
+		dl_error_set_printf(e, "Plugin '%s' does not accept arguments.",
+				plugin->name);
+		return -1;
+	}
+
+	//Separate option from value
+	for (i = 0; predicate[i] && predicate[i] != '='; i++)
+		;
+	if (predicate[i]) {
+		size_t option_len = i;
+		char option_name[option_len + 1];
+		memcpy(option_name, predicate, option_len);
+		option_name[option_len] = 0;
+
+		op_res = (* priv->argp)
+			((wget_plugin_t *) plugin, option_name,
+			 predicate + option_len + 1);
+	} else {
+		op_res = (* priv->argp)
+			((wget_plugin_t *) plugin, predicate, NULL);
+	}
+
+	if (op_res < 0)
+	{
+		dl_error_set_printf(e, "Plugin '%s' did not accept option %s",
+				plugin->name, predicate);
+		return -1;
+	}
+
+	return 0;
 }
 
 //Initializes buffer objects if not already
