@@ -17,18 +17,27 @@
  * along with libwget.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../config.h"
+#include <config.h>
 
-#include <assert.h> // assert
-#include <stdint.h> // uint8_t
-#include <stdlib.h> // malloc, free
-#include <string.h> // memcpy
+#include <assert.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "wget.h"
+#include "fuzzer.h"
 
-extern "C" int
-LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+static void _cb(void *context, int flags, const char *tag, const char *attr, const char *val, size_t len, size_t pos G_GNUC_WGET_UNUSED)
 {
+
+}
+
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+	if (size > 10000) // same as max_len = 10000 in .options file
+		return 0;
+
 	char *in = (char *) malloc(size + 1);
 
 	assert(in != NULL);
@@ -37,12 +46,10 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	memcpy(in, data, size);
 	in[size] = 0;
 
-	wget_bar_t *bar = wget_bar_init(NULL, 3);
-	wget_bar_slot_begin(bar, 1, "test", 64000);
-	wget_bar_slot_downloaded(bar, 1, atoi(in));
-	wget_bar_printf(bar, 1, "%s", in);
-	wget_bar_write_line(bar, (char *) data, size);
-	wget_bar_free(&bar);
+	wget_xml_parse_buffer(in, NULL, NULL, 0);
+	wget_xml_parse_buffer(in, _cb, NULL, XML_HINT_REMOVE_EMPTY_CONTENT);
+	wget_html_parse_buffer(in, _cb, NULL, 0);
+	wget_html_parse_buffer(in, _cb, NULL, XML_HINT_REMOVE_EMPTY_CONTENT);
 
 	free(in);
 

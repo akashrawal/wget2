@@ -17,17 +17,15 @@
  * along with libwget.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../config.h"
+#include <config.h>
 
 #include <assert.h> // assert
-#include <stdint.h> // uint8_t
 #include <stdlib.h> // malloc, free
-#include <string.h> // memcpy
 
 #include "wget.h"
+#include "fuzzer.h"
 
-extern "C" int
-LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	char dst1[1];
 	char dst2[2];

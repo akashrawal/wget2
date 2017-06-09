@@ -17,35 +17,7 @@
  * along with libwget.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/*
- * covers code in libwget/robots.c
- */
-
-#include "../config.h"
-
-#include <assert.h> // assert
+#include <stddef.h> // size_t
 #include <stdint.h> // uint8_t
-#include <stdlib.h> // malloc, free
-#include <string.h> // memcpy
 
-#include "wget.h"
-
-extern "C" int
-LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
-{
-	ROBOTS *robots;
-	char *in = (char *) malloc(size + 1);
-
-	assert(in != NULL);
-
-	// 0 terminate
-	memcpy(in, data, size);
-	in[size] = 0;
-
-	robots = wget_robots_parse(in, "wget2");
-	wget_robots_free(&robots);
-
-	free(in);
-
-	return 0;
-}
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size);
