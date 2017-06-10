@@ -76,13 +76,15 @@ typedef struct {
 	char name_buf[];
 } plugin_priv_t;
 
-static int initialized;
+static int initialized = 0;
 //Plugin search paths
 static wget_buffer_t search_paths[1];
 //List of loaded plugins
 static wget_buffer_t plugin_list[1];
 //Index of plugins by plugin name
 wget_stringmap_t *plugin_name_index;
+//Whether any of the previous options forwarded was 'help'
+int plugin_help_forwarded;
 
 
 //Sets a list of directories to search for plugins, separated by
@@ -313,8 +315,6 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 	size_t i;
 	int op_res;
 
-	wget_debug_printf("TMP: plugin_option='%s'\n", plugin_option);
-
 	//Get the plugin name
 	for (i = 0; plugin_option[i] && plugin_option[i] != '.'; i++)
 		;
@@ -339,7 +339,7 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 	priv = (plugin_priv_t *) plugin;
 
 	if (! priv->argp) {
-		dl_error_set_printf(e, "Plugin '%s' does not accept arguments.",
+		dl_error_set_printf(e, "Plugin '%s' does not accept options.",
 				plugin->name);
 		return -1;
 	}
@@ -359,12 +359,20 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 		memcpy(option_name, predicate, option_len);
 		option_name[option_len] = 0;
 
+		if (strcmp(option_name, "help") == 0) {
+			dl_error_set_printf(e, "'help' option does not "
+					"accept arguments\n");
+			return -1;
+		}
+
 		op_res = (* priv->argp)
 			((wget_plugin_t *) plugin, option_name,
 			 predicate + option_len + 1);
 	} else {
 		op_res = (* priv->argp)
 			((wget_plugin_t *) plugin, predicate, NULL);
+		if (strcmp(predicate, "help") == 0)
+			plugin_help_forwarded = 1;
 	}
 
 	if (op_res < 0)
@@ -377,7 +385,30 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 	return 0;
 }
 
-//Initializes buffer objects if not already
+//Shows help from all loaded plugins
+void plugin_db_show_help(void)
+{
+	plugin_t **plugins = (plugin_t **) plugin_list->data;
+	size_t n_plugins = ptr_array_size(plugin_list);
+	size_t i;
+	for (i = 0; i < n_plugins; i++) {
+		plugin_priv_t *priv = (plugin_priv_t *) plugins[i];
+		if (priv->argp) {
+			printf("Options for %s:\n", plugins[i]->name);
+			(* priv->argp)((wget_plugin_t *) plugins[i], "help", NULL);
+			printf("\n");
+		}
+	}
+	plugin_help_forwarded = 1;
+}
+
+//Returns 1 if any of the previous options forwarded was 'help'.
+int plugin_db_help_forwarded(void)
+{
+	return plugin_help_forwarded;
+}
+
+//Initializes the plugin framework
 void plugin_db_init(void)
 {
 	if (! initialized) {
@@ -387,6 +418,7 @@ void plugin_db_init(void)
 		wget_stringmap_set_value_destructor(plugin_name_index, NULL);
 		wget_hashmap_set_key_destructor
 			((wget_hashmap_t *) plugin_name_index, NULL);
+		plugin_help_forwarded = 0;
 
 		initialized = 1;
 	}

@@ -66,6 +66,29 @@ int wget_plugin_initializer(wget_plugin_t *plugin)
 	wget_plugin_register_finalizer(plugin, finalizer);
 	return 0;
 }
+#elif defined TEST_SELECT_FAULTY1
+WGET_EXPORT void irrelevant(void);
+void irrelevant(void)
+{
+}
+#elif defined TEST_SELECT_FAULTY2
+static void finalizer
+	(G_GNUC_WGET_UNUSED wget_plugin_t *plugin, int exit_status)
+{
+	FILE *stream = fopen("exit-status.txt", "wb");
+	if (! stream)
+		wget_error_printf_exit("Cannot open exit-status.txt: %s",
+				strerror(errno));
+	fprintf(stream, "exit(%d)\n", exit_status);
+	fclose(stream);
+}
+WGET_EXPORT int wget_plugin_initializer(wget_plugin_t *plugin);
+int wget_plugin_initializer(wget_plugin_t *plugin)
+{
+	wget_plugin_register_finalizer(plugin, finalizer);
+	wget_error_printf("Plugin failed to initialize, intentionally\n");
+	return 1;
+}
 #elif defined TEST_SELECT_OPTIONS
 struct option_filter {
 	const char *name;

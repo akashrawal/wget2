@@ -698,6 +698,18 @@ static int list_plugins(G_GNUC_WGET_UNUSED option_t opt,
 	return 0;
 }
 
+static int print_plugin_help(G_GNUC_WGET_UNUSED option_t opt,
+		G_GNUC_WGET_UNUSED const char *val)
+{
+	if (! plugin_loading_enabled)
+		return 0;
+
+	plugin_db_show_help();
+
+	exit(EXIT_SUCCESS);
+	return 0;
+}
+
 // default values for config options (if not 0 or NULL)
 struct config config = {
 	.connect_timeout = -1,
@@ -1272,13 +1284,18 @@ static const struct optionw options[] = {
 	},
 	{ "plugin", NULL, parse_plugin, 1, 0,
 		SECTION_STARTUP,
-		{ "Loads a plugin with a given name.\n"
+		{ "Load a plugin with a given name.\n"
 		}
 	},
 	{ "plugin-dirs", NULL, parse_plugin_dirs, 1, 0,
 		SECTION_STARTUP,
 		{ "Specify alternative directories to look\n",
 		  "for plugins, separated by ','\n"
+		}
+	},
+	{ "plugin-help", NULL, print_plugin_help, 0, 0,
+		SECTION_STARTUP,
+		{ "Print help message for all loaded plugins\n"
 		}
 	},
 	{ "plugin-opt", NULL, parse_plugin_option, 1, 0,
@@ -2087,6 +2104,9 @@ int init(int argc, const char **argv)
 
 	// now read command line options which override the settings of the config files
 	n = parse_command_line(argc, argv);
+
+	if (plugin_db_help_forwarded())
+		exit(EXIT_SUCCESS);
 
 	if (config.logfile_append) {
 		config.logfile = config.logfile_append;

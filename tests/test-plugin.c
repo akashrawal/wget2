@@ -109,6 +109,64 @@ int main(void)
 		0);
 	unsetenv_rpl("WGET2_PLUGINS");
 
+	//Check behavior for nonexistent plugins
+	wget_test(
+		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR " --plugin=nonexistent",
+		WGET_TEST_REQUEST_URL, "index.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "index.html", WGET_TEST_SOME_HTML_BODY },
+			{	NULL } },
+		0);
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("nonexistent"),
+		WGET_TEST_REQUEST_URL, "index.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "index.html", WGET_TEST_SOME_HTML_BODY },
+			{	NULL } },
+		0);
+	unsetenv_rpl("WGET2_PLUGINS");
+	setenv_rpl("WGET2_PLUGINS", LOCAL_NAME("nonexistent") , 1);
+	wget_test(
+		WGET_TEST_REQUEST_URL, "index.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "index.html", WGET_TEST_SOME_HTML_BODY },
+			{	NULL } },
+		0);
+	unsetenv_rpl("WGET2_PLUGINS");
+
+	//Check behavior for nonexistent search directories
+	wget_test(
+		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR ","
+			OBJECT_DIR "/nonexistent --plugin=pluginname",
+		WGET_TEST_REQUEST_URL, "index.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "index.html", WGET_TEST_SOME_HTML_BODY },
+			{ "plugin-loaded.txt", "Plugin loaded\n" },
+			{	NULL } },
+		0);
+
+	//Check behavior for plugins that fail
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginfaulty1"),
+		WGET_TEST_REQUEST_URL, "index.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "index.html", WGET_TEST_SOME_HTML_BODY },
+			{	NULL } },
+		0);
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginfaulty2"),
+		WGET_TEST_REQUEST_URL, "index.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "index.html", WGET_TEST_SOME_HTML_BODY },
+			{	NULL } },
+		0);
+
 	//Check whether wget_plugin_register_finalizer works properly
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginexit"),
@@ -259,6 +317,36 @@ int main(void)
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	NULL } },
 		0);
+
+	//Check for correct functioning of --help option
+	//TODO: The following tests are broken because of buggy command line
+	//      option processing.
+#if 0
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
+			"--plugin-help",
+		WGET_TEST_REQUEST_URL, "index.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{	NULL } },
+		0);
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
+			"--plugin-opt=pluginoption.help",
+		WGET_TEST_REQUEST_URL, "index.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{	NULL } },
+		0);
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
+			"--plugin-opt=pluginoption.help=arg",
+		WGET_TEST_REQUEST_URL, "index.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{	NULL } },
+		0);
+#endif
 
 	exit(0);
 }
