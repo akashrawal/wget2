@@ -670,10 +670,9 @@ static int parse_plugin_option
 
 	dl_error_init(e);
 
-	if (! plugin_db_forward_arg(val, e)) {
-		error_printf("Cannot set plugin option '%s': %s\n",
-				val, dl_error_get_msg(e));
-		dl_error_set(e, NULL);
+	if (plugin_db_forward_option(val, e) < 0) {
+		error_printf_exit("%s\n",
+				dl_error_get_msg(e));
 	}
 
 	return 0;

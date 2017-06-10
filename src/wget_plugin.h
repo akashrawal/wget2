@@ -60,9 +60,9 @@ void plugin_db_load_from_envvar(void);
 //Creates a list of all plugins found in plugin search paths.
 void plugin_db_list(char ***names_out, size_t *n_names_out);
 
-//Forwards a command line argument to appropriate plugin.
+//Forwards a command line option to appropriate plugin.
 //On errors, it returns -1 and sets error. Otherwise it returns 0.
-int plugin_db_forward_arg(const char *plugin_option, dl_error_t *e);
+int plugin_db_forward_option(const char *plugin_option, dl_error_t *e);
 
 //Sends 'finalize' signal to all plugins and unloads all plugins
 void plugin_db_finalize(int exitcode);

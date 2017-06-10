@@ -66,6 +66,84 @@ int wget_plugin_initializer(wget_plugin_t *plugin)
 	wget_plugin_register_finalizer(plugin, finalizer);
 	return 0;
 }
+#elif defined TEST_SELECT_OPTIONS
+struct option_filter {
+	const char *name;
+	int valid_without_val;
+	int valid_with_val;
+};
+struct option_filter options[] = {
+	{"x", 1, 1},
+	{"y", 1, 0},
+	{"z", 0, 1},
+	{"alpha", 1, 1},
+	{"beta", 1, 0},
+	{"gamma", 0, 1},
+	{NULL, 0, 0}
+};
+static int argp_fn
+	(wget_plugin_t *plugin,
+	 const char *option, const char *value)
+{
+	//List of options the plugin accepts
+	int i;
+
+	//Simulate help output
+	if (strcmp(option, "help") == 0) {
+		for (i = 0; options[i].name; i++) {
+			printf("--plugin-opt=%s.%s",
+					wget_plugin_get_name(plugin),
+					options[i].name);
+			if (options[i].valid_without_val) {
+				if (options[i].valid_with_val)
+					printf("[=value]");
+			} else {
+				printf("=value");
+			}
+			printf("\tDescription for '%s'\n", options[i].name);
+		}
+		return 0;
+	}
+
+	//Simulate option accept/reject
+	for (i = 0; options[i].name; i++) {
+		if (strcmp(option, options[i].name) == 0)
+			break;
+	}
+	if (! options[i].name) {
+		wget_error_printf("Unknown option %s\n", option);
+		return -1;
+	}
+	if ((!options[i].valid_with_val) && value) {
+		wget_error_printf("Option %s does not accept an argument.\n",
+				option);
+		return -1;
+	}
+	if ((!options[i].valid_without_val) && !value) {
+		wget_error_printf("Option %s requires an argument\n",
+				option);
+		return -1;
+	}
+
+	//Append option to options.txt
+	FILE *stream = fopen("options.txt", "ab");
+	if (! stream)
+		wget_error_printf_exit("Cannot open options.txt: %s",
+				strerror(errno));
+	if (value)
+		fprintf(stream, "%s=%s\n", option, value);
+	else
+		fprintf(stream, "%s\n", option);
+	fclose(stream);
+
+	return 0;
+}
+WGET_EXPORT int wget_plugin_initializer(wget_plugin_t *plugin);
+int wget_plugin_initializer(wget_plugin_t *plugin)
+{
+	wget_plugin_register_argp(plugin, argp_fn);
+	return 0;
+}
 #else
 #error One of the TEST_SELECT_* must be defined to build this file
 #endif

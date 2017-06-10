@@ -25,9 +25,6 @@
 
 #include <string.h>
 
-#include <gl_avltree_list.h>
-#include <gl_xlist.h>
-
 #include <wget.h>
 
 #include "wget_dl.h"
@@ -68,39 +65,6 @@ static void split_string(const char *str, char separator, wget_buffer_t *buf)
 	}
 }
 
-//Plugin name, used for searching in tree
-typedef struct {
-	char *name;
-	size_t name_len;
-} plugin_name_t;
-
-static int plugin_name_compare_fn(const void *a, const void *b)
-{
-	const plugin_name_t *st_a = a;
-	const plugin_name_t *st_b = b;
-	int res;
-
-	res = memcmp(st_a->name, st_b->name,
-			st_a->name_len > st_b->name_len
-			? st_b->name_len : st_a->name_len);
-	if (res == 0)
-		res = st_a->name_len - st_b->name_len;
-
-	return res;
-}
-
-static bool plugin_name_equal_fn(const void *a, const void *b)
-{
-	const plugin_name_t *st_a = a;
-	const plugin_name_t *st_b = b;
-
-	if (st_a->name_len != st_b->name_len)
-		return false;
-	if (memcmp(st_a->name, st_b->name, st_a->name_len) != 0)
-		return false;
-	return true;
-}
-
 //Private members of the plugin
 typedef struct {
 	plugin_t parent;
@@ -108,8 +72,6 @@ typedef struct {
 	wget_plugin_finalizer_t finalizer;
 	//The plugin's option processor
 	wget_plugin_argp_t argp;
-	//The name structure inserted in tree
-	plugin_name_t name_hd;
 	//Buffer to store plugin name
 	char name_buf[];
 } plugin_priv_t;
@@ -119,8 +81,8 @@ static int initialized;
 static wget_buffer_t search_paths[1];
 //List of loaded plugins
 static wget_buffer_t plugin_list[1];
-//AVL tree for fast lookup by name
-gl_list_t plugin_name_index;
+//Index of plugins by plugin name
+wget_stringmap_t *plugin_name_index;
 
 
 //Sets a list of directories to search for plugins, separated by
@@ -150,16 +112,10 @@ void plugin_db_clear_search_paths(void)
 //The name does not need to be null-terminated.
 static plugin_t *plugin_search_internal(const char *name, size_t name_len)
 {
-	plugin_name_t name_hd;
-	gl_list_node_t node;
-
-	name_hd.name = (char *) name;
-	name_hd.name_len = name_len;
-	node = gl_sortedlist_search
-		(plugin_name_index, plugin_name_compare_fn, &name_hd);
-	if (! node)
-		return NULL;
-	return (plugin_t *) gl_list_node_value(plugin_name_index, node);
+	char buf[name_len + 1];
+	memcpy(buf, name, name_len);
+	buf[name_len] = 0;
+	return (plugin_t *) wget_stringmap_get(plugin_name_index, buf);
 }
 
 //vtable
@@ -206,7 +162,6 @@ static plugin_t *load_plugin_internal
 	plugin_t *plugin;
 	plugin_priv_t *priv;
 	wget_plugin_initializer_t init_fn;
-	gl_list_node_t node;
 
 	name_len = strlen(name);
 
@@ -222,8 +177,6 @@ static plugin_t *load_plugin_internal
 	priv->finalizer = NULL;
 	priv->argp = NULL;
 	strcpy(priv->name_buf, name);
-	priv->name_hd.name = priv->name_buf;
-	priv->name_hd.name_len = name_len;
 
 	//Initialize public members
 	plugin->parent.plugin_data = NULL;
@@ -246,10 +199,8 @@ static plugin_t *load_plugin_internal
 	//Add to plugin list
 	ptr_array_append(plugin_list, (void *) plugin);
 
-	//Add to tree
-	node = gl_sortedlist_add(plugin_name_index, plugin_name_compare_fn,
-			&priv->name_hd);
-	gl_list_node_set_value(plugin_name_index, node, plugin);
+	//Add to map
+	wget_stringmap_put_noalloc(plugin_name_index, plugin->name, plugin);
 
 	return plugin;
 }
@@ -352,8 +303,8 @@ void plugin_db_list(char ***names_out, size_t *n_names_out)
 	dl_list(paths, n_paths, names_out, n_names_out);
 }
 
-//Forwards a command line argument to appropriate plugin.
-int plugin_db_forward_arg(const char *plugin_option, dl_error_t *e)
+//Forwards a command line option to appropriate plugin.
+int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 {
 	const char *predicate;
 	size_t plugin_name_len;
@@ -361,6 +312,8 @@ int plugin_db_forward_arg(const char *plugin_option, dl_error_t *e)
 	plugin_priv_t *priv;
 	size_t i;
 	int op_res;
+
+	wget_debug_printf("TMP: plugin_option='%s'\n", plugin_option);
 
 	//Get the plugin name
 	for (i = 0; plugin_option[i] && plugin_option[i] != '.'; i++)
@@ -394,6 +347,12 @@ int plugin_db_forward_arg(const char *plugin_option, dl_error_t *e)
 	//Separate option from value
 	for (i = 0; predicate[i] && predicate[i] != '='; i++)
 		;
+	if (i == 0) {
+		dl_error_set_printf(e, "'%s': An option is required "
+				"(after '.', and before '=' if present)",
+				plugin_option);
+		return -1;
+	}
 	if (predicate[i]) {
 		size_t option_len = i;
 		char option_name[option_len + 1];
@@ -424,8 +383,11 @@ void plugin_db_init(void)
 	if (! initialized) {
 		wget_buffer_init(search_paths, NULL, 0);
 		wget_buffer_init(plugin_list, NULL, 0);
-		plugin_name_index = gl_list_create_empty
-			(GL_AVLTREE_LIST, plugin_name_equal_fn, NULL, NULL, false);
+		plugin_name_index = wget_stringmap_create(16);
+		wget_stringmap_set_value_destructor(plugin_name_index, NULL);
+		wget_hashmap_set_key_destructor
+			((wget_hashmap_t *) plugin_name_index, NULL);
+
 		initialized = 1;
 	}
 }
@@ -444,10 +406,11 @@ void plugin_db_finalize(int exitcode)
 		plugin_free(plugins[i]);
 	}
 	wget_buffer_deinit(plugin_list);
-	gl_list_free(plugin_name_index);
+	wget_stringmap_free(&plugin_name_index);
 	char **paths = (char **) search_paths->data;
 	size_t n_paths = ptr_array_size(search_paths);
 	for (i = 0; i < n_paths; i++)
 		wget_free(paths[i]);
 	wget_buffer_deinit(search_paths);
+	initialized = 0;
 }

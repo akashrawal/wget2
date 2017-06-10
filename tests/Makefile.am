@@ -23,7 +23,7 @@ WGET_TESTS = test-wget-1$(EXEEXT) test-restrict-ascii$(EXEEXT) test-i-http$(EXEE
 #test--post-file test-E-k test-cookies-http_state
 
 check_PROGRAMS = $(WGET_TESTS)
-check_LTLIBRARIES = libpluginname.la libpluginexit.la
+check_LTLIBRARIES = libpluginname.la libpluginexit.la libpluginoption.la
 
 test_cookies_http_state_LDADD = ../src/log.o ../src/options.o libtest.la\
  $(LIBOBJS) $(GETADDRINFO_LIB) $(HOSTENT_LIB) $(INET_NTOP_LIB)\
@@ -66,6 +66,15 @@ libpluginexit_la_SOURCES = test-plugin-dummy.c
 libpluginexit_la_CPPFLAGS = $(AM_CPPFLAGS) -DTEST_SELECT_EXITSTATUS
 libpluginexit_la_LDFLAGS = $(dummy_ldflags)
 libpluginexit_la_LIBADD = ../libwget/libwget.la\
+ $(LIBOBJS) $(GETADDRINFO_LIB) $(HOSTENT_LIB) $(INET_NTOP_LIB)\
+ $(LIBSOCKET) $(LIB_CLOCK_GETTIME) $(LIB_NANOSLEEP) $(LIB_POLL) $(LIB_PTHREAD)\
+ $(LIB_SELECT) $(LTLIBICONV) $(LTLIBINTL) $(LTLIBTHREAD) $(SERVENT_LIB) @INTL_MACOSX_LIBS@\
+ $(LIBS) ../lib/libgnu.la
+
+libpluginoption_la_SOURCES = test-plugin-dummy.c
+libpluginoption_la_CPPFLAGS = $(AM_CPPFLAGS) -DTEST_SELECT_OPTIONS
+libpluginoption_la_LDFLAGS = $(dummy_ldflags)
+libpluginoption_la_LIBADD = ../libwget/libwget.la\
  $(LIBOBJS) $(GETADDRINFO_LIB) $(HOSTENT_LIB) $(INET_NTOP_LIB)\
  $(LIBSOCKET) $(LIB_CLOCK_GETTIME) $(LIB_NANOSLEEP) $(LIB_POLL) $(LIB_PTHREAD)\
  $(LIB_SELECT) $(LTLIBICONV) $(LTLIBINTL) $(LTLIBTHREAD) $(SERVENT_LIB) @INTL_MACOSX_LIBS@\

@@ -795,6 +795,8 @@ void wget_test(int first_key, ...)
 		server_send_content_length_old = server_send_content_length;
 
 	keep_tmpfiles = 0;
+	if (getenv("WGET_TMPFILES"))
+		keep_tmpfiles = 1;
 	server_hello = "220 FTP server ready";
 
 	if (!request_urls)
