@@ -652,7 +652,9 @@ typedef void (*wget_hashmap_key_destructor_t)(void *key);
 typedef void (*wget_hashmap_value_destructor_t)(void *value);
 
 WGETAPI wget_hashmap_t
-	*wget_hashmap_create(int max, int off, wget_hashmap_hash_t hash, wget_hashmap_compare_t cmp) G_GNUC_WGET_MALLOC;
+	*wget_hashmap_create(int max, wget_hashmap_hash_t hash, wget_hashmap_compare_t cmp) G_GNUC_WGET_MALLOC;
+WGETAPI void
+	wget_hashmap_set_growth_policy(wget_hashmap_t *h, int off);
 WGETAPI int
 	wget_hashmap_put(wget_hashmap_t *h, const void *key, size_t keysize, const void *value, size_t valuesize);
 WGETAPI int
@@ -698,7 +700,7 @@ typedef wget_hashmap_t wget_stringmap_t;
 typedef int (*wget_stringmap_compare_t)(const char *key1, const char *key2);
 typedef unsigned int (*wget_stringmap_hash_t)(const char *value);
 typedef int (*wget_stringmap_browse_t)(void *ctx, const char *key, void *value);
-//typedef void (*wget_stringmap_key_destructor_t)(char *key);
+typedef void (*wget_stringmap_key_destructor_t)(char *key);
 typedef void (*wget_stringmap_value_destructor_t)(void *value);
 
 WGETAPI wget_stringmap_t *
@@ -737,6 +739,8 @@ WGETAPI void
 	wget_stringmap_sethashfunc(wget_stringmap_t *h, wget_stringmap_hash_t hash);
 WGETAPI void
 	wget_stringmap_setloadfactor(wget_stringmap_t *h, float factor);
+WGETAPI void
+	wget_stringmap_set_key_destructor(wget_hashmap_t *h, wget_stringmap_key_destructor_t destructor);
 WGETAPI void
 	wget_stringmap_set_value_destructor(wget_hashmap_t *h, wget_stringmap_value_destructor_t destructor);
 

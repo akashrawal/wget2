@@ -63,12 +63,12 @@ static unsigned int G_GNUC_WGET_PURE hash_string_nocase(const char *key)
 
 wget_stringmap_t *wget_stringmap_create(int max)
 {
-	return wget_hashmap_create(max, -2, (wget_hashmap_hash_t)hash_string, (wget_hashmap_compare_t)wget_strcmp);
+	return wget_hashmap_create(max, (wget_hashmap_hash_t)hash_string, (wget_hashmap_compare_t)wget_strcmp);
 }
 
 wget_stringmap_t *wget_stringmap_create_nocase(int max)
 {
-	return wget_hashmap_create(max, -2, (wget_hashmap_hash_t)hash_string_nocase, (wget_hashmap_compare_t)wget_strcasecmp);
+	return wget_hashmap_create(max, (wget_hashmap_hash_t)hash_string_nocase, (wget_hashmap_compare_t)wget_strcasecmp);
 }
 
 int wget_stringmap_put_noalloc(wget_stringmap_t *h, const char *key, const void *value)
@@ -139,6 +139,11 @@ void wget_stringmap_sethashfunc(wget_stringmap_t *h, wget_stringmap_hash_t hash)
 void wget_stringmap_setloadfactor(wget_stringmap_t *h, float factor)
 {
 	wget_hashmap_setloadfactor(h, factor);
+}
+
+void wget_stringmap_set_key_destructor(wget_hashmap_t *h, wget_stringmap_key_destructor_t destructor)
+{
+	wget_hashmap_set_key_destructor(h, (wget_hashmap_key_destructor_t)destructor);
 }
 
 void wget_stringmap_set_value_destructor(wget_hashmap_t *h, wget_stringmap_value_destructor_t destructor)
