@@ -2005,7 +2005,7 @@ wget_plugin_register_finalizer
 typedef int (*wget_plugin_argp_t)
 	(wget_plugin_t *plugin, const char *option, const char *value);
 
-//Registers a function for argument forwarding.
+//Registers a function for command line option forwarding.
 WGETAPI void
 wget_plugin_register_argp(wget_plugin_t *plugin, wget_plugin_argp_t fn);
 

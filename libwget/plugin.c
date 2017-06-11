@@ -61,7 +61,9 @@ void wget_plugin_register_finalizer
 	(* plugin->vtable->register_finalizer)(plugin, fn);
 }
 
-/**Registers a function for argument forwarding.
+/**Registers a function for command line option forwarding.
+ * A option can be forwarded using option
+ * --plugin-opt=<plugin-name>.<option>[=<value>]
  * \param[in] plugin The plugin handle
  * \param[in] fn The function pointer to register
  */

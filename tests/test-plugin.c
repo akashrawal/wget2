@@ -319,8 +319,9 @@ int main(void)
 		0);
 
 	//Check for correct functioning of --help option
-	//TODO: The following tests are broken because of buggy command line
-	//      option processing.
+	//The following tests are broken because of buggy command line
+	//option processing.
+	//TODO: Uncomment the following when fix_help branch is merged.
 #if 0
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "

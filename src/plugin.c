@@ -416,6 +416,8 @@ void plugin_db_init(void)
 		wget_buffer_init(plugin_list, NULL, 0);
 		plugin_name_index = wget_stringmap_create(16);
 		wget_stringmap_set_value_destructor(plugin_name_index, NULL);
+		//TODO: change to stringmap functions when
+		//      stringmap_impr branch is merged
 		wget_hashmap_set_key_destructor
 			((wget_hashmap_t *) plugin_name_index, NULL);
 		plugin_help_forwarded = 0;
