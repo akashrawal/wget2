@@ -147,8 +147,8 @@ int main(void)
 
 	//Check behavior for nonexistent search directories
 	wget_test(
-		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR ","
-			OBJECT_DIR "/nonexistent --plugin=pluginname",
+		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR "/nonexistent,"
+			OBJECT_DIR " --plugin=pluginname",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
