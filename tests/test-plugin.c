@@ -109,6 +109,15 @@ int main(void)
 		0);
 	unsetenv_rpl("WGET2_PLUGINS");
 
+	//Check that --list-plugins doesn't continue
+	wget_test(
+		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR " --list-plugins",
+		WGET_TEST_REQUEST_URL, "index.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{	NULL } },
+		0);
+
 	//Check behavior for nonexistent plugins
 	wget_test(
 		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR " --plugin=nonexistent",
