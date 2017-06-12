@@ -319,10 +319,6 @@ int main(void)
 		0);
 
 	//Check for correct functioning of --help option
-	//The following tests are broken because of buggy command line
-	//option processing.
-	//TODO: Uncomment the following when fix_help branch is merged.
-#if 0
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
 			"--plugin-help",
@@ -343,11 +339,10 @@ int main(void)
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
 			"--plugin-opt=pluginoption.help=arg",
 		WGET_TEST_REQUEST_URL, "index.html",
-		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_ERROR_CODE, 1,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	NULL } },
 		0);
-#endif
 
 	exit(0);
 }
