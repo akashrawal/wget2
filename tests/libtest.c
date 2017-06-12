@@ -49,7 +49,8 @@ static wget_thread_t
 	http_server_tid,
 	https_server_tid,
 	ftp_server_tid,
-	ftps_server_tid;
+	ftps_server_tid,
+	watchdog_tid;
 static int
 	http_server_port,
 	https_server_port,
@@ -384,6 +385,19 @@ static void *_ftp_server_thread(void *ctx)
 	return NULL;
 }
 
+//Aborts the test if 4 min timer expires
+static void *watchdog_timer(G_GNUC_WGET_UNUSED void *ignored)
+{
+	const int timer = 60 * 4;
+	sleep(timer);
+	wget_error_printf_exit
+		("wget::watchdog_timer: %d s timer expired, stopping the tests\n",
+		 timer);
+
+	//This code is unreachable
+	return NULL;
+}
+
 #if defined __CYGWIN__
 // Using opendir/readdir loop plus unlink() has a race condition
 // with CygWin. Not sure if this also happens on other systems as well.
@@ -475,6 +489,7 @@ void wget_test_stop_server(void)
 	wget_thread_cancel(http_server_tid);
 	wget_thread_cancel(https_server_tid);
 	wget_thread_cancel(ftp_server_tid);
+	wget_thread_cancel(watchdog_tid);
 	if (ftps_implicit)
 		wget_thread_cancel(ftps_server_tid);
 //	wget_thread_join(http_server_tid);
@@ -699,6 +714,12 @@ void wget_test_start_server(int first_key, ...)
 	if (ftps_implicit) {
 		if ((rc = wget_thread_start(&ftps_server_tid, _ftp_server_thread, ftps_parent_tcp, 0)) != 0)
 			wget_error_printf_exit(_("Failed to start FTP server, error %d\n"), rc);
+	}
+
+	//start watchdog timer
+	if ((rc = wget_thread_start(&watchdog_tid, watchdog_timer, NULL, 0)) != 0) {
+			wget_error_printf_exit("Failed to start watchdog, error %d\n",
+				rc);
 	}
 }
 
