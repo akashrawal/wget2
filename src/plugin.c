@@ -318,9 +318,14 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 	//Get the plugin name
 	for (i = 0; plugin_option[i] && plugin_option[i] != '.'; i++)
 		;
+	if (i == 0) {
+		dl_error_set_printf(e, "'%s': Plugin name is missing.", plugin_option);
+		return -1;
+	}
 	if (! plugin_option[i]) {
-		dl_error_set(e, "Plugin name and plugin option should be "
-				"separated by '.'");
+		dl_error_set_printf(e,
+				"'%s': '.' is missing (separates plugin name and option)",
+				plugin_option);
 		return -1;
 	}
 	plugin_name_len = i;

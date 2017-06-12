@@ -114,8 +114,7 @@ static int argp_fn
 	//Simulate help output
 	if (strcmp(option, "help") == 0) {
 		for (i = 0; options[i].name; i++) {
-			printf("--plugin-opt=%s.%s",
-					wget_plugin_get_name(plugin),
+			printf("--plugin-opt=%s.%s", wget_plugin_get_name(plugin),
 					options[i].name);
 			if (options[i].valid_without_val) {
 				if (options[i].valid_with_val)
@@ -125,6 +124,8 @@ static int argp_fn
 			}
 			printf("\tDescription for '%s'\n", options[i].name);
 		}
+		printf("--plugin-opt=%s.help\tPrint help message for this plugin\n",
+				wget_plugin_get_name(plugin));
 		return 0;
 	}
 
@@ -138,21 +139,18 @@ static int argp_fn
 		return -1;
 	}
 	if ((!options[i].valid_with_val) && value) {
-		wget_error_printf("Option %s does not accept an argument.\n",
-				option);
+		wget_error_printf("Option %s does not accept an argument.\n", option);
 		return -1;
 	}
 	if ((!options[i].valid_without_val) && !value) {
-		wget_error_printf("Option %s requires an argument\n",
-				option);
+		wget_error_printf("Option %s requires an argument\n", option);
 		return -1;
 	}
 
 	//Append option to options.txt
 	FILE *stream = fopen("options.txt", "ab");
 	if (! stream)
-		wget_error_printf_exit("Cannot open options.txt: %s",
-				strerror(errno));
+		wget_error_printf_exit("Cannot open options.txt: %s", strerror(errno));
 	if (value)
 		fprintf(stream, "%s=%s\n", option, value);
 	else
