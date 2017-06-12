@@ -135,7 +135,6 @@ int main(void)
 			{ "index.html", WGET_TEST_SOME_HTML_BODY },
 			{	NULL } },
 		0);
-	unsetenv_rpl("WGET2_PLUGINS");
 	setenv_rpl("WGET2_PLUGINS", LOCAL_NAME("nonexistent") , 1);
 	wget_test(
 		WGET_TEST_REQUEST_URL, "index.html",
