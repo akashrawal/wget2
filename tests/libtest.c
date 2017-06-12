@@ -50,6 +50,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
+static wget_thread_t
+	watchdog_tid;
 static int
 	http_server_port,
 	https_server_port,
@@ -569,6 +571,19 @@ static int _http_server_start(int SERVER_MODE)
 	return 0;
 }
 
+//Aborts the test if 4 min timer expires
+static void *watchdog_timer(G_GNUC_WGET_UNUSED void *ignored)
+{
+	const int timer = 60 * 4;
+	sleep(timer);
+	wget_error_printf_exit
+		("wget::watchdog_timer: %d s timer expired, stopping the tests\n",
+		 timer);
+
+	//This code is unreachable
+	return NULL;
+}
+
 #if defined __CYGWIN__
 // Using opendir/readdir loop plus unlink() has a race condition
 // with CygWin. Not sure if this also happens on other systems as well.
@@ -632,6 +647,8 @@ static void _remove_directory(const char *dirname)
 
 void wget_test_stop_server(void)
 {
+	wget_thread_cancel(watchdog_tid);
+
 //	wget_vector_free(&response_headers);
 	wget_vector_free(&request_urls);
 
@@ -822,6 +839,12 @@ void wget_test_start_server(int first_key, ...)
 				url->header_alloc[it] = 1;
 			}
 		}
+	}
+
+	//start watchdog timer
+	if ((rc = wget_thread_start(&watchdog_tid, watchdog_timer, NULL, 0)) != 0) {
+			wget_error_printf_exit("Failed to start watchdog, error %d\n",
+				rc);
 	}
 }
 
