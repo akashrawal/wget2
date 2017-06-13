@@ -1934,10 +1934,12 @@ WGETAPI void
  * Plugin support
  */
 
-/**\ingroup libwget-plugin
+/**
+ * \ingroup libwget-plugin
  *
  * Mark a function to be exported.
- * A common use for this is to mark wget_plugin_initializer().
+ * A common use for this is to mark the `wget_plugin_initializer()` function
+ * for plugin initialization.
  *
  *     WGET_EXPORT void wget_plugin_initializer(wget_plugin_t *plugin);
  */
@@ -1951,7 +1953,8 @@ WGETAPI void
 
 struct wget_plugin_vtable;
 
-/**\ingroup libwget-plugin
+/**
+ * \ingroup libwget-plugin
  *
  * A handle used to identify the plugin.
  *
@@ -1959,46 +1962,52 @@ struct wget_plugin_vtable;
  */
 typedef struct
 {
-	///Plugin specific data. Plugins are free to assign any value to this.
+	/// Plugin specific data. Plugins are free to assign any value to this.
 	void *plugin_data;
 
-	///Pointer to the vtable. Used by wget to implement functions.
+	/// Pointer to the vtable. Used by wget to implement functions.
 	struct wget_plugin_vtable *vtable;
 } wget_plugin_t;
 
-
-/**\ingroup libwget-plugin
- *
- * Prototype for the initializer function
-* \param[in] plugin The plugin handle
-* \return Should return 0 if initialization succeded,
-*         or any other value to indicate failure.
-*         On failure, wget2 will continue without the plugin
-*         and will not call the finalizer function even if registered.
-*/
+/**
+ * \ingroup libwget-plugin
+ * 
+ * Prototype for the initializer function.
+ * 
+ * \param[in] plugin The plugin handle
+ * \return Should return 0 if initialization succeded,
+ *         or any other value to indicate failure.
+ *         On failure, wget2 will continue without the plugin
+ *         and will not call the finalizer function even if registered.
+ */
 typedef int
 (*wget_plugin_initializer_t)(wget_plugin_t *plugin);
 
-/**\ingroup libwget-plugin
+/**
+ * \ingroup libwget-plugin
  *
- * Prototype of the finalizer function
-* \param[in] plugin The plugin handle
-* \param[in] exit_status The exit status wget will exit with
-*/
+ * Prototype of the finalizer function.
+ * 
+ * \param[in] plugin The plugin handle
+ * \param[in] exit_status The exit status wget will exit with
+ */
 typedef void
 (*wget_plugin_finalizer_t)(wget_plugin_t *plugin, int exit_status);
 
-//Gets the name the plugin is known as.
+// Gets the name the plugin is known as.
 WGETAPI const char *
 wget_plugin_get_name(wget_plugin_t *plugin);
 
-//Registers a function to be called when wget exits.
+// Registers a function to be called when wget exits.
 WGETAPI void
 wget_plugin_register_finalizer
 		(wget_plugin_t *plugin, wget_plugin_finalizer_t fn);
 
-/**Prototype for the function that will accept forwarded command line
+/**
+ * \ingroup libwget-plugin
+ * Prototype for the function that will accept forwarded command line
  * arguments.
+ * 
  * \param[in] plugin The plugin handle
  * \param[in] option Option name. If the option is "help",
  *                   a help message must be printed to stdout.
@@ -2009,11 +2018,12 @@ wget_plugin_register_finalizer
 typedef int (*wget_plugin_argp_t)
 	(wget_plugin_t *plugin, const char *option, const char *value);
 
-//Registers a function for command line option forwarding.
+// Registers a function for command line option forwarding.
 WGETAPI void
 wget_plugin_register_argp(wget_plugin_t *plugin, wget_plugin_argp_t fn);
 
-/**\ingroup libwget-plugin
+/**
+ * \ingroup libwget-plugin
  *
  * vtable for implementing plugin API in wget
  */

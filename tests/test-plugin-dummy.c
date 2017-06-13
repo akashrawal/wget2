@@ -50,8 +50,7 @@ int wget_plugin_initializer(wget_plugin_t *plugin)
 	return 0;
 }
 #elif defined TEST_SELECT_EXITSTATUS
-static void finalizer
-	(G_GNUC_WGET_UNUSED wget_plugin_t *plugin, int exit_status)
+static void finalizer(G_GNUC_WGET_UNUSED wget_plugin_t *plugin, int exit_status)
 {
 	FILE *stream = fopen("exit-status.txt", "wb");
 	if (! stream)
@@ -72,8 +71,7 @@ void irrelevant(void)
 {
 }
 #elif defined TEST_SELECT_FAULTY2
-static void finalizer
-	(G_GNUC_WGET_UNUSED wget_plugin_t *plugin, int exit_status)
+static void finalizer(G_GNUC_WGET_UNUSED wget_plugin_t *plugin, int exit_status)
 {
 	FILE *stream = fopen("exit-status.txt", "wb");
 	if (! stream)
@@ -104,14 +102,13 @@ struct option_filter options[] = {
 	{"gamma", 0, 1},
 	{NULL, 0, 0}
 };
-static int argp_fn
-	(wget_plugin_t *plugin,
-	 const char *option, const char *value)
+static int argp_fn(wget_plugin_t *plugin,
+	const char *option, const char *value)
 {
-	//List of options the plugin accepts
+	// List of options the plugin accepts
 	int i;
 
-	//Simulate help output
+	// Simulate help output
 	if (strcmp(option, "help") == 0) {
 		for (i = 0; options[i].name; i++) {
 			printf("--plugin-opt=%s.%s", wget_plugin_get_name(plugin),
@@ -129,7 +126,7 @@ static int argp_fn
 		return 0;
 	}
 
-	//Simulate option accept/reject
+	// Simulate option accept/reject
 	for (i = 0; options[i].name; i++) {
 		if (strcmp(option, options[i].name) == 0)
 			break;
@@ -147,7 +144,7 @@ static int argp_fn
 		return -1;
 	}
 
-	//Append option to options.txt
+	// Append option to options.txt
 	FILE *stream = fopen("options.txt", "ab");
 	if (! stream)
 		wget_error_printf_exit("Cannot open options.txt: %s", strerror(errno));

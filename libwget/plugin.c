@@ -30,20 +30,21 @@
  * \file
  * \brief Plugin API for wget2
  * \defgroup libwget-plugin Plugin API for wget2
- * \{
+ * @{
  *
  * This is the plugin API for wget2.
  *
- * Each plugin must define wget_plugin_initializer() function which will be
+ * Each plugin must define a `wget_plugin_initializer()` function which will be
  * called when the plugin is loaded.
- * See wget_plugin_initializer_t for the prototype.
- * wget_plugin_initializer() must also be declared to be exported
- * using WGET_EXPORT.
+ * See \ref wget_plugin_initializer_t "wget_plugin_initializer_t" for the prototype.
+ * `wget_plugin_initializer()` must also be declared to be exported
+ * using `WGET_EXPORT`.
  */
 
-/**Gets the name the plugin is known as.
+/**
+ * Gets the name the plugin is known as.
  * \param[in] plugin The plugin handle
- * \return the name of this plugin. The returned string is owned by wget2
+ * \return the name of this plugin. The returned string is owned by wget
  *         and should not be freed or altered.
  */
 const char *wget_plugin_get_name(wget_plugin_t *plugin)
@@ -51,19 +52,23 @@ const char *wget_plugin_get_name(wget_plugin_t *plugin)
 	return (* plugin->vtable->get_name)(plugin);
 }
 
-/**Registers a function to be called when wget exits.
+/**
+ * Registers a function to be called when wget exits.
 * \param[in] plugin The plugin handle
 * \param[in] fn A function pointer to be called
 */
-void wget_plugin_register_finalizer
-		(wget_plugin_t *plugin, wget_plugin_finalizer_t fn)
+void wget_plugin_register_finalizer(wget_plugin_t *plugin, wget_plugin_finalizer_t fn)
 {
 	(* plugin->vtable->register_finalizer)(plugin, fn);
 }
 
-/**Registers a function for command line option forwarding.
- * A option can be forwarded using option
- * --plugin-opt=<plugin-name>.<option>[=<value>]
+/**
+ * Registers a function for command line option forwarding.
+ *
+ * A option can be forwarded using an option following the pattern:
+ *
+ *     --plugin-opt=<plugin-name>.<option>[=<value>]
+ *
  * \param[in] plugin The plugin handle
  * \param[in] fn The function pointer to register
  */
@@ -72,4 +77,4 @@ void wget_plugin_register_argp(wget_plugin_t *plugin, wget_plugin_argp_t fn)
 	(* plugin->vtable->register_argp)(plugin, fn);
 }
 
-///\}
+/** @} */
