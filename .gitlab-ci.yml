@@ -109,7 +109,7 @@ pages:
 MinGW64:
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
   script:
-  - ( sleep $(( 60 * 1 )); ps -ef 2>&1 | tee ps.log;
+  - ( sleep $(( 60 * 20 )); ps -ef 2>&1 | tee ps.log;
       echo "Test timeout triggered" ) &
   - ./bootstrap
   - mingw64-configure --disable-valgrind-tests --disable-doc
