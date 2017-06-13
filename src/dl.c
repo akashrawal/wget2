@@ -357,7 +357,7 @@ static int list_internal(const char *dir, wget_buffer_t *buf)
 	struct dirent *ent;
 
 	dirp = opendir(dir);
-	if (!dir)
+	if (!dirp)
 		return -1;
 
 	while((ent = readdir(dirp)) != NULL) {
