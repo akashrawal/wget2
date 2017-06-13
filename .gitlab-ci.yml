@@ -109,7 +109,8 @@ pages:
 MinGW64:
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$FEDORA_BUILD
   script:
-  - ( sleep $(( 60 * 45 )); ps -ef &> ps.log; killall -SIGKILL make ) &
+  - ( sleep $(( 60 * 4 )); ps -ef &> ps.log;
+      for i in `pidof make; do kill $i; done ) &
   - ./bootstrap
   - mingw64-configure --disable-valgrind-tests --disable-doc
   - mingw64-make -j$(nproc)
