@@ -36,7 +36,7 @@ variables:
 Debian GNU/Linux build:
   image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$DEBIAN_BUILD
   script:
-      - ( sleep $(( 60 * 45 )); ps -ef &> ps.log; killall -SIGKILL make ) &
+    - ( sleep $(( 60 * 45 )); ps -ef &> ps.log; killall -SIGKILL make ) &
     - ./bootstrap && touch .manywarnings
     - ./configure $CONFIGURE_BASE_FLAGS --enable-fsanitize-asan --enable-fsanitize-ubsan -C
     - make -j$(nproc) check
