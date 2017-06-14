@@ -127,7 +127,7 @@ static void copy_file(const char *src, const char *dst)
 	size_remain = statbuf.st_size;
 	while(size_remain > 0) {
 		ssize_t io_size = size_remain;
-		if (io_size > (ssize_t) sizeof(buf)) 
+		if (io_size > (ssize_t) sizeof(buf))
 			io_size = sizeof(buf);
 		libassert(read(sfd, buf, io_size) == io_size);
 		libassert(write(dfd, buf, io_size) == io_size);

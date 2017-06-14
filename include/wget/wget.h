@@ -2032,7 +2032,7 @@ typedef struct
  *
  * \param[in] plugin The plugin handle
  * \return Should return 0 if initialization succeded, or any other value to indicate failure.
- *         On failure, wget2 will continue without the plugin 
+ *         On failure, wget2 will continue without the plugin
  *         and will not call the finalizer function even if registered.
  */
 typedef int
