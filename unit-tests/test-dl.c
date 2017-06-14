@@ -46,10 +46,8 @@ do { \
 
 #define libassert(expr) \
 do { \
-	if (! (expr)) { \
-		abortmsg("Failed assertion [" #expr "]: %s", \
-				strerror(errno)); \
-	} \
+	if (! (expr)) \
+		abortmsg("Failed assertion [" #expr "]: %s", strerror(errno)); \
 } while(0)
 
 #define OBJECT_DIR ".test_dl_dir"
@@ -102,8 +100,7 @@ static void remove_object_dir(void)
 		return;
 
 	while((ent = readdir(dirp)) != NULL) {
-		if (strcmp(ent->d_name, ".") == 0
-				|| strcmp(ent->d_name, "..") == 0)
+		if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
 			continue;
 		char *filename = wget_aprintf(OBJECT_DIR "/%s", ent->d_name);
 		libassert(remove_rpl(filename) == 0);
@@ -126,12 +123,11 @@ static void copy_file(const char *src, const char *dst)
 
 	libassert(stat(src, &statbuf) == 0);
 	libassert((sfd = open(src, O_RDONLY | O_BINARY)) >= 0);
-	libassert((dfd = open(dst, O_WRONLY | O_CREAT | O_BINARY,
-					statbuf.st_mode)) >= 0);
+	libassert((dfd = open(dst, O_WRONLY | O_CREAT | O_BINARY, statbuf.st_mode)) >= 0);
 	size_remain = statbuf.st_size;
 	while(size_remain > 0) {
 		ssize_t io_size = size_remain;
-		if (io_size > (ssize_t) sizeof(buf))
+		if (io_size > (ssize_t) sizeof(buf)) 
 			io_size = sizeof(buf);
 		libassert(read(sfd, buf, io_size) == io_size);
 		libassert(write(dfd, buf, io_size) == io_size);
@@ -156,10 +152,8 @@ do { \
 	dl_error_t e[1]; \
 	dl_error_init(e); \
 	stmt; \
-	if (dl_error_is_set(e)) {\
-		abortmsg("Failed dynamic loading operation " \
-				"[" #stmt "]: %s", dl_error_get_msg(e)); \
-	} \
+	if (dl_error_is_set(e)) \
+		abortmsg("Failed dynamic loading operation [" #stmt "]: %s", dl_error_get_msg(e)); \
 } while(0)
 
 typedef void (*test_fn)(char buf[16]);
@@ -170,10 +164,7 @@ static void test_fn_check(void *fn, const char *expected)
 	*((void **) &fn_p) = fn;
 	(*fn_p)(buf);
 	if (strncmp(buf, expected, 15) != 0)
-	{
-		abortmsg("Test function returned %s, expected %s",
-				buf, expected);
-	}
+		abortmsg("Test function returned %s, expected %s", buf, expected);
 }
 
 //Test whether dl_list() works

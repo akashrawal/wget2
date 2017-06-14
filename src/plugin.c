@@ -226,8 +226,7 @@ plugin_t *plugin_db_load_from_name(const char *name, dl_error_t *e)
 
 	char *filename = dl_search(name, dirs, n_dirs);
 	if (! filename) {
-		dl_error_set_printf(e, "Plugin '%s' not found in any of the "
-				"plugin search paths.",
+		dl_error_set_printf(e, "Plugin '%s' not found in any of the plugin search paths.",
 				name);
 		return NULL;
 	}
@@ -282,8 +281,7 @@ void plugin_db_load_from_envvar(void)
 				plugin = plugin_db_load_from_name(strings[i], e);
 
 			if (! plugin) {
-				wget_error_printf("Plugin '%s' failed to load: %s",
-						strings[i], dl_error_get_msg(e));
+				wget_error_printf("Plugin '%s' failed to load: %s", strings[i], dl_error_get_msg(e));
 				dl_error_set(e, NULL);
 			}
 
@@ -321,9 +319,7 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 		return -1;
 	}
 	if (! plugin_option[i]) {
-		dl_error_set_printf(e,
-				"'%s': '.' is missing (separates plugin name and option)",
-				plugin_option);
+		dl_error_set_printf(e, "'%s': '.' is missing (separates plugin name and option)", plugin_option);
 		return -1;
 	}
 	plugin_name_len = i;
@@ -335,15 +331,13 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 		char plugin_name[plugin_name_len + 1];
 		memcpy(plugin_name, plugin_option, plugin_name_len);
 		plugin_name[plugin_name_len] = 0;
-		dl_error_set_printf(e, "Plugin '%s' is not loaded.",
-				plugin_name);
+		dl_error_set_printf(e, "Plugin '%s' is not loaded.", plugin_name);
 		return -1;
 	}
 	priv = (plugin_priv_t *) plugin;
 
 	if (! priv->argp) {
-		dl_error_set_printf(e, "Plugin '%s' does not accept options.",
-				plugin->name);
+		dl_error_set_printf(e, "Plugin '%s' does not accept options.", plugin->name);
 		return -1;
 	}
 
@@ -351,8 +345,7 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 	for (i = 0; predicate[i] && predicate[i] != '='; i++)
 		;
 	if (i == 0) {
-		dl_error_set_printf(e, "'%s': An option is required "
-				"(after '.', and before '=' if present)",
+		dl_error_set_printf(e, "'%s': An option is required (after '.', and before '=' if present)",
 				plugin_option);
 		return -1;
 	}
@@ -363,8 +356,7 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 		option_name[option_len] = 0;
 
 		if (strcmp(option_name, "help") == 0) {
-			dl_error_set_printf(e, "'help' option does not "
-					"accept arguments\n");
+			dl_error_set_printf(e, "'help' option does not accept arguments\n");
 			return -1;
 		}
 
@@ -380,8 +372,7 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 
 	if (op_res < 0)
 	{
-		dl_error_set_printf(e, "Plugin '%s' did not accept option %s",
-				plugin->name, predicate);
+		dl_error_set_printf(e, "Plugin '%s' did not accept option %s", plugin->name, predicate);
 		return -1;
 	}
 
@@ -435,8 +426,7 @@ void plugin_db_finalize(int exitcode)
 
 	for (i = 0; i < n_plugins; i++) {
 		if (((plugin_priv_t *) plugins[i])->finalizer)
-			(* ((plugin_priv_t *) plugins[i])->finalizer)
-				((wget_plugin_t *) plugins[i], exitcode);
+			(* ((plugin_priv_t *) plugins[i])->finalizer)((wget_plugin_t *) plugins[i], exitcode);
 		plugin_free(plugins[i]);
 	}
 	wget_buffer_deinit(plugin_list);

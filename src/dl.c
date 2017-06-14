@@ -205,8 +205,7 @@ void dl_file_close(dl_file_t *dm)
 
 #else
 
-const static char *dl_unsupported
-	= "Dynamic loading is not supported on the current platform.";
+const static char *dl_unsupported = "Dynamic loading is not supported on the current platform.";
 
 int dl_supported(void)
 {
@@ -273,8 +272,7 @@ static int dl_match(const char *path, size_t *start_out, size_t *len_out)
 		size_t sl = strlen(s);
 		if (pl + sl >= len)
 			continue;
-		if (memcmp(path + start + len - sl, s, sl) == 0
-				&& memcmp(path + start, p, pl) == 0) {
+		if (memcmp(path + start + len - sl, s, sl) == 0 && memcmp(path + start, p, pl) == 0) {
 			start += pl;
 			len -= (pl + sl);
 			break;

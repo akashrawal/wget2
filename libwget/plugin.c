@@ -34,18 +34,15 @@
  *
  * This is the plugin API for wget2.
  *
- * Each plugin must define a `wget_plugin_initializer()` function which will be
- * called when the plugin is loaded.
+ * Each plugin must define a `wget_plugin_initializer()` function which will be called when the plugin is loaded.
  * See \ref wget_plugin_initializer_t "wget_plugin_initializer_t" for the prototype.
- * `wget_plugin_initializer()` must also be declared to be exported
- * using `WGET_EXPORT`.
+ * `wget_plugin_initializer()` must also be declared to be exported using `WGET_EXPORT`.
  */
 
 /**
  * Gets the name the plugin is known as.
  * \param[in] plugin The plugin handle
- * \return the name of this plugin. The returned string is owned by wget
- *         and should not be freed or altered.
+ * \return the name of this plugin. The returned string is owned by wget and should not be freed or altered.
  */
 const char *wget_plugin_get_name(wget_plugin_t *plugin)
 {

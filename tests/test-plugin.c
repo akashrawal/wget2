@@ -147,8 +147,7 @@ int main(void)
 
 	//Check behavior for nonexistent search directories
 	wget_test(
-		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR "/nonexistent,"
-			OBJECT_DIR " --plugin=pluginname",
+		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR "/nonexistent," OBJECT_DIR " --plugin=pluginname",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
@@ -157,8 +156,7 @@ int main(void)
 			{	NULL } },
 		0);
 	wget_test(
-		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR "/nonexistent,"
-			OBJECT_DIR " --list-plugins",
+		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR "/nonexistent," OBJECT_DIR " --list-plugins",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
@@ -204,8 +202,7 @@ int main(void)
 
 	//Check if option forwarding works for options with no value
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=pluginoption.y",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption.y",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
@@ -214,8 +211,7 @@ int main(void)
 			{	NULL } },
 		0);
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=pluginoption.y "
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption.y "
 			"--plugin-opt=pluginoption.beta",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
@@ -227,10 +223,8 @@ int main(void)
 
 	//Check if option forwarding works with options with values
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=pluginoption.z= "
-			"--plugin-opt=pluginoption.z=value1 "
-			"--plugin-opt=pluginoption.gamma=value2",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption.z= "
+			"--plugin-opt=pluginoption.z=value1 --plugin-opt=pluginoption.gamma=value2",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
@@ -241,48 +235,42 @@ int main(void)
 
 	//Check behavior for incorrect format
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=.alpha=value",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=.alpha=value",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 1,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	NULL } },
 		0);
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=pluginoption.=value",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption.=value",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 1,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	NULL } },
 		0);
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=pluginoption.",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption.",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 1,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	NULL } },
 		0);
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=pluginoption",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 1,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	NULL } },
 		0);
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=.",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=.",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 1,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	NULL } },
 		0);
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 1,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
@@ -299,8 +287,7 @@ int main(void)
 			{	NULL } },
 		0);
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginname") " "
-			"--plugin-opt=pluginname.option=value",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginname") " --plugin-opt=pluginname.option=value",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 1,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
@@ -310,24 +297,21 @@ int main(void)
 
 	//Check behavior for incorrect option name/value combination
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=pluginoption.y=",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption.y=",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 1,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	NULL } },
 		0);
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=pluginoption.y=value",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption.y=value",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 1,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	NULL } },
 		0);
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=pluginoption.z",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption.z",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 1,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
@@ -336,24 +320,21 @@ int main(void)
 
 	//Check for correct functioning of --help option
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-help",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-help",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	NULL } },
 		0);
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=pluginoption.help",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption.help",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	NULL } },
 		0);
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
-			"--plugin-opt=pluginoption.help=arg",
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption.help=arg",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 1,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {

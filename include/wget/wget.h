@@ -1995,8 +1995,7 @@ WGETAPI void
  * \ingroup libwget-plugin
  *
  * Mark a function to be exported.
- * A common use for this is to mark the `wget_plugin_initializer()` function
- * for plugin initialization.
+ * A common use for this is to mark the `wget_plugin_initializer()` function for plugin initialization.
  *
  *     WGET_EXPORT void wget_plugin_initializer(wget_plugin_t *plugin);
  */
@@ -2032,9 +2031,8 @@ typedef struct
  * Prototype for the initializer function.
  *
  * \param[in] plugin The plugin handle
- * \return Should return 0 if initialization succeded,
- *         or any other value to indicate failure.
- *         On failure, wget2 will continue without the plugin
+ * \return Should return 0 if initialization succeded, or any other value to indicate failure.
+ *         On failure, wget2 will continue without the plugin 
  *         and will not call the finalizer function even if registered.
  */
 typedef int
@@ -2057,23 +2055,18 @@ wget_plugin_get_name(wget_plugin_t *plugin);
 
 // Registers a function to be called when wget exits.
 WGETAPI void
-wget_plugin_register_finalizer
-		(wget_plugin_t *plugin, wget_plugin_finalizer_t fn);
+wget_plugin_register_finalizer(wget_plugin_t *plugin, wget_plugin_finalizer_t fn);
 
 /**
  * \ingroup libwget-plugin
- * Prototype for the function that will accept forwarded command line
- * arguments.
+ * Prototype for the function that will accept forwarded command line arguments.
  *
  * \param[in] plugin The plugin handle
- * \param[in] option Option name. If the option is "help",
- *                   a help message must be printed to stdout.
+ * \param[in] option Option name. If the option is "help", a help message must be printed to stdout.
  * \param[in] value  The value of the option if provided, or NULL
- * \return Must return 0 if option and its value is valid, or any other value
- *         if invalid. In that case wget will exit.
+ * \return Must return 0 if option and its value is valid, or any other value if invalid. In that case wget will exit.
  */
-typedef int (*wget_plugin_argp_t)
-	(wget_plugin_t *plugin, const char *option, const char *value);
+typedef int (*wget_plugin_argp_t)(wget_plugin_t *plugin, const char *option, const char *value);
 
 // Registers a function for command line option forwarding.
 WGETAPI void

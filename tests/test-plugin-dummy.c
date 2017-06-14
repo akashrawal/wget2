@@ -35,15 +35,13 @@ int wget_plugin_initializer(wget_plugin_t *plugin)
 {
 	const char *name = wget_plugin_get_name(plugin);
 	if (strcmp(name, "pluginname") != 0) {
-		wget_error_printf
-			("Plugin took a wrong name '%s'\n", name);
+		wget_error_printf("Plugin took a wrong name '%s'\n", name);
 		exit(1);
 	}
 
 	FILE *stream = fopen("plugin-loaded.txt", "wb");
 	if (! stream)
-		wget_error_printf_exit("Cannot open plugin-loaded.txt: %s",
-				strerror(errno));
+		wget_error_printf_exit("Cannot open plugin-loaded.txt: %s", strerror(errno));
 	fprintf(stream, "Plugin loaded\n");
 	fclose(stream);
 
@@ -54,8 +52,7 @@ static void finalizer(G_GNUC_WGET_UNUSED wget_plugin_t *plugin, int exit_status)
 {
 	FILE *stream = fopen("exit-status.txt", "wb");
 	if (! stream)
-		wget_error_printf_exit("Cannot open exit-status.txt: %s",
-				strerror(errno));
+		wget_error_printf_exit("Cannot open exit-status.txt: %s", strerror(errno));
 	fprintf(stream, "exit(%d)\n", exit_status);
 	fclose(stream);
 }
@@ -75,8 +72,7 @@ static void finalizer(G_GNUC_WGET_UNUSED wget_plugin_t *plugin, int exit_status)
 {
 	FILE *stream = fopen("exit-status.txt", "wb");
 	if (! stream)
-		wget_error_printf_exit("Cannot open exit-status.txt: %s",
-				strerror(errno));
+		wget_error_printf_exit("Cannot open exit-status.txt: %s", strerror(errno));
 	fprintf(stream, "exit(%d)\n", exit_status);
 	fclose(stream);
 }
@@ -111,8 +107,7 @@ static int argp_fn(wget_plugin_t *plugin,
 	// Simulate help output
 	if (strcmp(option, "help") == 0) {
 		for (i = 0; options[i].name; i++) {
-			printf("--plugin-opt=%s.%s", wget_plugin_get_name(plugin),
-					options[i].name);
+			printf("--plugin-opt=%s.%s", wget_plugin_get_name(plugin), options[i].name);
 			if (options[i].valid_without_val) {
 				if (options[i].valid_with_val)
 					printf("[=value]");
@@ -121,8 +116,7 @@ static int argp_fn(wget_plugin_t *plugin,
 			}
 			printf("\tDescription for '%s'\n", options[i].name);
 		}
-		printf("--plugin-opt=%s.help\tPrint help message for this plugin\n",
-				wget_plugin_get_name(plugin));
+		printf("--plugin-opt=%s.help\tPrint help message for this plugin\n", wget_plugin_get_name(plugin));
 		return 0;
 	}
 
