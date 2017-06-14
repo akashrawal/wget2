@@ -112,7 +112,7 @@ void plugin_db_clear_search_paths(void)
 
 //Searches for a given plugin by name.
 //The name does not need to be null-terminated.
-static plugin_t *plugin_search_internal(const char *name, size_t name_len)
+static plugin_t *_search_plugin(const char *name, size_t name_len)
 {
 	char buf[name_len + 1];
 	memcpy(buf, name, name_len);
@@ -156,7 +156,8 @@ static void plugin_free(plugin_t *plugin)
 	wget_free(plugin);
 }
 
-static plugin_t *load_plugin_internal
+//Loads a plugin located at given path and assign it a name
+static plugin_t *_load_plugin
 	(const char *name, const char *path, dl_error_t *e)
 {
 	size_t name_len;
@@ -212,7 +213,7 @@ static plugin_t *load_plugin_internal
 plugin_t *plugin_db_load_from_path(const char *path, dl_error_t *e)
 {
 	char *name = dl_get_name_from_path(path, 0);
-	plugin_t *plugin = load_plugin_internal(name, path, e);
+	plugin_t *plugin = _load_plugin(name, path, e);
 	free(name);
 	return plugin;
 }
@@ -235,7 +236,7 @@ plugin_t *plugin_db_load_from_name(const char *name, dl_error_t *e)
 	}
 
 	//Delegate
-	plugin = load_plugin_internal(name, filename, e);
+	plugin = _load_plugin(name, filename, e);
 	wget_free(filename);
 	return plugin;
 }
@@ -332,7 +333,7 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 	predicate = plugin_option + plugin_name_len + 1;
 
 	//Search for plugin
-	plugin = plugin_search_internal(plugin_option, plugin_name_len);
+	plugin = _search_plugin(plugin_option, plugin_name_len);
 	if (! plugin) {
 		char plugin_name[plugin_name_len + 1];
 		memcpy(plugin_name, plugin_option, plugin_name_len);
