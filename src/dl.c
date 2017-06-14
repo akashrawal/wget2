@@ -32,44 +32,44 @@
 
 #include "wget_dl.h"
 
-//Error reporting functions
+// Error reporting functions
 
-//Set an error message. Call with msg=NULL to clear error.
+// Set an error message. Call with msg=NULL to clear error.
 void dl_error_set(dl_error_t *e, const char *msg)
 {
 	if (msg && e->msg)
-		wget_error_printf_exit
-			("Piling up error '%s' over error '%s'", msg, e->msg);
+		wget_error_printf_exit("Piling up error '%s' over error '%s'", msg, e->msg);
 
 	wget_xfree(e->msg);
 	if (msg)
 		e->msg = wget_strdup(msg);
 }
-//Set an error message with printf format.
+// Set an error message with printf format.
 void dl_error_set_printf
 	(dl_error_t *e, const char *format, ...)
 {
 	va_list arglist;
 	va_start(arglist, format);
 	if (e->msg)
-		wget_error_printf_exit
-			("Piling up error '%s' over error '%s'", format, e->msg);
+		wget_error_printf_exit("Piling up error '%s' over error '%s'", format, e->msg);
 
 	e->msg = wget_vaprintf(format, arglist);
 	va_end(arglist);
 }
 
-//If the string is not a path, converts to path by prepending "./" to it,
-//else returns NULL
+// If the string is not a path, converts to path by prepending "./" to it,
+// else returns NULL
 static char *convert_to_path_if_not(const char *str)
 {
 	if (str) {
 		char *buf;
 		int fw_slash_absent = 1;
 		int i, str_len;
-		for (i = 0; str[i]; i++)
+		for (i = 0; str[i]; i++) {
 			if (str[i] == '/')
 				fw_slash_absent = 0;
+		}
+
 		str_len = i;
 		if (fw_slash_absent) {
 			buf = wget_malloc(str_len + 3);
@@ -96,7 +96,7 @@ struct dl_file_st
 	void *handle;
 };
 
-//Opens an object file
+// Opens an object file
 dl_file_t *dl_file_open(const char *filename, dl_error_t *e)
 {
 	char *buf = NULL;
@@ -245,14 +245,14 @@ typedef struct {
 static const object_pattern_t dl_patterns[] = {PATTERNS, {NULL, NULL}};
 #undef PATTERNS
 
-//Matches the given path with the patterns of a loadable object file
-//and returns a range to use as a name
+// Matches the given path with the patterns of a loadable object file
+// and returns a range to use as a name
 static int dl_match(const char *path, size_t *start_out, size_t *len_out)
 {
 	size_t i, mark;
 	size_t start, len;
 
-	//Strip everything but the filename
+	// Strip everything but the filename
 	mark = 0;
 	for (i = 0; path[i]; i++) {
 		if (path[i] == '/')
@@ -260,12 +260,12 @@ static int dl_match(const char *path, size_t *start_out, size_t *len_out)
 #ifdef _WIN32
 		if (path[i] == '\\')
 			mark = i + 1;
-#endif //_WIN32
+#endif // _WIN32
 	}
 	start = mark;
 	len = i - start;
 
-	//Match for the pattern and extract the name
+	// Match for the pattern and extract the name
 	for (i = 0; dl_patterns[i].prefix; i++) {
 		const char *p = dl_patterns[i].prefix;
 		const char *s = dl_patterns[i].suffix;
@@ -317,16 +317,20 @@ char *dl_search(const char *name, char **dirs, size_t n_dirs)
 			for (j = 0; dl_patterns[j].prefix; j++) {
 				char *filename = wget_aprintf("%s/%s%s%s", dirs[i],
 						dl_patterns[j].prefix, name, dl_patterns[j].suffix);
+
 				if (is_regular_file(filename))
 					return filename;
+
 				wget_free(filename);
 			}
 		} else {
 			for (j = 0; dl_patterns[j].prefix; j++) {
 				char *filename = wget_aprintf("%s%s%s",
 						dl_patterns[j].prefix, name, dl_patterns[j].suffix);
+
 				if (is_regular_file(filename))
 					return filename;
+
 				wget_free(filename);
 			}
 		}
@@ -356,12 +360,12 @@ void dl_list(char **dirs, size_t n_dirs, char ***names_out, size_t *n_names_out)
 
 			fname = ent->d_name;
 
-			//Ignore entries that don't match the pattern
+			// Ignore entries that don't match the pattern
 			name = dl_get_name_from_path(fname, 1);
 			if (! name)
 				continue;
 
-			//Ignore entries that are not regular files
+			// Ignore entries that are not regular files
 			{
 				char *sfname = wget_aprintf("%s/%s", dirs[i], fname);
 				int x = is_regular_file(sfname);
@@ -372,7 +376,7 @@ void dl_list(char **dirs, size_t n_dirs, char ***names_out, size_t *n_names_out)
 				}
 			}
 
-			//Add to the list
+			// Add to the list
 			wget_buffer_memcat(buf, &name, sizeof(void *));
 		}
 

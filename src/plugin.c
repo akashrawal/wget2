@@ -30,11 +30,11 @@
 #include "wget_dl.h"
 #include "wget_plugin.h"
 
-//Strings
+// Strings
 static const char *init_fn_name = "wget_plugin_initializer";
 static const char *plugin_list_envvar = "WGET2_PLUGINS";
 
-//Pointer array manipulation functions on wget_buffer_t
+// Pointer array manipulation functions on wget_buffer_t
 static inline size_t ptr_array_size(wget_buffer_t *buf)
 {
 	return buf->length / sizeof(void *);
@@ -44,7 +44,7 @@ static inline void ptr_array_append(wget_buffer_t *buf, void *ent)
 	wget_buffer_memcat(buf, (void *) &ent, sizeof(void *));
 }
 
-//Splits string using the given separator and appends the array to buf.
+// Splits string using the given separator and appends the array to buf.
 static void split_string(const char *str, char separator, wget_buffer_t *buf)
 {
 	int i, mark;
@@ -53,48 +53,46 @@ static void split_string(const char *str, char separator, wget_buffer_t *buf)
 	for (i = 0; str[i]; i++) {
 		if (str[i] == separator) {
 			if (i > mark) {
-				ptr_array_append(buf,
-					wget_strmemdup(str + mark, i - mark));
+				ptr_array_append(buf, wget_strmemdup(str + mark, i - mark));
 			}
 			mark = i + 1;
 		}
 	}
 	if (i > mark) {
-		ptr_array_append(buf,
-			wget_strmemdup(str + mark, i - mark));
+		ptr_array_append(buf, wget_strmemdup(str + mark, i - mark));
 	}
 }
 
-//Private members of the plugin
+// Private members of the plugin
 typedef struct {
 	plugin_t parent;
-	//Finalizer function, to be called when wget2 exits
+	// Finalizer function, to be called when wget2 exits
 	wget_plugin_finalizer_t finalizer;
-	//The plugin's option processor
+	// The plugin's option processor
 	wget_plugin_argp_t argp;
-	//Buffer to store plugin name
+	// Buffer to store plugin name
 	char name_buf[];
 } plugin_priv_t;
 
 static int initialized = 0;
-//Plugin search paths
+// Plugin search paths
 static wget_buffer_t search_paths[1];
-//List of loaded plugins
+// List of loaded plugins
 static wget_buffer_t plugin_list[1];
-//Index of plugins by plugin name
+// Index of plugins by plugin name
 wget_stringmap_t *plugin_name_index;
-//Whether any of the previous options forwarded was 'help'
+// Whether any of the previous options forwarded was 'help'
 int plugin_help_forwarded;
 
 
-//Sets a list of directories to search for plugins, separated by
-//_separator_.
+// Sets a list of directories to search for plugins, separated by
+// _separator_.
 void plugin_db_add_search_paths(const char *paths, char separator)
 {
 	split_string(paths, separator, search_paths);
 }
 
-//Clears list of directories to search for plugins
+// Clears list of directories to search for plugins
 void plugin_db_clear_search_paths(void)
 {
 	size_t i;
@@ -110,8 +108,8 @@ void plugin_db_clear_search_paths(void)
 	wget_buffer_memset(search_paths, 0, 0);
 }
 
-//Searches for a given plugin by name.
-//The name does not need to be null-terminated.
+// Searches for a given plugin by name.
+// The name does not need to be null-terminated.
 static plugin_t *_search_plugin(const char *name, size_t name_len)
 {
 	char buf[name_len + 1];
@@ -120,7 +118,7 @@ static plugin_t *_search_plugin(const char *name, size_t name_len)
 	return (plugin_t *) wget_stringmap_get(plugin_name_index, buf);
 }
 
-//vtable
+// vtable
 static void impl_register_finalizer
 	(wget_plugin_t *p_plugin, wget_plugin_finalizer_t fn)
 {
@@ -156,9 +154,8 @@ static void plugin_free(plugin_t *plugin)
 	wget_free(plugin);
 }
 
-//Loads a plugin located at given path and assign it a name
-static plugin_t *_load_plugin
-	(const char *name, const char *path, dl_error_t *e)
+// Loads a plugin located at given path and assign it a name
+static plugin_t *_load_plugin(const char *name, const char *path, dl_error_t *e)
 {
 	size_t name_len;
 	dl_file_t *dm;
@@ -172,22 +169,22 @@ static plugin_t *_load_plugin
 	if (! dm)
 		return NULL;
 
-	//Create plugin object
+	// Create plugin object
 	plugin = wget_malloc(sizeof(plugin_priv_t) + name_len + 1);
 
-	//Initialize private members
+	// Initialize private members
 	priv = (plugin_priv_t *) plugin;
 	priv->finalizer = NULL;
 	priv->argp = NULL;
 	strcpy(priv->name_buf, name);
 
-	//Initialize public members
+	// Initialize public members
 	plugin->parent.plugin_data = NULL;
 	plugin->parent.vtable = &vtable;
 	plugin->name = priv->name_buf;
 	plugin->dm = dm;
 
-	//Call initializer
+	// Call initializer
 	*((void **)(&init_fn)) = dl_file_lookup(dm, init_fn_name, e);
 	if (! init_fn) {
 		plugin_free(plugin);
@@ -199,17 +196,17 @@ static plugin_t *_load_plugin
 		return NULL;
 	}
 
-	//Add to plugin list
+	// Add to plugin list
 	ptr_array_append(plugin_list, (void *) plugin);
 
-	//Add to map
+	// Add to map
 	wget_stringmap_put_noalloc(plugin_name_index, plugin->name, plugin);
 
 	return plugin;
 }
 
-//Loads a plugin using its path. On failure it sets error and
-//returns NULL.
+// Loads a plugin using its path. On failure it sets error and
+// returns NULL.
 plugin_t *plugin_db_load_from_path(const char *path, dl_error_t *e)
 {
 	char *name = dl_get_name_from_path(path, 0);
@@ -218,11 +215,11 @@ plugin_t *plugin_db_load_from_path(const char *path, dl_error_t *e)
 	return plugin;
 }
 
-//Loads a plugin using its name. On failure it sets error and
-//returns NULL.
+// Loads a plugin using its name. On failure it sets error and
+// returns NULL.
 plugin_t *plugin_db_load_from_name(const char *name, dl_error_t *e)
 {
-	//Search where the plugin is
+	// Search where the plugin is
 	char **dirs = (char **) search_paths->data;
 	size_t n_dirs = ptr_array_size(search_paths);
 	plugin_t *plugin;
@@ -235,14 +232,14 @@ plugin_t *plugin_db_load_from_name(const char *name, dl_error_t *e)
 		return NULL;
 	}
 
-	//Delegate
+	// Delegate
 	plugin = _load_plugin(name, filename, e);
 	wget_free(filename);
 	return plugin;
 }
 
-//Loads all plugins from environment variables. On any errors it
-//logs them using wget_error_printf().
+// Loads all plugins from environment variables. On any errors it
+// logs them using wget_error_printf().
 void plugin_db_load_from_envvar(void)
 {
 	dl_error_t e[1];
@@ -254,7 +251,7 @@ void plugin_db_load_from_envvar(void)
 	char sep = ':';
 #endif
 
-	//Fetch from environment variable
+	// Fetch from environment variable
 	str = getenv(plugin_list_envvar);
 
 	if (str) {
@@ -264,13 +261,13 @@ void plugin_db_load_from_envvar(void)
 
 		dl_error_init(e);
 
-		//Split the value
+		// Split the value
 		wget_buffer_init(buf, NULL, 0);
 		split_string(str, sep, buf);
 		strings = (char **) buf->data;
 		n_strings = ptr_array_size(buf);
 
-		//Load each plugin
+		// Load each plugin
 		for (i = 0; i < n_strings; i++) {
 			int local = 0;
 			if (strchr(strings[i], '/'))
@@ -297,7 +294,7 @@ void plugin_db_load_from_envvar(void)
 	}
 }
 
-//Creates a list of all plugins found in plugin search paths.
+// Creates a list of all plugins found in plugin search paths.
 void plugin_db_list(char ***names_out, size_t *n_names_out)
 {
 	char **paths = (char **) search_paths->data;
@@ -306,7 +303,7 @@ void plugin_db_list(char ***names_out, size_t *n_names_out)
 	dl_list(paths, n_paths, names_out, n_names_out);
 }
 
-//Forwards a command line option to appropriate plugin.
+// Forwards a command line option to appropriate plugin.
 int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 {
 	const char *predicate;
@@ -316,7 +313,7 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 	size_t i;
 	int op_res;
 
-	//Get the plugin name
+	// Get the plugin name
 	for (i = 0; plugin_option[i] && plugin_option[i] != '.'; i++)
 		;
 	if (i == 0) {
@@ -332,7 +329,7 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 	plugin_name_len = i;
 	predicate = plugin_option + plugin_name_len + 1;
 
-	//Search for plugin
+	// Search for plugin
 	plugin = _search_plugin(plugin_option, plugin_name_len);
 	if (! plugin) {
 		char plugin_name[plugin_name_len + 1];
@@ -350,7 +347,7 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 		return -1;
 	}
 
-	//Separate option from value
+	// Separate option from value
 	for (i = 0; predicate[i] && predicate[i] != '='; i++)
 		;
 	if (i == 0) {
@@ -391,7 +388,7 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 	return 0;
 }
 
-//Shows help from all loaded plugins
+// Shows help from all loaded plugins
 void plugin_db_show_help(void)
 {
 	plugin_t **plugins = (plugin_t **) plugin_list->data;
@@ -408,13 +405,13 @@ void plugin_db_show_help(void)
 	plugin_help_forwarded = 1;
 }
 
-//Returns 1 if any of the previous options forwarded was 'help'.
+// Returns 1 if any of the previous options forwarded was 'help'.
 int plugin_db_help_forwarded(void)
 {
 	return plugin_help_forwarded;
 }
 
-//Initializes the plugin framework
+// Initializes the plugin framework
 void plugin_db_init(void)
 {
 	if (! initialized) {
@@ -429,7 +426,7 @@ void plugin_db_init(void)
 	}
 }
 
-//Sends 'finalize' signal to all plugins and unloads all plugins
+// Sends 'finalize' signal to all plugins and unloads all plugins
 void plugin_db_finalize(int exitcode)
 {
 	size_t i;
