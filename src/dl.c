@@ -319,6 +319,7 @@ char *dl_search(const char *name, char **dirs, size_t n_dirs)
 						dl_patterns[j].prefix, name, dl_patterns[j].suffix);
 				if (is_regular_file(filename))
 					return filename;
+				wget_free(filename);
 			}
 		} else {
 			for (j = 0; dl_patterns[j].prefix; j++) {
@@ -326,6 +327,7 @@ char *dl_search(const char *name, char **dirs, size_t n_dirs)
 						dl_patterns[j].prefix, name, dl_patterns[j].suffix);
 				if (is_regular_file(filename))
 					return filename;
+				wget_free(filename);
 			}
 		}
 	}
