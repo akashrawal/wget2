@@ -54,9 +54,9 @@ const char *wget_plugin_get_name(wget_plugin_t *plugin)
 
 /**
  * Registers a function to be called when wget exits.
-* \param[in] plugin The plugin handle
-* \param[in] fn A function pointer to be called
-*/
+ * \param[in] plugin The plugin handle
+ * \param[in] fn A function pointer to be called
+ */
 void wget_plugin_register_finalizer(wget_plugin_t *plugin, wget_plugin_finalizer_t fn)
 {
 	(* plugin->vtable->register_finalizer)(plugin, fn);
