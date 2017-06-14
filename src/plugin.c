@@ -211,7 +211,7 @@ plugin_t *plugin_db_load_from_path(const char *path, dl_error_t *e)
 {
 	char *name = dl_get_name_from_path(path, 0);
 	plugin_t *plugin = _load_plugin(name, path, e);
-	free(name);
+	wget_free(name);
 	return plugin;
 }
 
