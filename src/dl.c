@@ -317,13 +317,17 @@ char *dl_get_name_from_path(const char *path, int strict)
 		return wget_strmemdup(path + start, len);
 }
 
-char *dl_search1(const char *name, char *dir)
+/* Searches for an object file with a given name in the given
+ * directory. If found it returns the filename, else returns NULL.
+ * Free the returned string with wget_free().
+ */
+static char *_search1(const char *name, char *dir)
 {
 	int i, j;
 	for (i = 0; dl_prefixes[i]; i++) {
 		for (j = 0; dl_suffixes[j]; j++) {
 			char *filename;
-			if (dir && *dir) {
+			if (dir && *dir && *dir != '/') {
 				filename = wget_aprintf("%s/%s%s%s", dir,
 					 dl_prefixes[i], name, dl_suffixes[j]);
 			} else {
@@ -343,7 +347,7 @@ char *dl_search(const char *name, char **dirs, size_t n_dirs)
 	size_t i;
 
 	for (i = 0; i < n_dirs; i++) {
-		char *filename = dl_search1(name, dirs[i]);
+		char *filename = _search1(name, dirs[i]);
 		if (filename)
 			return filename;
 	}
@@ -351,78 +355,49 @@ char *dl_search(const char *name, char **dirs, size_t n_dirs)
 	return NULL;
 }
 
-static int list_internal(const char *dir, wget_buffer_t *buf)
-{
-	DIR *dirp;
-	struct dirent *ent;
-
-	dirp = opendir(dir);
-	if (!dirp)
-		return -1;
-
-	while((ent = readdir(dirp)) != NULL) {
-		char *fname;
-		char *name;
-
-		fname = ent->d_name;
-
-		//Ignore entries that don't match the pattern
-		name = dl_get_name_from_path(fname, 1);
-		if (! name)
-			continue;
-
-		//Ignore entries that are not regular files
-		{
-			char *sfname = wget_aprintf("%s/%s", dir, fname);
-			int x = is_regular_file(sfname);
-			wget_free(sfname);
-			if (!x) {
-				wget_free(name);
-				continue;
-			}
-		}
-
-		//Add to the list
-		wget_buffer_memcat(buf, &name, sizeof(void *));
-	}
-
-	closedir(dirp);
-
-	return 0;
-}
-
-int dl_list1(const char *dir, char ***names_out, size_t *n_names_out)
-{
-	wget_buffer_t buf[1];
-	int status;
-
-	wget_buffer_init(buf, NULL, 0);
-
-	status = list_internal(dir, buf);
-	if (status == 0) {
-		*n_names_out = buf->length / sizeof(void *);
-		if (buf->length)
-			*names_out = (char **) wget_memdup
-				(buf->data, buf->length);
-		else
-			*names_out = NULL;
-	}
-
-	wget_buffer_deinit(buf);
-
-	return status;
-}
-
-void dl_list(char **dirs, size_t n_dirs,
-		char ***names_out, size_t *n_names_out)
+void dl_list(char **dirs, size_t n_dirs, char ***names_out, size_t *n_names_out)
 {
 	wget_buffer_t buf[1];
 	size_t i;
 
 	wget_buffer_init(buf, NULL, 0);
 
-	for (i = 0; i < n_dirs; i++)
-		list_internal(dirs[i], buf);
+	for (i = 0; i < n_dirs; i++) {
+		DIR *dirp;
+		struct dirent *ent;
+
+		dirp = opendir(dirs[i]);
+		if (!dirp)
+			continue;
+
+		while((ent = readdir(dirp)) != NULL) {
+			char *fname;
+			char *name;
+
+			fname = ent->d_name;
+
+			//Ignore entries that don't match the pattern
+			name = dl_get_name_from_path(fname, 1);
+			if (! name)
+				continue;
+
+			//Ignore entries that are not regular files
+			{
+				char *sfname = wget_aprintf("%s/%s", dirs[i], fname);
+				int x = is_regular_file(sfname);
+				wget_free(sfname);
+				if (!x) {
+					wget_free(name);
+					continue;
+				}
+			}
+
+			//Add to the list
+			wget_buffer_memcat(buf, &name, sizeof(void *));
+		}
+
+		closedir(dirp);
+	}
 
 	*n_names_out = buf->length / sizeof(void *);
 	if (buf->length)

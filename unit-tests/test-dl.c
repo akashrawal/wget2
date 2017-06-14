@@ -176,12 +176,14 @@ static void test_fn_check(void *fn, const char *expected)
 	}
 }
 
-//Test whether dl_list1() works
+//Test whether dl_list() works
 static void test_dl_list(void)
 {
 	char **names;
 	size_t names_len;
 	int fail = 0;
+	char dir[] = OBJECT_DIR;
+	char *dirs[] = {dir};
 
 	remove_object_dir();
 	libassert(mkdir(OBJECT_DIR, 0755) == 0);
@@ -199,7 +201,7 @@ static void test_dl_list(void)
 	libassert(mkdir(OBJECT_DIR "/libactuallyadir.dylib", 0755) == 0);
 	libassert(mkdir(OBJECT_DIR "/libactuallyadir.bundle", 0755) == 0);
 
-	libassert(dl_list1(OBJECT_DIR, &names, &names_len) == 0);
+	dl_list(dirs, 1, &names, &names_len);
 
 	if (names_len != 2) {
 		fail = 1;
