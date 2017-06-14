@@ -231,16 +231,19 @@ void dl_file_close(dl_file_t *dm)
 
 #endif
 
+typedef struct {
+	const char *prefix;
+	const char *suffix;
+} object_pattern_t;
 #if defined _WIN32
-static const char *dl_prefixes[] = {"lib", "", NULL};
-static const char *dl_suffixes[] = {".dll", NULL};
+#define PATTERNS {"lib", ".dll"}, {"", ".dll"}
 #elif defined __APPLE__
-static const char *dl_prefixes[] = {"lib", NULL};
-static const char *dl_suffixes[] = {".so", ".bundle", ".dylib", NULL};
+#define PATTERNS {"lib", ".so"}, {"lib", ".bundle"}, {"lib", ".dylib"}
 #else
-static const char *dl_prefixes[] = {"lib", NULL};
-static const char *dl_suffixes[] = {".so", NULL};
+#define PATTERNS {"lib", ".so"}
 #endif
+static const object_pattern_t dl_patterns[] = {PATTERNS, {NULL, NULL}};
+#undef PATTERNS
 
 //Matches the given path with the patterns of a loadable object file
 //and returns a range to use as a name
@@ -248,7 +251,6 @@ static int dl_match(const char *path, size_t *start_out, size_t *len_out)
 {
 	size_t i, mark;
 	size_t start, len;
-	int match = 1;
 
 	//Strip everything but the filename
 	mark = 0;
@@ -263,36 +265,25 @@ static int dl_match(const char *path, size_t *start_out, size_t *len_out)
 	start = mark;
 	len = i - start;
 
-	//Match for and remove the suffix
-	for (i = 0; dl_suffixes[i]; i++) {
-		size_t l = strlen(dl_suffixes[i]);
-		if (l >= len)
+	//Match for the pattern and extract the name
+	for (i = 0; dl_patterns[i].prefix; i++) {
+		const char *p = dl_patterns[i].prefix;
+		const char *s = dl_patterns[i].suffix;
+		size_t pl = strlen(p);
+		size_t sl = strlen(s);
+		if (pl + sl >= len)
 			continue;
-		if (memcmp(path + start + len - l, dl_suffixes[i], l) == 0) {
-			len -= l;
+		if (memcmp(path + start + len - sl, s, sl) == 0
+				&& memcmp(path + start, p, pl) == 0) {
+			start += pl;
+			len -= (pl + sl);
 			break;
 		}
 	}
-	if (! dl_suffixes[i])
-		match = 0;
-
-	//Match for and remove the prefix
-	for (i = 0; dl_prefixes[i]; i++) {
-		size_t l = strlen(dl_prefixes[i]);
-		if (l >= len)
-			continue;
-		if (memcmp(path + start, dl_prefixes[i], l) == 0) {
-			start += l;
-			len -= l;
-			break;
-		}
-	}
-	if (! dl_prefixes[i])
-		match = 0;
 
 	*start_out = start;
 	*len_out = len;
-	return match;
+	return dl_patterns[i].prefix ? 1 : 0;
 }
 
 static int is_regular_file(const char *filename)
@@ -317,39 +308,26 @@ char *dl_get_name_from_path(const char *path, int strict)
 		return wget_strmemdup(path + start, len);
 }
 
-/* Searches for an object file with a given name in the given
- * directory. If found it returns the filename, else returns NULL.
- * Free the returned string with wget_free().
- */
-static char *_search1(const char *name, char *dir)
-{
-	int i, j;
-	for (i = 0; dl_prefixes[i]; i++) {
-		for (j = 0; dl_suffixes[j]; j++) {
-			char *filename;
-			if (dir && *dir && *dir != '/') {
-				filename = wget_aprintf("%s/%s%s%s", dir,
-					 dl_prefixes[i], name, dl_suffixes[j]);
-			} else {
-				filename = wget_aprintf("%s%s%s",
-					 dl_prefixes[i], name, dl_suffixes[j]);
-			}
-			if (is_regular_file(filename))
-				return filename;
-			wget_free(filename);
-		}
-	}
-	return NULL;
-}
-
 char *dl_search(const char *name, char **dirs, size_t n_dirs)
 {
-	size_t i;
+	size_t i, j;
 
 	for (i = 0; i < n_dirs; i++) {
-		char *filename = _search1(name, dirs[i]);
-		if (filename)
-			return filename;
+		if (dirs[i] && *dirs[i]) {
+			for (j = 0; dl_patterns[j].prefix; j++) {
+				char *filename = wget_aprintf("%s/%s%s%s", dirs[i],
+						dl_patterns[j].prefix, name, dl_patterns[j].suffix);
+				if (is_regular_file(filename))
+					return filename;
+			}
+		} else {
+			for (j = 0; dl_patterns[j].prefix; j++) {
+				char *filename = wget_aprintf("%s%s%s",
+						dl_patterns[j].prefix, name, dl_patterns[j].suffix);
+				if (is_regular_file(filename))
+					return filename;
+			}
+		}
 	}
 
 	return NULL;
