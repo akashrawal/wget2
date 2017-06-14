@@ -1971,9 +1971,9 @@ typedef struct
 
 /**
  * \ingroup libwget-plugin
- * 
+ *
  * Prototype for the initializer function.
- * 
+ *
  * \param[in] plugin The plugin handle
  * \return Should return 0 if initialization succeded,
  *         or any other value to indicate failure.
@@ -1987,7 +1987,7 @@ typedef int
  * \ingroup libwget-plugin
  *
  * Prototype of the finalizer function.
- * 
+ *
  * \param[in] plugin The plugin handle
  * \param[in] exit_status The exit status wget will exit with
  */
@@ -2007,7 +2007,7 @@ wget_plugin_register_finalizer
  * \ingroup libwget-plugin
  * Prototype for the function that will accept forwarded command line
  * arguments.
- * 
+ *
  * \param[in] plugin The plugin handle
  * \param[in] option Option name. If the option is "help",
  *                   a help message must be printed to stdout.
