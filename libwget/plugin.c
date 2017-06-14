@@ -25,6 +25,7 @@
 
 #include <wget.h>
 #include "private.h"
+#include "plugin.h"
 
 /**
  * \file
@@ -46,7 +47,7 @@
  */
 const char *wget_plugin_get_name(wget_plugin_t *plugin)
 {
-	return (* plugin->vtable->get_name)(plugin);
+	return (* WGET_PLUGIN_VTABLE(plugin)->get_name)(plugin);
 }
 
 /**
@@ -56,7 +57,7 @@ const char *wget_plugin_get_name(wget_plugin_t *plugin)
  */
 void wget_plugin_register_finalizer(wget_plugin_t *plugin, wget_plugin_finalizer_t fn)
 {
-	(* plugin->vtable->register_finalizer)(plugin, fn);
+	(* WGET_PLUGIN_VTABLE(plugin)->register_finalizer)(plugin, fn);
 }
 
 /**
@@ -71,7 +72,7 @@ void wget_plugin_register_finalizer(wget_plugin_t *plugin, wget_plugin_finalizer
  */
 void wget_plugin_register_argp(wget_plugin_t *plugin, wget_plugin_argp_t fn)
 {
-	(* plugin->vtable->register_argp)(plugin, fn);
+	(* WGET_PLUGIN_VTABLE(plugin)->register_argp)(plugin, fn);
 }
 
 /** @} */

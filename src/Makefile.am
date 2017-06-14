@@ -2,7 +2,7 @@ DEFS = @DEFS@ -DSYSCONFDIR=\"$(sysconfdir)/@PACKAGE@\" -DLOCALEDIR=\"$(localedir
 
 LDADD = $(LIBOBJS) ../lib/libgnu.a
 AM_CFLAGS = $(WERROR_CFLAGS) $(WARN_CFLAGS)
-AM_CPPFLAGS = -I$(top_srcdir)/include/wget -I$(srcdir) -I$(top_builddir)/lib -I$(top_srcdir)/lib \
+AM_CPPFLAGS = -I$(top_srcdir)/include/wget -I$(srcdir) -I$(top_builddir)/lib -I$(top_srcdir)/lib -I$(top_srcdir)\
  -DWGETVER_FILE=\"$(top_builddir)/include/wget/wgetver.h\" \
  -DWGET_PLUGIN_DIR=\"$(libdir)/wget2/plugins\"
 

@@ -148,8 +148,8 @@ static plugin_t *_load_plugin(const char *name, const char *path, dl_error_t *e)
 	strcpy(priv->name_buf, name);
 
 	// Initialize public members
-	plugin->parent.plugin_data = NULL;
-	plugin->parent.vtable = &vtable;
+	((wget_plugin_t *) plugin)->plugin_data = NULL;
+	WGET_PLUGIN_VTABLE(plugin) = &vtable;
 	plugin->name = priv->name_buf;
 	plugin->dm = dm;
 

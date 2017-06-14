@@ -2007,22 +2007,17 @@ WGETAPI void
 #	define WGET_EXPORT
 #endif
 
-struct wget_plugin_vtable;
-
 /**
  * \ingroup libwget-plugin
  *
  * A handle used to identify the plugin.
  *
- * Only two members shown here are public, and only plugin_data is writable.
+ * Only one member shown here is public and writable.
  */
 typedef struct
 {
 	/// Plugin specific data. Plugins are free to assign any value to this.
 	void *plugin_data;
-
-	/// Pointer to the vtable. Used by wget to implement functions.
-	struct wget_plugin_vtable *vtable;
 } wget_plugin_t;
 
 /**
@@ -2078,12 +2073,6 @@ wget_plugin_register_argp(wget_plugin_t *plugin, wget_plugin_argp_t fn);
  *
  * vtable for implementing plugin API in wget
  */
-struct wget_plugin_vtable
-{
-	const char * (* get_name)(wget_plugin_t *);
-	void (* register_finalizer)(wget_plugin_t *, wget_plugin_finalizer_t);
-	void (* register_argp)(wget_plugin_t *, wget_plugin_argp_t);
-};
 
 WGET_END_DECLS
 
