@@ -47,20 +47,14 @@ static inline void ptr_array_append(wget_buffer_t *buf, void *ent)
 // Splits string using the given separator and appends the array to buf.
 static void split_string(const char *str, char separator, wget_buffer_t *buf)
 {
-	int i, mark;
+	const char *ptr, *pmark;
 
-	mark = 0;
-	for (i = 0; str[i]; i++) {
-		if (str[i] == separator) {
-			if (i > mark) {
-				ptr_array_append(buf, wget_strmemdup(str + mark, i - mark));
-			}
-			mark = i + 1;
-		}
+	for (pmark = str; *(ptr = strchrnul(pmark, separator)); pmark = ptr + 1) {
+		if (ptr > pmark)
+			ptr_array_append(buf, wget_strmemdup(pmark, ptr - pmark));
 	}
-	if (i > mark) {
-		ptr_array_append(buf, wget_strmemdup(str + mark, i - mark));
-	}
+	if (*pmark)
+		ptr_array_append(buf, wget_strdup(pmark));
 }
 
 // Private members of the plugin
