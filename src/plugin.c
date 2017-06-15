@@ -108,16 +108,6 @@ void plugin_db_clear_search_paths(void)
 	wget_buffer_memset(search_paths, 0, 0);
 }
 
-// Searches for a given plugin by name.
-// The name does not need to be null-terminated.
-static plugin_t *_search_plugin(const char *name, size_t name_len)
-{
-	char buf[name_len + 1];
-	memcpy(buf, name, name_len);
-	buf[name_len] = 0;
-	return (plugin_t *) wget_stringmap_get(plugin_name_index, buf);
-}
-
 // vtable
 static void impl_register_finalizer
 	(wget_plugin_t *p_plugin, wget_plugin_finalizer_t fn)
@@ -304,78 +294,82 @@ void plugin_db_list(char ***names_out, size_t *n_names_out)
 // Forwards a command line option to appropriate plugin.
 int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 {
-	const char *predicate;
-	size_t plugin_name_len;
+	char *plugin_option_copy;
+	char *plugin_name, *option, *value;
+	char *ptr;
 	plugin_t *plugin;
 	plugin_priv_t *priv;
-	size_t i;
 	int op_res;
 
-	// Get the plugin name
-	for (i = 0; plugin_option[i] && plugin_option[i] != '.'; i++)
-		;
-	if (i == 0) {
-		dl_error_set_printf(e, "'%s': Plugin name is missing.", plugin_option);
-		return -1;
-	}
-	if (! plugin_option[i]) {
+	// Create writable copy of the input
+	plugin_option_copy = wget_strdup(plugin_option);
+
+	// Get plugin name
+	ptr = strchr(plugin_option_copy, '.');
+	if (! ptr) {
 		dl_error_set_printf(e, "'%s': '.' is missing (separates plugin name and option)", plugin_option);
+		wget_free(plugin_option_copy);
 		return -1;
 	}
-	plugin_name_len = i;
-	predicate = plugin_option + plugin_name_len + 1;
+	if (ptr == plugin_option_copy) {
+		dl_error_set_printf(e, "'%s': Plugin name is missing.", plugin_option);
+		wget_free(plugin_option_copy);
+		return -1;
+	}
+	*ptr = 0;
+	plugin_name = plugin_option_copy;
+
+	// Split plugin option and value
+	option = ptr + 1;
+	ptr = strchr(option, '=');
+	if (ptr) {
+		*ptr = 0;
+		value = ptr + 1;
+	} else {
+		value = NULL;
+	}
+	if (*option == 0) {
+		dl_error_set_printf(e, "'%s': An option is required (after '.', and before '=' if present)",
+				plugin_option);
+		wget_free(plugin_option_copy);
+		return -1;
+	}
+
+	// Handle '--help'
+	if (strcmp(option, "help") == 0) {
+		if (value) {
+			dl_error_set_printf(e, "'help' option does not accept arguments\n");
+			wget_free(plugin_option_copy);
+			return -1;
+		}
+		plugin_help_forwarded = 1;
+	}
 
 	// Search for plugin
-	plugin = _search_plugin(plugin_option, plugin_name_len);
+	plugin = (plugin_t *) wget_stringmap_get(plugin_name_index, plugin_name);
 	if (! plugin) {
-		char plugin_name[plugin_name_len + 1];
-		memcpy(plugin_name, plugin_option, plugin_name_len);
-		plugin_name[plugin_name_len] = 0;
 		dl_error_set_printf(e, "Plugin '%s' is not loaded.", plugin_name);
+		wget_free(plugin_option_copy);
 		return -1;
 	}
 	priv = (plugin_priv_t *) plugin;
-
 	if (! priv->argp) {
 		dl_error_set_printf(e, "Plugin '%s' does not accept options.", plugin->name);
+		wget_free(plugin_option_copy);
 		return -1;
 	}
 
-	// Separate option from value
-	for (i = 0; predicate[i] && predicate[i] != '='; i++)
-		;
-	if (i == 0) {
-		dl_error_set_printf(e, "'%s': An option is required (after '.', and before '=' if present)",
-				plugin_option);
-		return -1;
-	}
-	if (predicate[i]) {
-		size_t option_len = i;
-		char option_name[option_len + 1];
-		memcpy(option_name, predicate, option_len);
-		option_name[option_len] = 0;
-
-		if (strcmp(option_name, "help") == 0) {
-			dl_error_set_printf(e, "'help' option does not accept arguments\n");
-			return -1;
-		}
-
-		op_res = (* priv->argp)
-			((wget_plugin_t *) plugin, option_name,
-			 predicate + option_len + 1);
-	} else {
-		op_res = (* priv->argp)
-			((wget_plugin_t *) plugin, predicate, NULL);
-		if (strcmp(predicate, "help") == 0)
-			plugin_help_forwarded = 1;
-	}
+	op_res = (* priv->argp)((wget_plugin_t *) plugin, option, value);
 
 	if (op_res < 0)
 	{
-		dl_error_set_printf(e, "Plugin '%s' did not accept option %s", plugin->name, predicate);
+		dl_error_set_printf(e, "Plugin '%s' did not accept option '%s'",
+				plugin->name, strchrnul(plugin_option, '.'));
+		wget_free(plugin_option_copy);
 		return -1;
 	}
 
+	wget_free(plugin_option_copy);
 	return 0;
 }
 
