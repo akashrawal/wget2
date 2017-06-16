@@ -376,7 +376,7 @@ void plugin_db_init(void)
 	if (! initialized) {
 		search_paths = wget_vector_create(16, -2, NULL);
 		plugin_list = wget_vector_create(16, -2, NULL);
-		wget_vector_set_destructor(plugin_list, NULL);
+		wget_vector_set_destructor(plugin_list, (wget_vector_destructor_t) plugin_deinit);
 		plugin_name_index = wget_stringmap_create(16);
 		wget_stringmap_set_key_destructor(plugin_name_index, NULL);
 		wget_stringmap_set_value_destructor(plugin_name_index, NULL);
@@ -397,7 +397,6 @@ void plugin_db_finalize(int exitcode)
 		plugin_priv_t *priv = (plugin_priv_t *) plugin;
 		if (priv->finalizer)
 			(* priv->finalizer)((wget_plugin_t *) plugin, exitcode);
-		plugin_deinit(plugin);
 	}
 	wget_vector_free(&plugin_list);
 	wget_stringmap_free(&plugin_name_index);
