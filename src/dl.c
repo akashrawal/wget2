@@ -306,14 +306,16 @@ char *dl_get_name_from_path(const char *path, int strict)
 		return wget_strmemdup(path + start, len);
 }
 
-char *dl_search(const char *name, char **dirs, size_t n_dirs)
+char *dl_search(const char *name, const wget_vector_t *dirs)
 {
 	size_t i, j;
+	const size_t n_dirs = wget_vector_size(dirs);
 
 	for (i = 0; i < n_dirs; i++) {
-		if (dirs[i] && *dirs[i]) {
+		const char *dir = wget_vector_get(dirs, i);
+		if (dir && *dir) {
 			for (j = 0; dl_patterns[j].prefix; j++) {
-				char *filename = wget_aprintf("%s/%s%s%s", dirs[i],
+				char *filename = wget_aprintf("%s/%s%s%s", dir,
 						dl_patterns[j].prefix, name, dl_patterns[j].suffix);
 
 				if (is_regular_file(filename))
@@ -337,18 +339,17 @@ char *dl_search(const char *name, char **dirs, size_t n_dirs)
 	return NULL;
 }
 
-void dl_list(char **dirs, size_t n_dirs, char ***names_out, size_t *n_names_out)
+void dl_list(const wget_vector_t *dirs, wget_vector_t *names_out)
 {
-	wget_buffer_t buf[1];
 	size_t i;
-
-	wget_buffer_init(buf, NULL, 0);
+	const size_t n_dirs = wget_vector_size(dirs);
 
 	for (i = 0; i < n_dirs; i++) {
 		DIR *dirp;
 		struct dirent *ent;
+		const char *dir = wget_vector_get(dirs, i);
 
-		dirp = opendir(dirs[i]);
+		dirp = opendir(dir);
 		if (!dirp)
 			continue;
 
@@ -365,7 +366,7 @@ void dl_list(char **dirs, size_t n_dirs, char ***names_out, size_t *n_names_out)
 
 			// Ignore entries that are not regular files
 			{
-				char *sfname = wget_aprintf("%s/%s", dirs[i], fname);
+				char *sfname = wget_aprintf("%s/%s", dir, fname);
 				int x = is_regular_file(sfname);
 				wget_free(sfname);
 				if (!x) {
@@ -375,17 +376,9 @@ void dl_list(char **dirs, size_t n_dirs, char ***names_out, size_t *n_names_out)
 			}
 
 			// Add to the list
-			wget_buffer_memcat(buf, &name, sizeof(void *));
+			wget_vector_add_noalloc(names_out, name);
 		}
 
 		closedir(dirp);
 	}
-
-	*n_names_out = buf->length / sizeof(void *);
-	if (buf->length)
-		*names_out = (char **) wget_memdup(buf->data, buf->length);
-	else
-		*names_out = NULL;
-
-	wget_buffer_deinit(buf);
 }

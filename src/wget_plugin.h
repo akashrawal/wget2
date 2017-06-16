@@ -58,7 +58,7 @@ plugin_t *plugin_db_load_from_name(const char *name, dl_error_t *e);
 void plugin_db_load_from_envvar(void);
 
 // Creates a list of all plugins found in plugin search paths.
-void plugin_db_list(char ***names_out, size_t *n_names_out);
+void plugin_db_list(wget_vector_t *names_out);
 
 // Forwards a command line option to appropriate plugin.
 // On errors, it returns -1 and sets error. Otherwise it returns 0.

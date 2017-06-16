@@ -681,18 +681,21 @@ static int parse_plugin_option
 static int list_plugins(G_GNUC_WGET_UNUSED option_t opt,
 		G_GNUC_WGET_UNUSED const char *val)
 {
-	char **names = NULL;
-	size_t n_names = 0, i;
+	wget_vector_t *v;
+	size_t n_names, i;
+	const char *name;
 
 	if (! plugin_loading_enabled)
 		return 0;
 
-	plugin_db_list(&names, &n_names);
+	v = wget_vector_create(16, -2, NULL);
+	plugin_db_list(v);
+	n_names = wget_vector_size(v);
 	for (i = 0; i < n_names; i++) {
-		printf("%s\n", names[i]);
-		wget_free(names[i]);
+		name = (const char *) wget_vector_get(v, i);
+		printf("%s\n", name);
 	}
-	wget_xfree(names);
+	wget_vector_free(&v);
 
 	exit(EXIT_SUCCESS);
 	return 0;

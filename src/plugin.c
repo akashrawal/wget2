@@ -34,27 +34,17 @@
 static const char *init_fn_name = "wget_plugin_initializer";
 static const char *plugin_list_envvar = "WGET2_PLUGINS";
 
-// Pointer array manipulation functions on wget_buffer_t
-static inline size_t ptr_array_size(wget_buffer_t *buf)
-{
-	return buf->length / sizeof(void *);
-}
-static inline void ptr_array_append(wget_buffer_t *buf, void *ent)
-{
-	wget_buffer_memcat(buf, (void *) &ent, sizeof(void *));
-}
-
-// Splits string using the given separator and appends the array to buf.
-static void split_string(const char *str, char separator, wget_buffer_t *buf)
+// Splits string using the given separator and appends the array to vector.
+static void split_string(const char *str, char separator, wget_vector_t *v)
 {
 	const char *ptr, *pmark;
 
 	for (pmark = str; *(ptr = strchrnul(pmark, separator)); pmark = ptr + 1) {
 		if (ptr > pmark)
-			ptr_array_append(buf, wget_strmemdup(pmark, ptr - pmark));
+			wget_vector_add_noalloc(v, wget_strmemdup(pmark, ptr - pmark));
 	}
 	if (*pmark)
-		ptr_array_append(buf, wget_strdup(pmark));
+		wget_vector_add_str(v, pmark);
 }
 
 // Private members of the plugin
@@ -70,14 +60,13 @@ typedef struct {
 
 static int initialized = 0;
 // Plugin search paths
-static wget_buffer_t search_paths[1];
+static wget_vector_t *search_paths;
 // List of loaded plugins
-static wget_buffer_t plugin_list[1];
+static wget_vector_t *plugin_list;
 // Index of plugins by plugin name
 wget_stringmap_t *plugin_name_index;
 // Whether any of the previous options forwarded was 'help'
 int plugin_help_forwarded;
-
 
 // Sets a list of directories to search for plugins, separated by
 // _separator_.
@@ -89,17 +78,7 @@ void plugin_db_add_search_paths(const char *paths, char separator)
 // Clears list of directories to search for plugins
 void plugin_db_clear_search_paths(void)
 {
-	size_t i;
-	char **paths;
-	size_t paths_len;
-
-	paths = (char **) search_paths->data;
-	paths_len = ptr_array_size(search_paths);
-
-	for (i = 0; i < paths_len; i++)
-		wget_free(paths[i]);
-
-	wget_buffer_memset(search_paths, 0, 0);
+	wget_vector_clear(search_paths);
 }
 
 // vtable
@@ -132,9 +111,16 @@ static struct wget_plugin_vtable vtable = {
 	.register_argp = impl_register_argp
 };
 
-static void plugin_free(plugin_t *plugin)
+// Frees all resources held by a plugin, except for the memory for the structure itself (for wget_vector_t)
+static void plugin_deinit(plugin_t *plugin)
 {
 	dl_file_close(plugin->dm);
+}
+
+// Like plugin_deinit but also free's memory
+static void plugin_free(plugin_t *plugin)
+{
+	plugin_deinit(plugin);
 	wget_free(plugin);
 }
 
@@ -149,6 +135,7 @@ static plugin_t *_load_plugin(const char *name, const char *path, dl_error_t *e)
 
 	name_len = strlen(name);
 
+	// Open object file
 	dm = dl_file_open(path, e);
 	if (! dm)
 		return NULL;
@@ -181,7 +168,7 @@ static plugin_t *_load_plugin(const char *name, const char *path, dl_error_t *e)
 	}
 
 	// Add to plugin list
-	ptr_array_append(plugin_list, (void *) plugin);
+	wget_vector_add_noalloc(plugin_list, (void *) plugin);
 
 	// Add to map
 	wget_stringmap_put_noalloc(plugin_name_index, plugin->name, plugin);
@@ -204,11 +191,9 @@ plugin_t *plugin_db_load_from_path(const char *path, dl_error_t *e)
 plugin_t *plugin_db_load_from_name(const char *name, dl_error_t *e)
 {
 	// Search where the plugin is
-	char **dirs = (char **) search_paths->data;
-	size_t n_dirs = ptr_array_size(search_paths);
 	plugin_t *plugin;
 
-	char *filename = dl_search(name, dirs, n_dirs);
+	char *filename = dl_search(name, search_paths);
 	if (! filename) {
 		dl_error_set_printf(e, "Plugin '%s' not found in any of the plugin search paths.",
 				name);
@@ -226,7 +211,7 @@ plugin_t *plugin_db_load_from_name(const char *name, dl_error_t *e)
 void plugin_db_load_from_envvar(void)
 {
 	dl_error_t e[1];
-	wget_buffer_t buf[1];
+	wget_vector_t *v;
 	const char *str;
 #ifdef _WIN32
 	char sep = ';';
@@ -238,51 +223,46 @@ void plugin_db_load_from_envvar(void)
 	str = getenv(plugin_list_envvar);
 
 	if (str) {
-		char **strings = NULL;
-		size_t n_strings = 0, i;
+		size_t n_strings, i;
 		plugin_t *plugin;
 
 		dl_error_init(e);
 
 		// Split the value
-		wget_buffer_init(buf, NULL, 0);
-		split_string(str, sep, buf);
-		strings = (char **) buf->data;
-		n_strings = ptr_array_size(buf);
+		v = wget_vector_create(16, -2, NULL);
+		split_string(str, sep, v);
+		n_strings = wget_vector_size(v);
 
 		// Load each plugin
 		for (i = 0; i < n_strings; i++) {
 			int local = 0;
-			if (strchr(strings[i], '/'))
+			str = (const char *) wget_vector_get(v, i);
+			if (strchr(str, '/'))
 				local = 1;
 #ifdef _WIN32
-			if (strchr(strings[i], '\\'))
+			if (strchr(str, '\\'))
 				local = 1;
 #endif
 			if (local)
-				plugin = plugin_db_load_from_path(strings[i], e);
+				plugin = plugin_db_load_from_path(str, e);
 			else
-				plugin = plugin_db_load_from_name(strings[i], e);
+				plugin = plugin_db_load_from_name(str, e);
 
 			if (! plugin) {
-				wget_error_printf("Plugin '%s' failed to load: %s", strings[i], dl_error_get_msg(e));
+				wget_error_printf("Plugin '%s' failed to load: %s", str, dl_error_get_msg(e));
 				dl_error_set(e, NULL);
 			}
 
-			wget_free(strings[i]);
 		}
 
-		wget_buffer_deinit(buf);
+		wget_vector_free(&v);
 	}
 }
 
 // Creates a list of all plugins found in plugin search paths.
-void plugin_db_list(char ***names_out, size_t *n_names_out)
+void plugin_db_list(wget_vector_t *names_out)
 {
-	char **paths = (char **) search_paths->data;
-	size_t n_paths = ptr_array_size(search_paths);
-
-	dl_list(paths, n_paths, names_out, n_names_out);
+	dl_list(search_paths, names_out);
 }
 
 // Forwards a command line option to appropriate plugin.
@@ -370,14 +350,14 @@ int plugin_db_forward_option(const char *plugin_option, dl_error_t *e)
 // Shows help from all loaded plugins
 void plugin_db_show_help(void)
 {
-	plugin_t **plugins = (plugin_t **) plugin_list->data;
-	size_t n_plugins = ptr_array_size(plugin_list);
+	size_t n_plugins = wget_vector_size(plugin_list);
 	size_t i;
 	for (i = 0; i < n_plugins; i++) {
-		plugin_priv_t *priv = (plugin_priv_t *) plugins[i];
+		plugin_t *plugin = (plugin_t *) wget_vector_get(plugin_list, i);
+		plugin_priv_t *priv = (plugin_priv_t *) plugin;
 		if (priv->argp) {
-			printf("Options for %s:\n", plugins[i]->name);
-			(* priv->argp)((wget_plugin_t *) plugins[i], "help", NULL);
+			printf("Options for %s:\n", plugin->name);
+			(* priv->argp)((wget_plugin_t *) plugin, "help", NULL);
 			printf("\n");
 		}
 	}
@@ -394,8 +374,9 @@ int plugin_db_help_forwarded(void)
 void plugin_db_init(void)
 {
 	if (! initialized) {
-		wget_buffer_init(search_paths, NULL, 0);
-		wget_buffer_init(plugin_list, NULL, 0);
+		search_paths = wget_vector_create(16, -2, NULL);
+		plugin_list = wget_vector_create(16, -2, NULL);
+		wget_vector_set_destructor(plugin_list, NULL);
 		plugin_name_index = wget_stringmap_create(16);
 		wget_stringmap_set_key_destructor(plugin_name_index, NULL);
 		wget_stringmap_set_value_destructor(plugin_name_index, NULL);
@@ -408,21 +389,18 @@ void plugin_db_init(void)
 // Sends 'finalize' signal to all plugins and unloads all plugins
 void plugin_db_finalize(int exitcode)
 {
+	size_t n_plugins = wget_vector_size(plugin_list);
 	size_t i;
-	plugin_t **plugins = (plugin_t **) plugin_list->data;
-	size_t n_plugins = ptr_array_size(plugin_list);
 
 	for (i = 0; i < n_plugins; i++) {
-		if (((plugin_priv_t *) plugins[i])->finalizer)
-			(* ((plugin_priv_t *) plugins[i])->finalizer)((wget_plugin_t *) plugins[i], exitcode);
-		plugin_free(plugins[i]);
+		plugin_t *plugin = (plugin_t *) wget_vector_get(plugin_list, i);
+		plugin_priv_t *priv = (plugin_priv_t *) plugin;
+		if (priv->finalizer)
+			(* priv->finalizer)((wget_plugin_t *) plugin, exitcode);
+		plugin_deinit(plugin);
 	}
-	wget_buffer_deinit(plugin_list);
+	wget_vector_free(&plugin_list);
 	wget_stringmap_free(&plugin_name_index);
-	char **paths = (char **) search_paths->data;
-	size_t n_paths = ptr_array_size(search_paths);
-	for (i = 0; i < n_paths; i++)
-		wget_free(paths[i]);
-	wget_buffer_deinit(search_paths);
+	wget_vector_free(&search_paths);
 	initialized = 0;
 }

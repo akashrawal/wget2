@@ -60,22 +60,37 @@ do { \
 #define LOCAL_NAME(x) OBJECT_DIR "/lib" x ".so"
 #endif
 
-static void dump_list(char **list, size_t list_len)
+static int string_vector_check(wget_vector_t *v, size_t correct_len, ...)
 {
 	size_t i;
+	size_t v_len = wget_vector_size(v);
+	va_list arglist;
+	const char *str;
 
-	for (i = 0; i < list_len; i++)
-		printf("  %s\n", list[i]);
+	if (v_len != correct_len)
+		return 0;
+
+	wget_vector_setcmpfunc(v, (wget_vector_compare_t) strcmp);
+	wget_vector_sort(v);
+
+	va_start(arglist, correct_len);
+	for (i = 0; i < v_len; i++) {
+		str = va_arg(arglist, const char *);
+		if (strcmp((const char *) wget_vector_get(v, i), str) != 0)
+			return 0;
+	}
+	va_end(arglist);
+
+	return 1;
 }
 
-static void free_list(char **list, size_t list_len)
+static void string_vector_dump(wget_vector_t *v)
 {
-	size_t i;
+	size_t i, v_len;
 
-	for (i = 0; i < list_len; i++)
-		wget_free(list[i]);
-
-	wget_free(list);
+	v_len = wget_vector_size(v);
+	for (i = 0; i < v_len; i++)
+		printf("  %s\n", (const char *) wget_vector_get(v, i));
 }
 
 static int remove_rpl(const char *filename)
@@ -167,14 +182,12 @@ static void test_fn_check(void *fn, const char *expected)
 		abortmsg("Test function returned %s, expected %s", buf, expected);
 }
 
+
 //Test whether dl_list() works
 static void test_dl_list(void)
 {
-	char **names;
-	size_t names_len;
-	int fail = 0;
-	char dir[] = OBJECT_DIR;
-	char *dirs[] = {dir};
+	wget_vector_t *dirs;
+	wget_vector_t *names;
 
 	remove_object_dir();
 	libassert(mkdir(OBJECT_DIR, 0755) == 0);
@@ -192,29 +205,20 @@ static void test_dl_list(void)
 	libassert(mkdir(OBJECT_DIR "/libactuallyadir.dylib", 0755) == 0);
 	libassert(mkdir(OBJECT_DIR "/libactuallyadir.bundle", 0755) == 0);
 
-	dl_list(dirs, 1, &names, &names_len);
+	dirs = wget_vector_create(2, -2, NULL);
+	names = wget_vector_create(2, -2, NULL);
+	wget_vector_add_str(dirs, OBJECT_DIR);
 
-	if (names_len != 2) {
-		fail = 1;
-	} else {
-		if (strcmp(names[0], "alpha") == 0) {
-			if (strcmp(names[1], "beta") != 0)
-				fail = 1;
-		} else if (strcmp(names[0], "beta") == 0) {
-			if (strcmp(names[1], "alpha") != 0)
-				fail = 1;
-		} else {
-			fail = 1;
-		}
-	}
-	if (fail == 1) {
-		printf("dl_list1() returned incorrect list\n");
+	dl_list(dirs, names);
+	if (! string_vector_check(names, 2, "alpha", "beta")) {
+		printf("dl_list() returned incorrect list\n");
 		printf("List contains\n");
-		dump_list(names, names_len);
+		string_vector_dump(names);
 		abort();
 	}
 
-	free_list(names, names_len);
+	wget_vector_free(&dirs);
+	wget_vector_free(&names);
 }
 
 
