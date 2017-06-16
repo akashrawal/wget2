@@ -47,6 +47,7 @@
 static void _free_path(ROBOTS_PATH *path)
 {
 	xfree(path->path);
+	wget_free(path);
 }
 
 /**

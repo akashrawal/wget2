@@ -45,6 +45,7 @@ static void _free_url(WGET_PARSED_URL *url)
 {
 	xfree(url->url);
 	xfree(url->abs_url);
+	wget_free(url);
 }
 
 // Callback function, called from CSS parser for each @charset found.

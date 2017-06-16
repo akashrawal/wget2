@@ -297,7 +297,7 @@ static int parse_header(option_t opt, const char *val)
 
 	if (val && *val) {
 		char *value, *delim_pos;
-		wget_http_header_param_t _param;
+		wget_http_header_param_t *_param;
 
 		if (!v) {
 			v = *((wget_vector_t **)opt->var) =
@@ -321,13 +321,14 @@ static int parse_header(option_t opt, const char *val)
 			return 0;
 		}
 
-		_param.name = wget_strmemdup(val, delim_pos - val);
-		_param.value = wget_strdup(value);
+		_param = wget_malloc(sizeof(wget_http_header_param_t));
+		_param->name = wget_strmemdup(val, delim_pos - val);
+		_param->value = wget_strdup(value);
 
 		if (wget_vector_find(v, &_param) == -1)
-			wget_vector_add(v, &_param, sizeof(_param));
+			wget_vector_add_noalloc(v, _param);
 		else {
-			wget_http_free_param(&_param);
+			wget_http_free_param(_param);
 		}
 
 	} else if (val && *val == '\0') {
@@ -383,6 +384,12 @@ static void _free_tag(wget_html_tag_t *tag)
 	}
 }
 
+static void _free_tag_all(wget_html_tag_t *tag)
+{
+	_free_tag(tag);
+	wget_free(tag);
+}
+
 static void G_GNUC_WGET_NONNULL_ALL _add_tag(wget_vector_t *v, const char *begin, const char *end)
 {
 	wget_html_tag_t tag;
@@ -429,7 +436,7 @@ static int parse_taglist(option_t opt, const char *val)
 
 		if (!v) {
 			v = *((wget_vector_t **)opt->var) = wget_vector_create(8, -2, (wget_vector_compare_t)_compare_tag);
-			wget_vector_set_destructor(v, (wget_vector_destructor_t)_free_tag);
+			wget_vector_set_destructor(v, (wget_vector_destructor_t)_free_tag_all);
 		}
 
 		for (s = p = val; *p; s = p + 1) {

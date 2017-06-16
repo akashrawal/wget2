@@ -1819,15 +1819,17 @@ static void test_stringmap(void)
 
 	wget_stringmap_free(&m);
 
-	wget_http_challenge_t challenge;
-	wget_http_parse_challenge("Basic realm=\"test realm\"", &challenge);
-	wget_http_free_challenge(&challenge);
+	wget_http_challenge_t *challenge;
+	challenge = wget_malloc(sizeof(wget_http_challenge_t));
+	wget_http_parse_challenge("Basic realm=\"test realm\"", challenge);
+	wget_http_free_challenge(challenge);
 
 	wget_vector_t *challenges;
 	challenges = wget_vector_create(2, 2, NULL);
 	wget_vector_set_destructor(challenges, (wget_vector_destructor_t)wget_http_free_challenge);
-	wget_http_parse_challenge("Basic realm=\"test realm\"", &challenge);
-	wget_vector_add(challenges, &challenge, sizeof(challenge));
+	challenge = wget_malloc(sizeof(wget_http_challenge_t));
+	wget_http_parse_challenge("Basic realm=\"test realm\"", challenge);
+	wget_vector_add_noalloc(challenges, challenge);
 	wget_http_free_challenges(&challenges);
 
 	char *response_text = wget_strdup(

@@ -65,6 +65,7 @@ wget_vector_t *wget_vector_create(int max, int off, wget_vector_compare_t cmp)
 	v->max = max;
 	v->off = off;
 	v->cmp = cmp;
+	v->destructor = (wget_vector_destructor_t) wget_free;
 
 	return v;
 }
@@ -183,7 +184,7 @@ static int _wget_vector_replace(wget_vector_t *v, const void *elem, size_t size,
 	if (v->destructor)
 		v->destructor(v->entry[pos]);
 
-	xfree(v->entry[pos]);
+	v->entry[pos] = NULL;
 
 	return _vec_insert_private(v, elem, size, pos, 1, alloc); // replace existing entry
 }
@@ -227,7 +228,7 @@ static int _vec_remove_private(wget_vector_t *v, int pos, int free_entry)
 		if (v->destructor)
 			v->destructor(v->entry[pos]);
 
-		xfree(v->entry[pos]);
+		v->entry[pos] = NULL;
 	}
 
 	memmove(&v->entry[pos], &v->entry[pos + 1], (v->cur - pos - 1) * sizeof(void *));
@@ -311,11 +312,11 @@ void wget_vector_clear(wget_vector_t *v)
 		if (v->destructor) {
 			for (it = 0; it < v->cur; it++) {
 				v->destructor(v->entry[it]);
-				xfree(v->entry[it]);
+				v->entry[it] = NULL;
 			}
 		} else {
 			for (it = 0; it < v->cur; it++)
-				xfree(v->entry[it]);
+				v->entry[it] = NULL;
 		}
 
 		v->cur = 0;

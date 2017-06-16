@@ -1758,6 +1758,7 @@ static void _free_conversion_entry(_conversion_t *conversion)
 	xfree(conversion->encoding);
 	wget_iri_free(&conversion->base_url);
 	wget_html_free_urls_inline(&conversion->parsed);
+	wget_free(conversion);
 }
 
 static void _remember_for_conversion(const char *filename, wget_iri_t *base_url, int content_type, const char *encoding, WGET_HTML_PARSED_RESULT *parsed)
@@ -2868,7 +2869,8 @@ static wget_http_request_t *http_create_request(wget_iri_t *iri, JOB *job)
 					wget_http_header_param_t *h = wget_vector_get(req->headers, j);
 
 					if (!wget_strcasecmp_ascii(param->name, h->name)) {
-						wget_http_free_param(h);
+						xfree(h->name);
+						xfree(h->value);
 						h->name = wget_strdup(param->name);
 						h->value = wget_strdup(param->value);
 						replaced = 1;

@@ -178,6 +178,7 @@ static int G_GNUC_WGET_PURE _compare_addr(struct ADDR_ENTRY *a1, struct ADDR_ENT
 static void _free_dns(struct ADDR_ENTRY *entry)
 {
 	freeaddrinfo(entry->addrinfo);
+	wget_free(entry);
 }
 
 static struct addrinfo * _wget_dns_cache_add(const char *host, const char *port, struct addrinfo *addrinfo)

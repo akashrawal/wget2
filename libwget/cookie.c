@@ -254,6 +254,12 @@ void wget_cookie_free(wget_cookie_t **cookie)
 	}
 }
 
+static void _cookie_free(wget_cookie_t *cookie)
+{
+	wget_cookie_deinit(cookie);
+	wget_free(cookie);
+}
+
 /*
 int wget_cookie_equals(wget_cookie_t *cookie1, wget_cookie_t *cookie2)
 {
@@ -647,7 +653,7 @@ void wget_cookie_store_cookies(wget_cookie_db_t *cookie_db, wget_vector_t *cooki
 		}
 
 		// shallow free of all 'cookie' entries
-		wget_vector_set_destructor(cookies, NULL);
+		wget_vector_set_destructor(cookies, (wget_vector_destructor_t) wget_free);
 		wget_vector_clear(cookies);
 	}
 }
@@ -737,7 +743,7 @@ wget_cookie_db_t *wget_cookie_db_init(wget_cookie_db_t *cookie_db)
 
 	memset(cookie_db, 0, sizeof(*cookie_db));
 	cookie_db->cookies = wget_vector_create(32, -2, (wget_vector_compare_t)_compare_cookie);
-	wget_vector_set_destructor(cookie_db->cookies, (wget_vector_destructor_t)wget_cookie_deinit);
+	wget_vector_set_destructor(cookie_db->cookies, (wget_vector_destructor_t)_cookie_free);
 	wget_thread_mutex_init(&cookie_db->mutex);
 #ifdef WITH_LIBPSL
 #if ((PSL_VERSION_MAJOR > 0) || (PSL_VERSION_MAJOR == 0 && PSL_VERSION_MINOR >= 16))

@@ -1253,6 +1253,7 @@ int wget_http_free_param(wget_http_header_param_t *param)
 {
 	xfree(param->name);
 	xfree(param->value);
+	wget_free(param);
 	return 0;
 }
 
@@ -1260,6 +1261,7 @@ void wget_http_free_link(wget_http_link_t *link)
 {
 	xfree(link->uri);
 	xfree(link->type);
+	wget_free(link);
 }
 
 void wget_http_free_links(wget_vector_t **links)
@@ -1271,6 +1273,7 @@ void wget_http_free_digest(wget_http_digest_t *digest)
 {
 	xfree(digest->algorithm);
 	xfree(digest->encoded_digest);
+	wget_free(digest);
 }
 
 void wget_http_free_digests(wget_vector_t **digests)
@@ -1282,6 +1285,7 @@ void wget_http_free_challenge(wget_http_challenge_t *challenge)
 {
 	xfree(challenge->auth_scheme);
 	wget_stringmap_free(&challenge->params);
+	wget_free(challenge);
 }
 
 void wget_http_free_challenges(wget_vector_t **challenges)
@@ -2547,6 +2551,12 @@ wget_http_response_t *wget_http_get_response(wget_http_connection_t *conn)
 	return resp;
 }
 
+static void _iri_free_all(wget_iri_t *iri)
+{
+	wget_iri_free_content(iri);
+	wget_free(iri);
+}
+
 static wget_vector_t *_parse_proxies(const char *proxy, const char *encoding)
 {
 	if (!proxy)
@@ -2567,7 +2577,7 @@ static wget_vector_t *_parse_proxies(const char *proxy, const char *encoding)
 			if (iri) {
 				if (!proxies) {
 					proxies = wget_vector_create(8, -2, NULL);
-					wget_vector_set_destructor(proxies, (wget_vector_destructor_t)wget_iri_free_content);
+					wget_vector_set_destructor(proxies, (wget_vector_destructor_t)_iri_free_all);
 				}
 				wget_vector_add_noalloc(proxies, iri);
 			}

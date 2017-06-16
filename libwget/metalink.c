@@ -63,6 +63,7 @@ typedef struct {
 static void _free_mirror(wget_metalink_mirror_t *mirror)
 {
 	wget_iri_free(&mirror->iri);
+	wget_free(mirror);
 }
 
 static void _add_piece(_metalink_context_t *ctx, const char *value)

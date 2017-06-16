@@ -111,6 +111,7 @@ static void _hpkp_pin_free(wget_hpkp_pin_t *pin)
 		xfree(pin->hash_type);
 		xfree(pin->pin);
 		xfree(pin->pin_b64);
+		wget_free(pin);
 	}
 }
 
