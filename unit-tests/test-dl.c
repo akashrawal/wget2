@@ -183,7 +183,7 @@ static void test_fn_check(void *fn, const char *expected)
 }
 
 
-//Test whether dl_list() works
+// Test whether dl_list() works
 static void test_dl_list(void)
 {
 	wget_vector_t *dirs;
@@ -222,29 +222,29 @@ static void test_dl_list(void)
 }
 
 
-//Test whether symbols from dynamically loaded libraries link as expected
+// Test whether symbols from dynamically loaded libraries link as expected
 static void test_linkage(void)
 {
 	dl_file_t *dm_alpha, *dm_beta;
 	void *fn;
 
-	//Create test directory
+	// Create test directory
 	remove_object_dir();
 	libassert(mkdir(OBJECT_DIR, 0755) == 0);
 	copy_file(BUILD_NAME("alpha"), LOCAL_NAME("alpha"));
 	copy_file(BUILD_NAME("beta"), LOCAL_NAME("beta"));
 
-	//Load both libraries
+	// Load both libraries
 	dl_assert(dm_alpha = dl_file_open(LOCAL_NAME("alpha"), e));
 	dl_assert(dm_beta = dl_file_open(LOCAL_NAME("beta"), e));
 
-	//Check whether symbols load
+	// Check whether symbols load
 	dl_assert(fn = dl_file_lookup(dm_alpha, "dl_test_fn_alpha", e));
 	test_fn_check(fn, "alpha");
 	dl_assert(fn = dl_file_lookup(dm_beta, "dl_test_fn_beta", e));
 	test_fn_check(fn, "beta");
 
-	//Check behavior in case of nonexistent symbol
+	// Check behavior in case of nonexistent symbol
 	{
 		dl_error_t e[1];
 
@@ -257,8 +257,8 @@ static void test_linkage(void)
 		dl_error_set(e, NULL);
 	}
 
-	//Check behavior in case of multiple libraries exporting
-	//symbols with same name
+	// Check behavior in case of multiple libraries exporting
+	// symbols with same name
 	dl_assert(fn = dl_file_lookup(dm_alpha, "dl_test_write_param", e));
 	test_fn_check(fn, "alpha");
 	dl_assert(fn = dl_file_lookup(dm_beta, "dl_test_write_param", e));

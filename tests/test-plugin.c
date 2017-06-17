@@ -55,7 +55,7 @@ int main(void)
 		}
 	};
 
-	//Skip when plugin support is not available
+	// Skip when plugin support is not available
 #ifndef PLUGIN_SUPPORT
 	return 77;
 #endif
@@ -63,7 +63,7 @@ int main(void)
 	wget_test_start_server
 		(WGET_TEST_RESPONSE_URLS, &urls, countof(urls), 0);
 
-	//Check whether --plugin= works
+	// Check whether --plugin= works
 	wget_test(
 		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR " --plugin=pluginname",
 		WGET_TEST_REQUEST_URL, "index.html",
@@ -74,7 +74,7 @@ int main(void)
 			{	NULL } },
 		0);
 
-	//Check whether --local-plugin= works
+	// Check whether --local-plugin= works
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginname"),
 		WGET_TEST_REQUEST_URL, "index.html",
@@ -85,7 +85,7 @@ int main(void)
 			{	NULL } },
 		0);
 
-	//Check whether WGET2_PLUGINS works
+	// Check whether WGET2_PLUGINS works
 	setenv_rpl("WGET2_PLUGIN_DIRS", OBJECT_DIR, 1);
 	setenv_rpl("WGET2_PLUGINS", "pluginname", 1);
 	wget_test(
@@ -109,7 +109,7 @@ int main(void)
 		0);
 	unsetenv_rpl("WGET2_PLUGINS");
 
-	//Check that --list-plugins doesn't continue
+	// Check that --list-plugins doesn't continue
 	wget_test(
 		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR " --list-plugins",
 		WGET_TEST_REQUEST_URL, "index.html",
@@ -118,7 +118,7 @@ int main(void)
 			{	NULL } },
 		0);
 
-	//Check behavior for nonexistent plugins
+	// Check behavior for nonexistent plugins
 	wget_test(
 		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR " --plugin=nonexistent",
 		WGET_TEST_REQUEST_URL, "index.html",
@@ -145,7 +145,7 @@ int main(void)
 		0);
 	unsetenv_rpl("WGET2_PLUGINS");
 
-	//Check behavior for nonexistent search directories
+	// Check behavior for nonexistent search directories
 	wget_test(
 		WGET_TEST_OPTIONS, "--plugin-dirs=" OBJECT_DIR "/nonexistent," OBJECT_DIR " --plugin=pluginname",
 		WGET_TEST_REQUEST_URL, "index.html",
@@ -163,7 +163,7 @@ int main(void)
 			{	NULL } },
 		0);
 
-	//Check behavior for plugins that fail
+	// Check behavior for plugins that fail
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginfaulty1"),
 		WGET_TEST_REQUEST_URL, "index.html",
@@ -181,7 +181,7 @@ int main(void)
 			{	NULL } },
 		0);
 
-	//Check whether wget_plugin_register_finalizer works properly
+	// Check whether wget_plugin_register_finalizer works properly
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginexit"),
 		WGET_TEST_REQUEST_URL, "index.html",
@@ -200,7 +200,7 @@ int main(void)
 			{	NULL } },
 		0);
 
-	//Check if option forwarding works for options with no value
+	// Check if option forwarding works for options with no value
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption.y",
 		WGET_TEST_REQUEST_URL, "index.html",
@@ -221,7 +221,7 @@ int main(void)
 			{	NULL } },
 		0);
 
-	//Check if option forwarding works with options with values
+	// Check if option forwarding works with options with values
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption.z= "
 			"--plugin-opt=pluginoption.z=value1 --plugin-opt=pluginoption.gamma=value2",
@@ -233,7 +233,7 @@ int main(void)
 			{	NULL } },
 		0);
 
-	//Check behavior for incorrect format
+	// Check behavior for incorrect format
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=.alpha=value",
 		WGET_TEST_REQUEST_URL, "index.html",
@@ -277,7 +277,7 @@ int main(void)
 			{	NULL } },
 		0);
 
-	//Check behavior for incorrect plugin name
+	// Check behavior for incorrect plugin name
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " "
 			"--plugin-opt=nonexistent.option=value",
@@ -295,7 +295,7 @@ int main(void)
 			{	NULL } },
 		0);
 
-	//Check behavior for incorrect option name/value combination
+	// Check behavior for incorrect option name/value combination
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-opt=pluginoption.y=",
 		WGET_TEST_REQUEST_URL, "index.html",
@@ -318,7 +318,7 @@ int main(void)
 			{	NULL } },
 		0);
 
-	//Check for correct functioning of --help option
+	// Check for correct functioning of --help option
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginoption") " --plugin-help",
 		WGET_TEST_REQUEST_URL, "index.html",
