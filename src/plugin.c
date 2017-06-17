@@ -39,12 +39,10 @@ static void split_string(const char *str, char separator, wget_vector_t *v)
 {
 	const char *ptr, *pmark;
 
-	for (pmark = str; *(ptr = strchrnul(pmark, separator)); pmark = ptr + 1) {
-		if (ptr > pmark)
+	for (pmark = str; *pmark; pmark = ptr + 1) {
+		if ((ptr = strchrnul(pmark, separator)) > pmark)
 			wget_vector_add_noalloc(v, wget_strmemdup(pmark, ptr - pmark));
 	}
-	if (*pmark)
-		wget_vector_add_str(v, pmark);
 }
 
 // Private members of the plugin
