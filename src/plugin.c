@@ -39,7 +39,7 @@ static void split_string(const char *str, char separator, wget_vector_t *v)
 {
 	const char *ptr, *pmark;
 
-	for (pmark = str; *pmark; pmark = ptr + 1) {
+	for (pmark = ptr = str; *ptr; pmark = ptr + 1) {
 		if ((ptr = strchrnul(pmark, separator)) > pmark)
 			wget_vector_add_noalloc(v, wget_strmemdup(pmark, ptr - pmark));
 	}
