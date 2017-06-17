@@ -475,7 +475,7 @@ WGETAPI wget_buffer_t *
 WGETAPI wget_buffer_t *
 	wget_buffer_alloc(size_t size) G_GNUC_WGET_MALLOC G_GNUC_WGET_ALLOC_SIZE(1);
 WGETAPI void
-	wget_buffer_ensure_capacity(wget_buffer_t *buf, size_t size) G_GNUC_WGET_NONNULL((1));
+	wget_buffer_ensure_capacity(wget_buffer_t *buf, size_t size);
 WGETAPI void
 	wget_buffer_deinit(wget_buffer_t *buf);
 WGETAPI void
@@ -485,31 +485,31 @@ WGETAPI void
 WGETAPI void
 	wget_buffer_reset(wget_buffer_t *buf);
 WGETAPI size_t
-	wget_buffer_memcpy(wget_buffer_t *buf, const void *data, size_t length) G_GNUC_WGET_NONNULL((1,2));
+	wget_buffer_memcpy(wget_buffer_t *buf, const void *data, size_t length);
 WGETAPI size_t
-	wget_buffer_memcat(wget_buffer_t *buf, const void *data, size_t length) G_GNUC_WGET_NONNULL((1,2));
+	wget_buffer_memcat(wget_buffer_t *buf, const void *data, size_t length);
 WGETAPI size_t
-	wget_buffer_strcpy(wget_buffer_t *buf, const char *s) G_GNUC_WGET_NONNULL((1,2));
+	wget_buffer_strcpy(wget_buffer_t *buf, const char *s);
 WGETAPI size_t
-	wget_buffer_strcat(wget_buffer_t *buf, const char *s) G_GNUC_WGET_NONNULL((1,2));
+	wget_buffer_strcat(wget_buffer_t *buf, const char *s);
 WGETAPI size_t
-	wget_buffer_bufcpy(wget_buffer_t *buf, wget_buffer_t *src) G_GNUC_WGET_NONNULL((1,2));
+	wget_buffer_bufcpy(wget_buffer_t *buf, wget_buffer_t *src);
 WGETAPI size_t
-	wget_buffer_bufcat(wget_buffer_t *buf, wget_buffer_t *src) G_GNUC_WGET_NONNULL((1,2));
+	wget_buffer_bufcat(wget_buffer_t *buf, wget_buffer_t *src);
 WGETAPI size_t
-	wget_buffer_memset(wget_buffer_t *buf, char c, size_t length) G_GNUC_WGET_NONNULL((1));
+	wget_buffer_memset(wget_buffer_t *buf, char c, size_t length);
 WGETAPI size_t
-	wget_buffer_memset_append(wget_buffer_t *buf, char c, size_t length) G_GNUC_WGET_NONNULL((1));
+	wget_buffer_memset_append(wget_buffer_t *buf, char c, size_t length);
 WGETAPI char *
-	wget_buffer_trim(wget_buffer_t *buf) G_GNUC_WGET_NONNULL((1));
+	wget_buffer_trim(wget_buffer_t *buf);
 WGETAPI size_t
-	wget_buffer_vprintf_append(wget_buffer_t *buf, const char *fmt, va_list args) G_GNUC_WGET_NONNULL((1,2)) G_GNUC_WGET_PRINTF_FORMAT(2,0);
+	wget_buffer_vprintf_append(wget_buffer_t *buf, const char *fmt, va_list args) G_GNUC_WGET_PRINTF_FORMAT(2,0);
 WGETAPI size_t
-	wget_buffer_printf_append(wget_buffer_t *buf, const char *fmt, ...) G_GNUC_WGET_NONNULL((1,2)) G_GNUC_WGET_PRINTF_FORMAT(2,3);
+	wget_buffer_printf_append(wget_buffer_t *buf, const char *fmt, ...) G_GNUC_WGET_PRINTF_FORMAT(2,3);
 WGETAPI size_t
-	wget_buffer_vprintf(wget_buffer_t *buf, const char *fmt, va_list args) G_GNUC_WGET_NONNULL((1,2)) G_GNUC_WGET_PRINTF_FORMAT(2,0);
+	wget_buffer_vprintf(wget_buffer_t *buf, const char *fmt, va_list args) G_GNUC_WGET_PRINTF_FORMAT(2,0);
 WGETAPI size_t
-	wget_buffer_printf(wget_buffer_t *buf, const char *fmt, ...) G_GNUC_WGET_NONNULL((1,2)) G_GNUC_WGET_PRINTF_FORMAT(2,3);
+	wget_buffer_printf(wget_buffer_t *buf, const char *fmt, ...) G_GNUC_WGET_PRINTF_FORMAT(2,3);
 
 /*
  * Printf-style routines
@@ -828,44 +828,101 @@ WGETAPI extern const char * const
 #define WGET_IRI_SCHEME_FTP     (wget_iri_schemes[2])
 #define WGET_IRI_SCHEME_DEFAULT WGET_IRI_SCHEME_HTTP
 
+/**
+ * \ingroup libwget-iri
+ *
+ * @{
+ *
+ * Internal representation of a URI/IRI.
+ */
 typedef struct wget_iri_st {
+	/**
+	 * Pointer to the original URI string, unescaped and converted to UTF-8.
+	 */
 	const char *
-		uri;      // pointer to original URI string, unescaped and converted to UTF-8
+		uri;
 	const char *
 		display;
+	/**
+	 * URI/IRI scheme (`http` or `https`).
+	 */
 	const char *
 		scheme;
+	/**
+	 * Username, if present.
+	 */
 	const char *
 		userinfo;
+	/**
+	 * Password, if present.
+	 */
 	const char *
 		password;
+	/**
+	 * Hostname (or literal IP address). Lowercase and unescaped.
+	 */
 	const char *
-		host; // unescaped, toASCII converted, lowercase host (or IP address) part
+		host;
+	/**
+	 * Explicit port, if present.
+	 */
 	const char *
 		port;
+	/**
+	 * Default port for the scheme. This will be used
+	 * if `port` is omitted.
+	 */
 	const char *
 		resolv_port;
+	/**
+	 * Path, if present. Unescaped.
+	 */
 	const char *
-		path; // unescaped path part or NULL
+		path;
+	/**
+	 * Query part, if present. Unescaped.
+	 */
 	const char *
-		query; // unescaped query part or NULL
+		query;
+	/**
+	 * Fragment part, if present. Unescaped.
+	 */
 	const char *
-		fragment; // unescaped fragment part or NULL
+		fragment;
+	/**
+	 * Connection part. This is not specified by the spec, it's just a helper.
+	 *
+	 * The connection part is formed by the scheme, the hostname and the port together. Example:
+	 *
+	 *     http://www.example.com:8080
+	 *
+	 */
 	const char *
-		connection_part; // helper, e.g. http://www.example.com:8080
+		connection_part;
+	/**
+	 * Length of the directory part in `path`.
+	 *
+	 * This is the length from the beginning up to the last slash (`/`).
+	 */
 	size_t
-		dirlen; // length of directory part in 'path' (needed/initialized with --no-parent)
+		dirlen;
+	/* If set, free host in iri_free() */
 	unsigned int
-		host_allocated : 1; // if set, free host in iri_free()
+		host_allocated : 1;
+	/* If set, free path in iri_free() */
 	unsigned int
-		path_allocated : 1; // if set, free path in iri_free()
+		path_allocated : 1;
+	/* If set, free query in iri_free() */
 	unsigned int
-		query_allocated : 1; // if set, free query in iri_free()
+		query_allocated : 1;
+	/* If set, free fragment in iri_free() */
 	unsigned int
-		fragment_allocated : 1; // if set, free fragment in iri_free()
+		fragment_allocated : 1;
+	/* If set, the hostname part is a literal IPv4/IPv6 address */
 	unsigned int
-		is_ip_address : 1; // if set, the hostname part is a literal IPv4 or IPv6 address
+		is_ip_address : 1;
 } wget_iri_t;
+/** @} */
 
 WGETAPI void
 	wget_iri_test(void);
@@ -888,7 +945,7 @@ WGETAPI int
 WGETAPI int
 	wget_iri_isunreserved_path(char c) G_GNUC_WGET_CONST;
 WGETAPI int
-	wget_iri_compare(wget_iri_t *iri1, wget_iri_t *iri2) G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL_ALL;
+	wget_iri_compare(wget_iri_t *iri1, wget_iri_t *iri2) G_GNUC_WGET_PURE;
 WGETAPI char *
 	wget_iri_unescape_inline(char *src) G_GNUC_WGET_NONNULL_ALL;
 WGETAPI wget_iri_t *
@@ -1363,27 +1420,27 @@ WGETAPI void
 WGETAPI void
 	wget_tcp_set_bind_address(wget_tcp_t *tcp, const char *bind_address);
 WGETAPI struct addrinfo *
-	wget_tcp_resolve(wget_tcp_t *tcp, const char *restrict name, const char *restrict port) G_GNUC_WGET_NONNULL((2));
+	wget_tcp_resolve(wget_tcp_t *tcp, const char *restrict name, const char *restrict port);
 WGETAPI int
-	wget_tcp_connect(wget_tcp_t *tcp, const char *host, const char *port) G_GNUC_WGET_NONNULL((1));
+	wget_tcp_connect(wget_tcp_t *tcp, const char *host, const char *port);
 WGETAPI int
-	wget_tcp_listen(wget_tcp_t *tcp, const char *host, const char *port, int backlog) G_GNUC_WGET_NONNULL((1));
+	wget_tcp_listen(wget_tcp_t *tcp, const char *host, const char *port, int backlog);
 WGETAPI wget_tcp_t
-	*wget_tcp_accept(wget_tcp_t *parent_tcp) G_GNUC_WGET_NONNULL((1));
+	*wget_tcp_accept(wget_tcp_t *parent_tcp);
 WGETAPI int
-	wget_tcp_tls_start(wget_tcp_t *tcp) G_GNUC_WGET_NONNULL((1));
+	wget_tcp_tls_start(wget_tcp_t *tcp);
 WGETAPI void
-	wget_tcp_tls_stop(wget_tcp_t *tcp) G_GNUC_WGET_NONNULL((1));
+	wget_tcp_tls_stop(wget_tcp_t *tcp);
 WGETAPI ssize_t
-	wget_tcp_vprintf(wget_tcp_t *tcp, const char *fmt, va_list args) G_GNUC_WGET_PRINTF_FORMAT(2,0) G_GNUC_WGET_NONNULL_ALL;
+	wget_tcp_vprintf(wget_tcp_t *tcp, const char *fmt, va_list args) G_GNUC_WGET_PRINTF_FORMAT(2,0);
 WGETAPI ssize_t
-	wget_tcp_printf(wget_tcp_t *tcp, const char *fmt, ...) G_GNUC_WGET_PRINTF_FORMAT(2,3) G_GNUC_WGET_NONNULL_ALL;
+	wget_tcp_printf(wget_tcp_t *tcp, const char *fmt, ...) G_GNUC_WGET_PRINTF_FORMAT(2,3);
 WGETAPI ssize_t
-	wget_tcp_write(wget_tcp_t *tcp, const char *buf, size_t count) G_GNUC_WGET_NONNULL_ALL;
+	wget_tcp_write(wget_tcp_t *tcp, const char *buf, size_t count);
 WGETAPI ssize_t
-	wget_tcp_read(wget_tcp_t *tcp, char *buf, size_t count) G_GNUC_WGET_NONNULL_ALL;
+	wget_tcp_read(wget_tcp_t *tcp, char *buf, size_t count);
 WGETAPI int
-	wget_tcp_ready_2_transfer(wget_tcp_t *tcp, int flags) G_GNUC_WGET_NONNULL_ALL;
+	wget_tcp_ready_2_transfer(wget_tcp_t *tcp, int flags);
 
 WGETAPI int
 	wget_ip_is_family(const char *host, int family) G_GNUC_WGET_PURE;
