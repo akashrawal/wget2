@@ -20,7 +20,6 @@
 #include <config.h>
 
 #include <assert.h> // assert
-#include <stdint.h> // uint8_t
 #include <stdlib.h> // malloc, free
 #include <string.h> // memcpy
 
@@ -29,8 +28,10 @@
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
-	wget_bar_t *bar;
-	char *in = (char *) malloc(size + 1);
+	if (size > 100) // same as max_len = 100 in .options file
+		return 0;
+
+	char *in = (char *)malloc(size + 1);
 
 	assert(in != NULL);
 
@@ -38,23 +39,13 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	memcpy(in, data, size);
 	in[size] = 0;
 
-	wget_bar_screen_resized();
+	if (wget_base64_is_string(NULL) || wget_base64_is_string(in))
+		in[size] = 0;
 
-	bar = wget_bar_init(NULL, 0);
-	wget_bar_free(&bar);
+	free(wget_base64_decode_alloc((char *) data, size));
+//	free(wget_base64_encode_alloc((char *) data, size));
 
-	bar = wget_bar_init(NULL, 3);
-	wget_bar_set_slots(bar, 2);
-
-	wget_bar_slot_begin(bar, 1, "test", 64000);
-	wget_bar_slot_downloaded(bar, 1, atoi(in));
-	wget_bar_printf(bar, 1, "%s", in);
-	wget_bar_write_line(bar, (char *) data, size);
-	wget_bar_update(bar);
-	wget_bar_slot_deregister(bar, 0);
-	wget_bar_slot_deregister(bar, 2);
-	wget_bar_slot_deregister(bar, 999);
-	wget_bar_free(&bar);
+	free(wget_base64_encode_printf_alloc("%s", in));
 
 	free(in);
 
