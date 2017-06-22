@@ -2059,6 +2059,7 @@ wget_plugin_register_finalizer(wget_plugin_t *plugin, wget_plugin_finalizer_t fn
 
 /**
  * \ingroup libwget-plugin
+ *
  * Prototype for the function that will accept forwarded command line arguments.
  *
  * \param[in] plugin The plugin handle
