@@ -23,6 +23,7 @@ libwget_la_LDFLAGS = -no-undefined -version-info $(LIBWGET_SO_VERSION)
 # convenience library to avoid warnings about unused macros
 noinst_LTLIBRARIES = libcsstokenizer.la
 libcsstokenizer_la_SOURCES = css_tokenizer.c css_tokenizer.lex
+nodist_libcsstokenizer_la_SOURCES = css_tokenizer.c
 libcsstokenizer_la_CFLAGS = $(AM_CFLAGS) -Wno-unused-macros
 libcsstokenizer_la_CPPFLAGS = $(libwget_la_CPPFLAGS)
 
@@ -36,7 +37,6 @@ test_linking_LDADD = libwget.la ../lib/libgnu.la
 # gnulib needs config.h included before any gnulib header files
 css_tokenizer.c: $(srcdir)/css_tokenizer.lex css_tokenizer.h
 	$(AM_V_GEN)
-	$(AM_V_at)$(LEX) -w -o$@ $< && sed -i '1s;^;#include "config.h"\n;' $@
+	$(AM_V_at)$(LEX) -w -o$@ $< && sed -i -e '1s;^;#include "config.h"\n;' $@
 
-clean-local:
-	-rm -f css_tokenizer.c
+CLEANFILES = css_tokenizer.c
