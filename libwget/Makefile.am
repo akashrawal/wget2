@@ -41,4 +41,5 @@ css_tokenizer.c: $(srcdir)/css_tokenizer.lex css_tokenizer.h
 	$(AM_V_at)(echo '#include "config.h"'; cat $@.tmp) > $@
 	$(AM_V_at)rm $@.tmp
 
-CLEANFILES = css_tokenizer.c
+clean-local:
+	-rm -f css_tokenizer.c
