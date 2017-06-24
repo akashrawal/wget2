@@ -123,7 +123,7 @@ MinGW64:
   - mingw64-make -j$(nproc)
   - while true; do
     WINEPATH="/usr/x86_64-w64-mingw32/sys-root/mingw/bin;$PWD/libwget/.libs"
-        mingw64-make -j$(nproc) LOG_COMPILER=wine check;
+        mingw64-make LOG_COMPILER=wine check;
     done
   tags:
   - shared
