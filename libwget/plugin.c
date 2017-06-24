@@ -124,8 +124,8 @@ void wget_intercept_action_set_local_filename(wget_intercept_action_t *action, c
 /**
  * Registers a plugin function for intercepting URLs
  *
- * The registered function will be passed an abstract object of type 
- * \ref wget_intercpet_action_t "wget_intercept_action_t" which can be used to influence how wget will process the 
+ * The registered function will be passed an abstract object of type
+ * \ref wget_intercpet_action_t "wget_intercept_action_t" which can be used to influence how wget will process the
  * URL.
  *
  * \see wget_intercept_action_reject
