@@ -98,8 +98,7 @@ struct option_filter options[] = {
 	{"gamma", 0, 1},
 	{NULL, 0, 0}
 };
-static int argp_fn(wget_plugin_t *plugin,
-	const char *option, const char *value)
+static int argp_fn(wget_plugin_t *plugin, const char *option, const char *value)
 {
 	// List of options the plugin accepts
 	int i;
