@@ -52,6 +52,8 @@ typedef struct {
 	wget_plugin_finalizer_t finalizer;
 	// The plugin's option processor
 	wget_plugin_argp_t argp;
+	// The plugin's URL filter
+	wget_plugin_url_filter_t url_filter;
 	// Buffer to store plugin name
 	char name_buf[];
 } plugin_priv_t;
@@ -79,7 +81,7 @@ void plugin_db_clear_search_paths(void)
 	wget_vector_clear(search_paths);
 }
 
-// vtable
+// Basic plugin API
 static void impl_register_finalizer
 	(wget_plugin_t *p_plugin, wget_plugin_finalizer_t fn)
 {
@@ -103,11 +105,65 @@ static void impl_register_argp
 	priv->argp = fn;
 }
 
+// API for URL interception
+typedef struct {
+	wget_intercept_action_t parent;
+
+	struct plugin_db_forward_url_verdict verdict;
+} intercept_action_t;
+
+static void impl_action_reject(wget_intercept_action_t *p_action)
+{
+	intercept_action_t *action = (intercept_action_t *) p_action;
+
+	action->verdict.reject = 1;
+}
+
+static void impl_action_accept(wget_intercept_action_t *p_action)
+{
+	intercept_action_t *action = (intercept_action_t *) p_action;
+
+	action->verdict.accept = 1;
+}
+
+static void impl_action_set_alt_url(wget_intercept_action_t *p_action, const wget_iri_t *iri)
+{
+	intercept_action_t *action = (intercept_action_t *) p_action;
+
+	wget_iri_free(&action->verdict.alt_iri);
+	//TODO: Fix const-correctness issue with wget_iri_clone
+	action->verdict.alt_iri = wget_iri_clone((wget_iri_t *) iri);
+}
+
+static void impl_action_set_local_filename(wget_intercept_action_t *p_action, const char *local_filename)
+{
+	intercept_action_t *action = (intercept_action_t *) p_action;
+
+	if (action->verdict.alt_local_filename)
+		wget_free(action->verdict.alt_local_filename);
+	action->verdict.alt_local_filename = wget_strdup(local_filename);
+}
+
+static void impl_register_url_filter(wget_plugin_t *p_plugin, wget_plugin_url_filter_t fn)
+{
+	plugin_priv_t *priv = (plugin_priv_t *) p_plugin;
+
+	priv->url_filter = fn;
+}
+
+// vtable
 static struct wget_plugin_vtable vtable = {
 	.get_name = impl_get_name,
 	.register_finalizer = impl_register_finalizer,
-	.register_argp = impl_register_argp
+	.register_argp = impl_register_argp,
+
+	.action_reject = impl_action_reject,
+	.action_accept = impl_action_accept,
+	.action_set_alt_url = impl_action_set_alt_url,
+	.action_set_local_filename = impl_action_set_local_filename,
+	.register_url_filter = impl_register_url_filter
 };
+
 
 // Frees all resources held by a plugin, except for the memory for the structure itself (for wget_vector_t)
 static void plugin_deinit(plugin_t *plugin)
@@ -366,6 +422,34 @@ void plugin_db_show_help(void)
 int plugin_db_help_forwarded(void)
 {
 	return plugin_help_forwarded;
+}
+
+// Forwards a URL about to be enqueued to intrested plugins
+void plugin_db_forward_url(const wget_iri_t *iri, struct plugin_db_forward_url_verdict *verdict)
+{
+	intercept_action_t action;
+	size_t n_plugins;
+	size_t i;
+
+	// Initialize action structure
+	n_plugins = wget_vector_size(plugin_list);
+	memset(&action, 0, sizeof(intercept_action_t));
+	action.parent.vtable = &vtable;
+
+	for (i = 0; i < n_plugins; i++) {
+		plugin_t *plugin = (plugin_t *) wget_vector_get(plugin_list, i);
+		plugin_priv_t *priv = (plugin_priv_t *) plugin;
+		const wget_iri_t *cur_iri = action.verdict.alt_iri;
+		if (! cur_iri)
+			cur_iri = iri;
+
+		if (priv->url_filter)
+			(* priv->url_filter)((wget_plugin_t *) plugin, cur_iri, (wget_intercept_action_t *) &action);
+		if (action.verdict.reject || action.verdict.accept)
+			break;
+	}
+
+	*verdict = action.verdict;
 }
 
 // Initializes the plugin framework
