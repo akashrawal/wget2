@@ -81,6 +81,9 @@ struct plugin_db_forward_url_verdict {
 // Forwards a URL about to be enqueued to intrested plugins
 void plugin_db_forward_url(const wget_iri_t *iri, struct plugin_db_forward_url_verdict *verdict);
 
+// Free's all contents of plugin_db_forward_url_verdict
+void plugin_db_forward_url_verdict_free(struct plugin_db_forward_url_verdict *verdict);
+
 // Sends 'finalize' signal to all plugins and unloads all plugins
 void plugin_db_finalize(int exitcode);
 
