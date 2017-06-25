@@ -201,6 +201,7 @@ static plugin_t *_load_plugin(const char *name, const char *path, dl_error_t *e)
 	priv = (plugin_priv_t *) plugin;
 	priv->finalizer = NULL;
 	priv->argp = NULL;
+	priv->url_filter = NULL;
 	strcpy(priv->name_buf, name);
 
 	// Initialize public members
@@ -439,14 +440,16 @@ void plugin_db_forward_url(const wget_iri_t *iri, struct plugin_db_forward_url_v
 	for (i = 0; i < n_plugins; i++) {
 		plugin_t *plugin = (plugin_t *) wget_vector_get(plugin_list, i);
 		plugin_priv_t *priv = (plugin_priv_t *) plugin;
-		const wget_iri_t *cur_iri = action.verdict.alt_iri;
-		if (! cur_iri)
-			cur_iri = iri;
 
-		if (priv->url_filter)
+		if (priv->url_filter) {
+			const wget_iri_t *cur_iri = action.verdict.alt_iri;
+			if (! cur_iri)
+				cur_iri = iri;
+
 			(* priv->url_filter)((wget_plugin_t *) plugin, cur_iri, (wget_intercept_action_t *) &action);
-		if (action.verdict.reject || action.verdict.accept)
-			break;
+			if (action.verdict.reject || action.verdict.accept)
+				break;
+		}
 	}
 
 	*verdict = action.verdict;
