@@ -402,6 +402,7 @@ static void add_url_to_queue(const char *url, wget_iri_t *base, const char *enco
 	wget_iri_t *iri;
 	JOB *new_job = NULL, job_buf;
 	HOST *host;
+	struct plugin_db_forward_url_verdict plugin_verdict;
 
 	iri = wget_iri_parse_base(base, url, encoding);
 
@@ -410,9 +411,23 @@ static void add_url_to_queue(const char *url, wget_iri_t *base, const char *enco
 		return;
 	}
 
+	// Allow plugins to intercept URLs
+	plugin_db_forward_url(iri, &plugin_verdict);
+	if (plugin_verdict.reject) {
+		wget_iri_free(&iri);
+		plugin_db_forward_url_verdict_free(&plugin_verdict);
+		return;
+	}
+	if (plugin_verdict.alt_iri) {
+		wget_iri_free(&iri);
+		iri = plugin_verdict.alt_iri;
+		plugin_verdict.alt_iri = NULL;
+	}
+
 	if (iri->scheme != WGET_IRI_SCHEME_HTTP && iri->scheme != WGET_IRI_SCHEME_HTTPS) {
 		error_printf(_("URI scheme not supported: '%s'\n"), url);
 		wget_iri_free(&iri);
+		plugin_db_forward_url_verdict_free(&plugin_verdict);
 		return;
 	}
 
@@ -421,6 +436,7 @@ static void add_url_to_queue(const char *url, wget_iri_t *base, const char *enco
 	if (!blacklist_add(iri)) {
 		// we know this URL already
 		wget_thread_mutex_unlock(&downloader_mutex);
+		plugin_db_forward_url_verdict_free(&plugin_verdict);
 		return;
 	}
 
@@ -428,6 +444,7 @@ static void add_url_to_queue(const char *url, wget_iri_t *base, const char *enco
 	if (wget_vector_contains(config.exclude_domains, iri->host)) {
 		// download from this scheme://domain are explicitly not wanted
 		wget_thread_mutex_unlock(&downloader_mutex);
+		plugin_db_forward_url_verdict_free(&plugin_verdict);
 		return;
 	}
 
@@ -463,17 +480,23 @@ static void add_url_to_queue(const char *url, wget_iri_t *base, const char *enco
 	}
 
 	new_job = job_init(&job_buf, iri);
-	new_job->local_filename = get_local_filename(iri);
+	if (plugin_verdict.alt_local_filename) {
+		new_job->local_filename = plugin_verdict.alt_local_filename;
+		plugin_verdict.alt_local_filename = NULL;
+	} else {
+		new_job->local_filename = get_local_filename(iri);
+	}
 
-	if (config.recursive) {
+	if (config.recursive && !plugin_verdict.accept) {
 		if (config.accept_patterns && !in_pattern_list(config.accept_patterns, new_job->iri->uri))
 			new_job->head_first = 1; // enable mime-type check to assure e.g. text/html to be downloaded and parsed
 
 		if (config.reject_patterns && in_pattern_list(config.reject_patterns, new_job->iri->uri))
 			new_job->head_first = 1; // enable mime-type check to assure e.g. text/html to be downloaded and parsed
-
-		new_job->requested_by_user = 1; // download even if disallowed by robots.txt
 	}
+
+	if (config.recursive)
+		new_job->requested_by_user = 1; // download even if disallowed by robots.txt
 
 	if (config.spider || config.chunk_size)
 		new_job->head_first = 1;
@@ -481,6 +504,8 @@ static void add_url_to_queue(const char *url, wget_iri_t *base, const char *enco
 	host_add_job(host, new_job);
 
 	wget_thread_mutex_unlock(&downloader_mutex);
+
+	plugin_db_forward_url_verdict_free(&plugin_verdict);
 }
 
 static wget_thread_mutex_t
@@ -501,6 +526,7 @@ static void add_url(JOB *job, const char *encoding, const char *url, int flags)
 	JOB *new_job = NULL, job_buf;
 	wget_iri_t *iri;
 	HOST *host;
+	struct plugin_db_forward_url_verdict plugin_verdict;
 
 	if (flags & URL_FLG_REDIRECTION) { // redirect
 		if (config.max_redirect && job && job->redirection_level >= config.max_redirect) {
@@ -532,15 +558,30 @@ static void add_url(JOB *job, const char *encoding, const char *url, int flags)
 		return;
 	}
 
+	// Allow plugins to intercept URL
+	plugin_db_forward_url(iri, &plugin_verdict);
+	if (plugin_verdict.reject) {
+		plugin_db_forward_url_verdict_free(&plugin_verdict);
+		wget_iri_free(&iri);
+		return;
+	}
+	if (plugin_verdict.alt_iri) {
+		wget_iri_free(&iri);
+		iri = plugin_verdict.alt_iri;
+		plugin_verdict.alt_iri = NULL;
+	}
+
 	if (iri->scheme != WGET_IRI_SCHEME_HTTP && iri->scheme != WGET_IRI_SCHEME_HTTPS) {
 		info_printf(_("URL '%s' not followed (unsupported scheme '%s')\n"), url, iri->scheme);
 		wget_iri_free(&iri);
+		plugin_db_forward_url_verdict_free(&plugin_verdict);
 		return;
 	}
 
 	if (config.https_only && iri->scheme != WGET_IRI_SCHEME_HTTPS) {
 		info_printf(_("URL '%s' not followed (https-only requested)\n"), url);
 		wget_iri_free(&iri);
+		plugin_db_forward_url_verdict_free(&plugin_verdict);
 		return;
 	}
 
@@ -549,6 +590,7 @@ static void add_url(JOB *job, const char *encoding, const char *url, int flags)
 	if (!blacklist_add(iri)) {
 		// we know this URL already
 		wget_thread_mutex_unlock(&downloader_mutex);
+		plugin_db_forward_url_verdict_free(&plugin_verdict);
 		return;
 	}
 
@@ -567,6 +609,7 @@ static void add_url(JOB *job, const char *encoding, const char *url, int flags)
 		if (reason) {
 			wget_thread_mutex_unlock(&downloader_mutex);
 			info_printf(_("URL '%s' not followed (%s)\n"), iri->uri, reason);
+			plugin_db_forward_url_verdict_free(&plugin_verdict);
 			return;
 		}
 	}
@@ -591,6 +634,7 @@ static void add_url(JOB *job, const char *encoding, const char *url, int flags)
 		if (!ok) {
 			wget_thread_mutex_unlock(&downloader_mutex);
 			info_printf(_("URL '%s' not followed (parent ascending not allowed)\n"), url);
+			plugin_db_forward_url_verdict_free(&plugin_verdict);
 			return;
 		}
 	}
@@ -610,6 +654,7 @@ static void add_url(JOB *job, const char *encoding, const char *url, int flags)
 				if (path->len && !strncmp(path->path + 1, iri->path ? iri->path : "", path->len - 1)) {
 					wget_thread_mutex_unlock(&downloader_mutex);
 					info_printf(_("URL '%s' not followed (disallowed by robots.txt)\n"), iri->uri);
+					plugin_db_forward_url_verdict_free(&plugin_verdict);
 					return;
 				}
 			}
@@ -618,16 +663,21 @@ static void add_url(JOB *job, const char *encoding, const char *url, int flags)
 		// this should really not ever happen
 		wget_thread_mutex_unlock(&downloader_mutex);
 		error_printf(_("Failed to get '%s' from hosts\n"), iri->host);
+		plugin_db_forward_url_verdict_free(&plugin_verdict);
 		return;
 	}
 
 	new_job = job_init(&job_buf, iri);
 
 	if (!config.output_document) {
-		if (!(flags & URL_FLG_REDIRECTION) || config.trust_server_names || !job)
+		if (plugin_verdict.alt_local_filename) {
+			new_job->local_filename = plugin_verdict.alt_local_filename;
+			plugin_verdict.alt_local_filename = NULL;
+		} else if (!(flags & URL_FLG_REDIRECTION) || config.trust_server_names || !job) {
 			new_job->local_filename = get_local_filename(new_job->iri);
-		else
+		} else {
 			new_job->local_filename = wget_strdup(job->local_filename);
+		}
 	}
 
 	if (job) {
@@ -642,7 +692,7 @@ static void add_url(JOB *job, const char *encoding, const char *url, int flags)
 		}
 	}
 
-	if (config.recursive) {
+	if (config.recursive && ! plugin_verdict.accept) {
 		if (config.accept_patterns && !in_pattern_list(config.accept_patterns, new_job->iri->uri))
 			new_job->head_first = 1; // enable mime-type check to assure e.g. text/html to be downloaded and parsed
 
@@ -664,6 +714,7 @@ static void add_url(JOB *job, const char *encoding, const char *url, int flags)
 	wget_thread_cond_signal(&worker_cond);
 
 	wget_thread_mutex_unlock(&downloader_mutex);
+	plugin_db_forward_url_verdict_free(&plugin_verdict);
 }
 
 static void _convert_links(void)

@@ -452,6 +452,15 @@ void plugin_db_forward_url(const wget_iri_t *iri, struct plugin_db_forward_url_v
 	*verdict = action.verdict;
 }
 
+// Free's all contents of plugin_db_forward_url_verdict
+void plugin_db_forward_url_verdict_free(struct plugin_db_forward_url_verdict *verdict)
+{
+	if (verdict->alt_iri)
+		wget_iri_free(&verdict->alt_iri);
+	if (verdict->alt_local_filename)
+		wget_free(verdict->alt_local_filename);
+}
+
 // Initializes the plugin framework
 void plugin_db_init(void)
 {
