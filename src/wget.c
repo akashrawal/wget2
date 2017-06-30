@@ -94,7 +94,8 @@ typedef struct {
 } _statistics_t;
 static _statistics_t stats;
 
-static int G_GNUC_WGET_NONNULL((1)) _prepare_file(wget_http_response_t *resp, const char *fname, int flag, const char *uri, const char *original_url);
+static int G_GNUC_WGET_NONNULL((1)) _prepare_file(wget_http_response_t *resp, const char *fname, int flag,
+		const char *uri, const char *original_url, int ignore_patterns);
 
 static void
 	sitemap_parse_xml(JOB *job, const char *data, const char *encoding, wget_iri_t *base),
@@ -487,7 +488,9 @@ static void add_url_to_queue(const char *url, wget_iri_t *base, const char *enco
 		new_job->local_filename = get_local_filename(iri);
 	}
 
-	if (config.recursive && !plugin_verdict.accept) {
+	if (plugin_verdict.accept) {
+		new_job->ignore_patterns = 1;
+	} else if (config.recursive) {
 		if (config.accept_patterns && !in_pattern_list(config.accept_patterns, new_job->iri->uri))
 			new_job->head_first = 1; // enable mime-type check to assure e.g. text/html to be downloaded and parsed
 
@@ -692,7 +695,10 @@ static void add_url(JOB *job, const char *encoding, const char *url, int flags)
 		}
 	}
 
-	if (config.recursive && ! plugin_verdict.accept) {
+	if (plugin_verdict.accept) {
+		new_job->ignore_patterns = 1;
+	} else if (config.recursive) {
+		debug_printf("TMP: plugin_verdict.accept = %d\n", (int) plugin_verdict.accept);
 		if (config.accept_patterns && !in_pattern_list(config.accept_patterns, new_job->iri->uri))
 			new_job->head_first = 1; // enable mime-type check to assure e.g. text/html to be downloaded and parsed
 
@@ -2409,7 +2415,8 @@ static void set_file_mtime(int fd, time_t modified)
 		error_printf (_("Failed to set file date: %s\n"), strerror (errno));
 }
 
-static int G_GNUC_WGET_NONNULL((1)) _prepare_file(wget_http_response_t *resp, const char *fname, int flag, const char *uri, const char *original_url)
+static int G_GNUC_WGET_NONNULL((1)) _prepare_file(wget_http_response_t *resp, const char *fname, int flag,
+		const char *uri, const char *original_url, int ignore_patterns)
 {
 	static wget_thread_mutex_t
 		savefile_mutex = WGET_THREAD_MUTEX_INITIALIZER;
@@ -2505,16 +2512,18 @@ static int G_GNUC_WGET_NONNULL((1)) _prepare_file(wget_http_response_t *resp, co
 		}
 	}
 
-	if (config.accept_patterns && !in_pattern_list(config.accept_patterns, fname)) {
-		debug_printf("not saved '%s' (doesn't match accept pattern)\n", fname);
-		xfree(alloced_fname);
-		return -2;
-	}
+	if (! ignore_patterns) {
+		if (config.accept_patterns && !in_pattern_list(config.accept_patterns, fname)) {
+			debug_printf("not saved '%s' (doesn't match accept pattern)\n", fname);
+			xfree(alloced_fname);
+			return -2;
+		}
 
-	if (config.reject_patterns && in_pattern_list(config.reject_patterns, fname)) {
-		debug_printf("not saved '%s' (matches reject pattern)\n", fname);
-		xfree(alloced_fname);
-		return -2;
+		if (config.reject_patterns && in_pattern_list(config.reject_patterns, fname)) {
+			debug_printf("not saved '%s' (matches reject pattern)\n", fname);
+			xfree(alloced_fname);
+			return -2;
+		}
 	}
 
 	wget_thread_mutex_lock(&savefile_mutex);
@@ -2668,7 +2677,8 @@ static int _get_header(wget_http_response_t *resp, void *context)
 		ctx->outfd = _prepare_file(resp, dest,
 			resp->code == 206 ? O_APPEND : O_TRUNC,
 			ctx->job->iri->uri,
-			ctx->job->original_url->uri);
+			ctx->job->original_url->uri,
+			ctx->job->ignore_patterns);
 		if (ctx->outfd == -1)
 			ret = -1;
 	}
