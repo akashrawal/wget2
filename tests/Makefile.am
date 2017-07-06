@@ -23,12 +23,10 @@ WGET_TESTS = test-wget-1$(EXEEXT) test-restrict-ascii$(EXEEXT) test-i-http$(EXEE
 
 if PLUGIN_SUPPORT
  WGET_TESTS += test-plugin$(EXEEXT)
- check_LTLIBRARIES = libpluginname.la libpluginexit.la
+ check_LTLIBRARIES = libpluginname.la libpluginexit.la libpluginoption.la libpluginfaulty1.la libpluginfaulty2.la
 endif
 
 check_PROGRAMS = $(WGET_TESTS)
-check_LTLIBRARIES = libpluginname.la libpluginexit.la libpluginoption.la \
-					libpluginfaulty1.la libpluginfaulty2.la
 
 test_cookies_http_state_LDADD = ../src/log.o ../src/options.o libtest.la\
  $(LIBOBJS) $(GETADDRINFO_LIB) $(HOSTENT_LIB) $(INET_NTOP_LIB)\
