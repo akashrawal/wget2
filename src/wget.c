@@ -698,7 +698,6 @@ static void add_url(JOB *job, const char *encoding, const char *url, int flags)
 	if (plugin_verdict.accept) {
 		new_job->ignore_patterns = 1;
 	} else if (config.recursive) {
-		debug_printf("TMP: plugin_verdict.accept = %d\n", (int) plugin_verdict.accept);
 		if (config.accept_patterns && !in_pattern_list(config.accept_patterns, new_job->iri->uri))
 			new_job->head_first = 1; // enable mime-type check to assure e.g. text/html to be downloaded and parsed
 
