@@ -717,7 +717,7 @@ static int print_plugin_help(G_GNUC_WGET_UNUSED option_t opt,
 struct config config = {
 	.connect_timeout = -1,
 	.dns_timeout = -1,
-	.read_timeout = -1,
+	.read_timeout = 900 * 1000, // 900s
 	.max_redirect = 20,
 	.max_threads = 5,
 	.dns_caching = 1,
@@ -2269,7 +2269,9 @@ int init(int argc, const char **argv)
 	wget_ssl_set_config_string(WGET_SSL_KEY_FILE, config.private_key);
 	wget_ssl_set_config_string(WGET_SSL_CRL_FILE, config.crl_file);
 	wget_ssl_set_config_string(WGET_SSL_OCSP_CACHE, (const char *)config.ocsp_db);
-	wget_ssl_set_config_string(WGET_SSL_ALPN, config.http2 ? "h2,h2-16,h2-14,http/1.1" : NULL);
+#ifdef WITH_LIBNGHTTP2
+	wget_ssl_set_config_string(WGET_SSL_ALPN, config.http2 ? "h2,http/1.1" : NULL);
+#endif
 	wget_ssl_set_config_string(WGET_SSL_SESSION_CACHE, (const char *)config.tls_session_db);
 	wget_ssl_set_config_string(WGET_SSL_HPKP_CACHE, (const char *)config.hpkp_db);
 

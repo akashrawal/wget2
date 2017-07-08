@@ -1704,9 +1704,6 @@ void *downloader_thread(void *p)
 					}
 
 					job->iri = iri;
-					if (!job->original_url)
-						job->original_url = iri;
-
 					if (config.wait || job->metalink || !downloader->conn || wget_http_get_protocol(downloader->conn) != WGET_PROTOCOL_HTTP_2_0)
 						max_pending = 1;
 					else
@@ -1723,6 +1720,9 @@ void *downloader_thread(void *p)
 					if (terminate)
 						break;
 				}
+
+				if (!job->original_url)
+					job->original_url = iri;
 
 				if (http_send_request(job->iri, job->original_url, downloader)) {
 					host_increase_failure(host);
