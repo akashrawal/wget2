@@ -132,8 +132,7 @@ static void impl_action_set_alt_url(wget_intercept_action_t *p_action, const wge
 
 	if (action->verdict.alt_iri)
 		wget_iri_free(&action->verdict.alt_iri);
-	//TODO: Fix const-correctness issue with wget_iri_clone
-	action->verdict.alt_iri = wget_iri_clone((wget_iri_t *) iri);
+	action->verdict.alt_iri = wget_iri_clone(iri);
 }
 
 static void impl_action_set_local_filename(wget_intercept_action_t *p_action, const char *local_filename)
