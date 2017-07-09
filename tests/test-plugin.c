@@ -441,13 +441,57 @@ int main(void)
 		0);
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi") " --recursive --no-host-directories"
-			" --plugin-opt=pluginapi.saveas=index:home.htm",
+			" --plugin-opt=pluginapi.saveas=third:alt.html",
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
-			{ "home.htm", urls[0].body },
+			{ "index.html", urls[0].body },
+			{ "secondpage.html", urls[1].body },
+			{ "alt.html", urls[2].body },
+			{	NULL } },
+		0);
+
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi")
+			" --plugin-opt=pluginapi.reject=secondpage",
+		WGET_TEST_REQUEST_URLS, "index.html", "secondpage.html", "thirdpage.html", NULL,
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "index.html", urls[0].body },
+			{ "thirdpage.html", urls[2].body },
+			{	NULL } },
+		0);
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi")
+			" --reject=*thirdpage.html --plugin-opt=pluginapi.accept=thirdpage",
+		WGET_TEST_REQUEST_URLS, "index.html", "secondpage.html", "thirdpage.html", NULL,
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "index.html", urls[0].body },
 			{ "secondpage.html", urls[1].body },
 			{ "thirdpage.html", urls[2].body },
+			{	NULL } },
+		0);
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi")
+			" --plugin-opt=pluginapi.replace=third:forth",
+		WGET_TEST_REQUEST_URLS, "index.html", "secondpage.html", "thirdpage.html", NULL,
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "index.html", urls[0].body },
+			{ "secondpage.html", urls[1].body },
+			{ "forthpage.html", urls[3].body },
+			{	NULL } },
+		0);
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi")
+			" --plugin-opt=pluginapi.saveas=third:alt.html",
+		WGET_TEST_REQUEST_URLS, "index.html", "secondpage.html", "thirdpage.html", NULL,
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "index.html", urls[0].body },
+			{ "secondpage.html", urls[1].body },
+			{ "alt.html", urls[2].body },
 			{	NULL } },
 		0);
 

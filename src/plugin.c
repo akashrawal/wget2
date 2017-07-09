@@ -130,7 +130,8 @@ static void impl_action_set_alt_url(wget_intercept_action_t *p_action, const wge
 {
 	intercept_action_t *action = (intercept_action_t *) p_action;
 
-	wget_iri_free(&action->verdict.alt_iri);
+	if (action->verdict.alt_iri)
+		wget_iri_free(&action->verdict.alt_iri);
 	//TODO: Fix const-correctness issue with wget_iri_clone
 	action->verdict.alt_iri = wget_iri_clone((wget_iri_t *) iri);
 }

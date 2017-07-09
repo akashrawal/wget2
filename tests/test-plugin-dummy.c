@@ -292,7 +292,7 @@ static void url_filter(wget_plugin_t *plugin, const wget_iri_t *iri, wget_interc
 		wget_iri_t *alt_iri;
 
 		wget_buffer_init(buf, NULL, 0);
-		find_len = strlen(d->replace.r);
+		find_len = strlen(d->replace.l);
 
 		for (ptr = iri->uri; (find = strstr(ptr, d->replace.l)); ptr = find + find_len) {
 			wget_buffer_memcat(buf, ptr, find - ptr);
@@ -300,7 +300,7 @@ static void url_filter(wget_plugin_t *plugin, const wget_iri_t *iri, wget_interc
 		}
 		wget_buffer_strcat(buf, ptr);
 
-		alt_iri = wget_iri_parse(buf->data, "UTF-8");
+		alt_iri = wget_iri_parse(buf->data, "utf-8");
 		if (! alt_iri) {
 			fprintf(stderr, "Cannot parse URL after replacement (%s)\n", buf->data);
 		}
