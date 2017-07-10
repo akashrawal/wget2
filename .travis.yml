@@ -32,8 +32,6 @@ addons:
             - flex
             - liblzma5
             - liblzma-dev
-            - libidn11
-            - libidn11-dev
             - libunistring0
             - libc6
             - valgrind
