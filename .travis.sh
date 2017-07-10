@@ -25,7 +25,7 @@ for OPTS in "${CONFIGURE_OPTIONS[@]}"; do
 		make install -j3
 	fi
 	if make clean check -j3; then :; else
-		find . -name "*.log" -print | while read log_file; do
+		find . -name "*.log" -print | grep -v "config.log" | while read log_file; do
 			cat "$log_file"
 		done
 		exit 1

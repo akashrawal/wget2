@@ -32,7 +32,10 @@ addons:
             - flex
             - liblzma5
             - liblzma-dev
+            - libidn2-0
+            - libidn2-0-dev
             - libunistring0
+            - libunistring-dev
             - libc6
             - valgrind
             - lcov
