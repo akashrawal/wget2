@@ -445,6 +445,10 @@ wget_iri_t *wget_iri_parse(const char *url, const char *encoding)
 		if (p) {
 			iri->userinfo = s;
 			*p = 0;
+			if ((s = strchr(s, ':'))) {
+				*s = 0;
+				iri->password = s + 1;
+			}
 			s = p + 1;
 		}
 		if (*s == '[') {
@@ -541,7 +545,7 @@ wget_iri_t *wget_iri_parse(const char *url, const char *encoding)
  *
  * Clone the provided IRI.
  */
-wget_iri_t *wget_iri_clone(wget_iri_t *iri)
+wget_iri_t *wget_iri_clone(const wget_iri_t *iri)
 {
 	if (!iri)
 		return NULL;
