@@ -54,6 +54,8 @@ typedef struct {
 	wget_plugin_argp_t argp;
 	// The plugin's URL filter
 	wget_plugin_url_filter_t url_filter;
+	// The plugin's post processor
+	wget_plugin_post_processor_t post_processor;
 	// Buffer to store plugin name
 	char name_buf[];
 } plugin_priv_t;
@@ -151,6 +153,89 @@ static void impl_register_url_filter(wget_plugin_t *p_plugin, wget_plugin_url_fi
 	priv->url_filter = fn;
 }
 
+// API Exposed for plugins for intercepting downloaded files:
+typedef struct {
+	wget_downloaded_file_t parent;
+
+	const wget_iri_t *iri;
+	const char *filename;
+	uint64_t size;
+	const void *data;
+	void *data_buf;
+	wget_vector_t *recurse_iris;
+
+	// TODO: Implementation
+} downloaded_file_t;
+
+static const wget_iri_t *impl_file_get_source_url(wget_downloaded_file_t *p_file)
+{
+	downloaded_file_t *file = (downloaded_file_t *) p_file;
+
+	return file->iri;
+}
+
+static const char *impl_file_get_local_filename(wget_downloaded_file_t *p_file)
+{
+	downloaded_file_t *file = (downloaded_file_t *) p_file;
+
+	return file->filename;
+}
+
+static uint64_t impl_file_get_size(wget_downloaded_file_t *p_file)
+{
+	downloaded_file_t *file = (downloaded_file_t *) p_file;
+
+	return file->size;
+}
+
+static void impl_file_get_contents(wget_downloaded_file_t *p_file, const void **data, size_t *size)
+{
+	downloaded_file_t *file = (downloaded_file_t *) p_file;
+
+	if (! file->data) {
+		size_t dummy;
+		// TODO: Check behavior with --output-document= option
+		file->data_buf = wget_read_file(file->filename, &dummy);
+		file->data = data;
+	}
+
+	*data = file->data;
+	*size = file->size;
+}
+
+static FILE *impl_file_open_stream(wget_downloaded_file_t *p_file)
+{
+	downloaded_file_t *file = (downloaded_file_t *) p_file;
+
+	// TODO: Use fmemopen() whenever possible
+	return fopen(file->filename, "rb");
+}
+
+static bool impl_file_get_recurse(wget_downloaded_file_t *p_file)
+{
+	downloaded_file_t *file = (downloaded_file_t *) p_file;
+
+	return file->recurse_iris ? true : false;
+}
+
+static void impl_file_add_recurse_url(wget_downloaded_file_t *p_file, const wget_iri_t *iri)
+{
+	downloaded_file_t *file = (downloaded_file_t *) p_file;
+
+	if (! file->recurse_iris) {
+		wget_error_printf_exit("Attempted to add a URL when recursion is disabled\n");
+	}
+
+	wget_vector_add_noalloc(file->recurse_iris, wget_iri_clone(iri));
+}
+
+static void impl_register_post_processor(wget_plugin_t *p_plugin, wget_plugin_post_processor_t fn)
+{
+	plugin_priv_t *priv = (plugin_priv_t *) p_plugin;
+
+	priv->post_processor = fn;
+}
+
 // vtable
 static struct wget_plugin_vtable vtable = {
 	.get_name = impl_get_name,
@@ -161,7 +246,16 @@ static struct wget_plugin_vtable vtable = {
 	.action_accept = impl_action_accept,
 	.action_set_alt_url = impl_action_set_alt_url,
 	.action_set_local_filename = impl_action_set_local_filename,
-	.register_url_filter = impl_register_url_filter
+	.register_url_filter = impl_register_url_filter,
+
+	.file_get_source_url = impl_file_get_source_url,
+	.file_get_local_filename = impl_file_get_local_filename,
+	.file_get_size = impl_file_get_size,
+	.file_get_contents = impl_file_get_contents,
+	.file_open_stream = impl_file_open_stream,
+	.file_get_recurse = impl_file_get_recurse,
+	.file_add_recurse_url = impl_file_add_recurse_url,
+	.register_post_processor = impl_register_post_processor
 };
 
 
@@ -202,6 +296,7 @@ static plugin_t *_load_plugin(const char *name, const char *path, dl_error_t *e)
 	priv->finalizer = NULL;
 	priv->argp = NULL;
 	priv->url_filter = NULL;
+	priv->post_processor = NULL;
 	strcpy(priv->name_buf, name);
 
 	// Initialize public members
@@ -462,6 +557,42 @@ void plugin_db_forward_url_verdict_free(struct plugin_db_forward_url_verdict *ve
 		wget_iri_free(&verdict->alt_iri);
 	if (verdict->alt_local_filename)
 		wget_free(verdict->alt_local_filename);
+}
+
+// Forwards downloaded file to intrested plugins
+int plugin_db_forward_downloaded_file(const wget_iri_t *iri, uint64_t size, const char *filename, const void *data,
+		wget_vector_t *recurse_iris)
+{
+	downloaded_file_t file;
+	size_t n_plugins;
+	size_t i;
+
+	// Initialize the structure
+	file.parent.vtable = &vtable;
+	file.iri = iri;
+	file.filename = filename;
+	file.size = size;
+	file.data = data;
+	file.data_buf = NULL;
+	recurse_iris = recurse_iris;
+
+	// Forward to each plugin
+	n_plugins = wget_vector_size(plugin_list);
+	for (i = 0; i < n_plugins; i++) {
+		plugin_t *plugin = (plugin_t *) wget_vector_get(plugin_list, i);
+		plugin_priv_t *priv = (plugin_priv_t *) plugin;
+
+		if (priv->post_processor) {
+			if ((* priv->post_processor)((wget_plugin_t *) plugin, (wget_downloaded_file_t *) &file) == 0)
+				break;
+		}
+	}
+
+	// Cleanup
+	if (file.data_buf)
+		wget_free(file.data_buf);
+
+	return i < n_plugins ? 0 : 1;
 }
 
 // Initializes the plugin framework
