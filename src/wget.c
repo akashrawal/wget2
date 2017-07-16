@@ -1494,6 +1494,7 @@ static void process_response_part(wget_http_response_t *resp)
 static void process_response(wget_http_response_t *resp)
 {
 	JOB *job = resp->req->user_data;
+	int process_decision = 0, recurse_decision = 0;
 
 	// just update number bytes read (body only) for display purposes
 	if (resp->body)
@@ -1586,8 +1587,36 @@ static void process_response(wget_http_response_t *resp)
 		}
 	}
 
+	// Forward response to plugins
+	if (resp->code == 200 || (resp->code == 304 && config.timestamping)) {
+		const void *data = resp->code == 200 && resp->body ? resp->body->data : NULL;
+		process_decision = job->local_filename || resp->body ? 1 : 0;
+		recurse_decision = process_decision && config.recursive
+			&& (!config.level || job->level < config.level + config.page_requisites) ? 1 : 0;
+		if (process_decision) {
+			wget_vector_t *recurse_iris = NULL;
+			int n_recurse_iris = 0;
+
+			if (recurse_decision)
+				recurse_iris = wget_vector_create(16, -2, NULL);
+
+			process_decision = plugin_db_forward_downloaded_file(job->iri, resp->content_length,
+				job->local_filename, data, recurse_iris);
+
+			if (recurse_decision) {
+				n_recurse_iris = wget_vector_size(recurse_iris);
+				for (int i = 0; i < n_recurse_iris; i++) {
+					wget_iri_t *iri = (wget_iri_t *) wget_vector_get(recurse_iris, i);
+					add_url(job, "utf-8", iri->uri, 0);
+					wget_iri_free_content(iri);
+				}
+				wget_vector_free(&recurse_iris);
+			}
+		}
+	}
+
 	if (resp->code == 200) {
-		if (config.recursive && (!config.level || job->level < config.level + config.page_requisites)) {
+		if (process_decision && recurse_decision) {
 			if (resp->content_type && resp->body) {
 				if (!wget_strcasecmp_ascii(resp->content_type, "text/html")) {
 					html_parse(job, job->level, resp->body->data, resp->body->length, resp->content_type_encoding ? resp->content_type_encoding : config.remote_encoding, job->iri);
@@ -1625,7 +1654,7 @@ static void process_response(wget_http_response_t *resp)
 		}
 	}
 	else if (resp->code == 304 && config.timestamping) { // local document is up-to-date
-		if (config.recursive && (!config.level || job->level < config.level + config.page_requisites) && job->local_filename) {
+		if (process_decision && recurse_decision) {
 			const char *ext;
 
 			if (config.content_disposition && resp->content_filename)

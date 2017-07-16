@@ -163,8 +163,6 @@ typedef struct {
 	const void *data;
 	void *data_buf;
 	wget_vector_t *recurse_iris;
-
-	// TODO: Implementation
 } downloaded_file_t;
 
 static const wget_iri_t *impl_file_get_source_url(wget_downloaded_file_t *p_file)
