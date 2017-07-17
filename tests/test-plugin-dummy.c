@@ -194,6 +194,18 @@ static int parse_option(const struct option *options, wget_plugin_t *plugin, con
 	return (* options[i].fn)(options + i, value);
 }
 
+static int parse_boolean(const struct option *option, const char *value)
+{
+	int *intptr = (int *) option->lptr;
+	int bool_val = 1;
+
+	if (value && strcmp(value, "false") == 0)
+		bool_val = 0;
+
+	*intptr = bool_val;
+
+	return 0;
+}
 static int parse_string(const struct option *option, const char *value)
 {
 	char **strptr = (char **) option->lptr;
@@ -243,6 +255,7 @@ typedef struct {
 	char *accept;
 	struct pair replace;
 	struct pair saveas;
+	int parse_rot13;
 } plugin_data_t;
 
 static int argp_fn(wget_plugin_t *plugin, const char *option, const char *value)
@@ -257,6 +270,8 @@ static int argp_fn(wget_plugin_t *plugin, const char *option, const char *value)
 			parse_pair, (void *) &d->replace},
 		{"saveas", "=substring:filename", "Save URLs containing substring as filename",
 			parse_pair, (void *) &d->saveas},
+		{"parse_rot13", "[=false]", "Parse rot13 obfuscated links (default: false)",
+			parse_boolean, (void *) &d->parse_rot13},
 		{NULL, NULL, NULL, NULL, NULL}
 	};
 
@@ -311,6 +326,64 @@ static void url_filter(wget_plugin_t *plugin, const wget_iri_t *iri, wget_interc
 	}
 }
 
+static int post_processor(wget_plugin_t *plugin, wget_downloaded_file_t *file)
+{
+	plugin_data_t *d = (plugin_data_t *) plugin->plugin_data;
+
+	if (d->parse_rot13 && wget_downloaded_file_get_recurse(file)) {
+		const char *data;
+		size_t len, i, j;
+		static const char *needle = "rot13(";
+
+		wget_downloaded_file_get_contents(file, (const void **) &data, &len);
+
+		// Since data is not null-terminated and may have null bytes, strstr() cannot be used here.
+		j = 0;
+		for (i = 0; i < len; i++) {
+			if (needle[j]) {
+				// No prefix table needed for "rot13("
+				if (needle[j] == data[i])
+					j++;
+				else
+					j = 0;
+			} else {
+				// Match found
+				size_t end;
+				for (end = i; end < len && data[end] && data[end] != ')'; end++)
+					;
+				if (end < len && end > i && data[end] == ')') {
+					// Obfuscated URL found, now deobfuscate and add it
+					char *url = wget_malloc(end - i + 1);
+					size_t k;
+					wget_iri_t *iri;
+
+					for (k = 0; k < end - i; k++) {
+						char c = data[i + k];
+						if (c >= 'A' && c <= 'Z')
+							c = (((c - 'A') + 13) % 26) + 'A';
+						if (c >= 'a' && c <= 'z')
+							c = (((c - 'a') + 13) % 26) + 'a';
+						url[k] = c;
+					}
+					url[end - i] = 0;
+
+					if ((iri = wget_iri_parse(url, "utf-8"))) {
+						wget_downloaded_file_add_recurse_url(file, iri);
+						wget_iri_free(&iri);
+					}
+					wget_free(url);
+
+					i = end;
+				}
+
+				j = 0;
+			}
+		}
+	}
+
+	return 1;
+}
+
 WGET_EXPORT int wget_plugin_initializer(wget_plugin_t *plugin);
 int wget_plugin_initializer(wget_plugin_t *plugin)
 {
@@ -321,6 +394,7 @@ int wget_plugin_initializer(wget_plugin_t *plugin)
 	wget_plugin_register_finalizer(plugin, finalizer);
 
 	wget_plugin_register_url_filter(plugin, url_filter);
+	wget_plugin_register_post_processor(plugin, post_processor);
 	return 0;
 }
 #else

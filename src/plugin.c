@@ -572,7 +572,7 @@ int plugin_db_forward_downloaded_file(const wget_iri_t *iri, uint64_t size, cons
 	file.size = size;
 	file.data = data;
 	file.data_buf = NULL;
-	recurse_iris = recurse_iris;
+	file.recurse_iris = recurse_iris;
 
 	// Forward to each plugin
 	n_plugins = wget_vector_size(plugin_list);

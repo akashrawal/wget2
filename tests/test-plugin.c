@@ -80,6 +80,19 @@ static const char *errorpage = "\
 </body>\n\
 </html>\n";
 
+static const char *rot13_mainpage = "\
+<html>\n\
+<head>\n\
+  <title>Main Page</title>\n\
+</head>\n\
+<body>\n\
+  <p>\n\
+    second page: rot13(uggc://ybpnyubfg:{{port}}/frpbaqcntr.ugzy)\n\
+    third page: rot13(uggc://ybpnyubfg:{{port}}/guveqcntr.ugzy)\n\
+  </p>\n\
+</body>\n\
+</html>\n";
+
 int main(void)
 {
 	wget_test_url_t urls[]={
@@ -107,6 +120,13 @@ int main(void)
 		{	.name = "/forthpage.html",
 			.code = "200 Dontcare",
 			.body = subpage,
+			.headers = {
+				"Content-Type: text/html",
+			}
+		},
+		{	.name = "/rot13_index.html",
+			.code = "200 Dontcare",
+			.body = rot13_mainpage,
 			.headers = {
 				"Content-Type: text/html",
 			}
@@ -492,6 +512,19 @@ int main(void)
 			{ "index.html", urls[0].body },
 			{ "secondpage.html", urls[1].body },
 			{ "alt.html", urls[2].body },
+			{	NULL } },
+		0);
+
+	// Check whether intercepting downloaded files works
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi") " --recursive --no-host-directories"
+			" --plugin-opt=pluginapi.parse_rot13",
+		WGET_TEST_REQUEST_URL, "rot13_index.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "rot13_index.html", urls[4].body },
+			{ "secondpage.html", urls[1].body },
+			{ "thirdpage.html", urls[2].body },
 			{	NULL } },
 		0);
 
