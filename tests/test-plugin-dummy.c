@@ -256,6 +256,7 @@ typedef struct {
 	struct pair replace;
 	struct pair saveas;
 	int parse_rot13;
+	int test_pp;
 } plugin_data_t;
 
 static int argp_fn(wget_plugin_t *plugin, const char *option, const char *value)
@@ -270,8 +271,10 @@ static int argp_fn(wget_plugin_t *plugin, const char *option, const char *value)
 			parse_pair, (void *) &d->replace},
 		{"saveas", "=substring:filename", "Save URLs containing substring as filename",
 			parse_pair, (void *) &d->saveas},
-		{"parse_rot13", "[=false]", "Parse rot13 obfuscated links (default: false)",
+		{"parse-rot13", "[=false]", "Parse rot13 obfuscated links (default: false)",
 			parse_boolean, (void *) &d->parse_rot13},
+		{"test-pp", "[=false]", "Test post-processing API for consistency",
+			parse_boolean, (void *) &d->test_pp},
 		{NULL, NULL, NULL, NULL, NULL}
 	};
 
@@ -326,6 +329,13 @@ static void url_filter(wget_plugin_t *plugin, const wget_iri_t *iri, wget_interc
 	}
 }
 
+// Separate assert definition because here assertions are part of the tests
+#define test_assert(expr) \
+do { \
+	if (! (expr)) \
+		wget_error_printf_exit(__FILE__ ":%d: Failed assertion [%s]\n", __LINE__, #expr); \
+} while (0)
+
 static int post_processor(wget_plugin_t *plugin, wget_downloaded_file_t *file)
 {
 	plugin_data_t *d = (plugin_data_t *) plugin->plugin_data;
@@ -378,6 +388,36 @@ static int post_processor(wget_plugin_t *plugin, wget_downloaded_file_t *file)
 
 				j = 0;
 			}
+		}
+	}
+
+	if (d->test_pp) {
+		const char *fname = wget_downloaded_file_get_local_filename(file);
+		if (fname) {
+			const char *data;
+			char *refdata;
+			size_t refsize, size, i;
+			FILE *stream;
+
+			// Load file into memory
+			test_assert((refdata = wget_read_file(fname, &refsize)));
+
+			// Compare wget_downloaded_file_get_size() with actual file size
+			test_assert(refsize == wget_downloaded_file_get_size(file));
+
+			// Compare downloaded file contents with wget_downloaded_file_get_contents()
+			wget_downloaded_file_get_contents(file, (const void **) &data, &size);
+			test_assert(refsize == size && "wget_downloaded_file_get_contents()");
+			test_assert(memcmp(data, refdata, size) == 0);
+
+			// Compare downloaded file contents with wget_downloaded_file_open_stream()
+			test_assert(stream = wget_downloaded_file_open_stream(file));
+			for (i = 0; i < size; i++)
+				test_assert((int) refdata[i] == getc(stream));
+			test_assert("At end of file" && getc(stream) == EOF);
+			fclose(stream);
+
+			wget_free(refdata);
 		}
 	}
 

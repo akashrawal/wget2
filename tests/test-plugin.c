@@ -518,7 +518,7 @@ int main(void)
 	// Check whether intercepting downloaded files works
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi") " --recursive --no-host-directories"
-			" --plugin-opt=pluginapi.parse_rot13",
+			" --plugin-opt=pluginapi.parse-rot13 --plugin-opt=pluginapi.test-pp",
 		WGET_TEST_REQUEST_URL, "rot13_index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
