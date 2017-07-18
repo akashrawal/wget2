@@ -186,9 +186,9 @@ uint64_t wget_downloaded_file_get_size(wget_downloaded_file_t *file)
  *                  The memory is owned by wget and must not be free'd or modified.
  * \param[out] size Size of the downloaded file.
  */
-void wget_downloaded_file_get_contents(wget_downloaded_file_t *file, const void **data, size_t *size)
+int wget_downloaded_file_get_contents(wget_downloaded_file_t *file, const void **data, size_t *size)
 {
-	(* file->vtable->file_get_contents)(file, data, size);
+	return (* file->vtable->file_get_contents)(file, data, size);
 }
 
 /**

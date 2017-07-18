@@ -406,7 +406,7 @@ static int post_processor(wget_plugin_t *plugin, wget_downloaded_file_t *file)
 			test_assert(refsize == wget_downloaded_file_get_size(file));
 
 			// Compare downloaded file contents with wget_downloaded_file_get_contents()
-			wget_downloaded_file_get_contents(file, (const void **) &data, &size);
+			test_assert(wget_downloaded_file_get_contents(file, (const void **) &data, &size) == 0);
 			test_assert(refsize == size && "wget_downloaded_file_get_contents()");
 			test_assert(memcmp(data, refdata, size) == 0);
 

@@ -2138,7 +2138,7 @@ WGETAPI uint64_t
 wget_downloaded_file_get_size(wget_downloaded_file_t *file);
 
 // Reads the downloaded file into memory.
-WGETAPI void
+WGETAPI int
 wget_downloaded_file_get_contents(wget_downloaded_file_t *file, const void **data, size_t *size);
 
 // Opens the downloaded file as a new stream.
@@ -2189,7 +2189,7 @@ struct wget_plugin_vtable
 	const wget_iri_t *(*file_get_source_url)(wget_downloaded_file_t *);
 	const char *(*file_get_local_filename)(wget_downloaded_file_t *);
 	uint64_t (*file_get_size)(wget_downloaded_file_t *);
-	void (*file_get_contents)(wget_downloaded_file_t *, const void **data, size_t *size);
+	int (*file_get_contents)(wget_downloaded_file_t *, const void **data, size_t *size);
 	FILE *(*file_open_stream)(wget_downloaded_file_t *);
 	bool (*file_get_recurse)(wget_downloaded_file_t *);
 	void (*file_add_recurse_url)(wget_downloaded_file_t *, const wget_iri_t *);

@@ -186,7 +186,7 @@ static uint64_t impl_file_get_size(wget_downloaded_file_t *p_file)
 	return file->size;
 }
 
-static void impl_file_get_contents(wget_downloaded_file_t *p_file, const void **data, size_t *size)
+static int impl_file_get_contents(wget_downloaded_file_t *p_file, const void **data, size_t *size)
 {
 	downloaded_file_t *file = (downloaded_file_t *) p_file;
 
@@ -194,11 +194,15 @@ static void impl_file_get_contents(wget_downloaded_file_t *p_file, const void **
 		size_t dummy;
 		// TODO: Check behavior with --output-document= option
 		file->data_buf = wget_read_file(file->filename, &dummy);
-		file->data = data;
+		if (! file->data_buf)
+			return -1;
+		file->data = file->data_buf;
 	}
 
 	*data = file->data;
 	*size = file->size;
+
+	return 0;
 }
 
 static FILE *impl_file_open_stream(wget_downloaded_file_t *p_file)
