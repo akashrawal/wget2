@@ -205,7 +205,11 @@ static FILE *impl_file_open_stream(wget_downloaded_file_t *p_file)
 {
 	downloaded_file_t *file = (downloaded_file_t *) p_file;
 
-	// TODO: Use fmemopen() whenever possible
+	// TODO: Add tests for large files
+#ifdef HAVE_FMEMOPEN
+	if (file->data)
+		return fmemopen((void *) file->data, file->size, "rb");
+#endif
 	return fopen(file->filename, "rb");
 }
 
