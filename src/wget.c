@@ -1589,13 +1589,16 @@ static void process_response(wget_http_response_t *resp)
 
 	// Forward response to plugins
 	if (resp->code == 200 || (resp->code == 304 && config.timestamping)) {
-		const void *data = resp->code == 200 && resp->body ? resp->body->data : NULL;
 		process_decision = job->local_filename || resp->body ? 1 : 0;
 		recurse_decision = process_decision && config.recursive
 			&& (!config.level || job->level < config.level + config.page_requisites) ? 1 : 0;
 		if (process_decision) {
 			wget_vector_t *recurse_iris = NULL;
 			int n_recurse_iris = 0;
+			const void *data = NULL;
+
+			if (resp->code == 200 && resp->body && resp->body->length == resp->content_length)
+				data = resp->body->data;
 
 			if (recurse_decision)
 				recurse_iris = wget_vector_create(16, -2, NULL);
