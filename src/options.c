@@ -77,7 +77,7 @@ struct optionw {
 	void
 		*var;
 	int
-		(*parser)(option_t opt, const char *val);
+		(*parser)(option_t opt, const char *val, const char invert);
 	int
 		args;
 	char
@@ -87,8 +87,8 @@ struct optionw {
 	const char
 	    *help_str[4];
 };
-static int G_GNUC_WGET_NORETURN print_help(G_GNUC_WGET_UNUSED option_t opt, G_GNUC_WGET_UNUSED const char *val);
-static int G_GNUC_WGET_NORETURN print_version(G_GNUC_WGET_UNUSED option_t opt, G_GNUC_WGET_UNUSED const char *val)
+static int G_GNUC_WGET_NORETURN print_help(G_GNUC_WGET_UNUSED option_t opt, G_GNUC_WGET_UNUSED const char *val, const char invert);
+static int G_GNUC_WGET_NORETURN print_version(G_GNUC_WGET_UNUSED option_t opt, G_GNUC_WGET_UNUSED const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	puts("GNU Wget2 " PACKAGE_VERSION " - multithreaded metalink/file/website downloader\n");
 	puts("+digest"
@@ -207,14 +207,14 @@ static _GL_INLINE char *_shell_expand(const char *str)
 	return expanded_str;
 }
 
-static int parse_integer(option_t opt, const char *val)
+static int parse_integer(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	*((int *)opt->var) = val ? atoi(val) : 0;
 
 	return 0;
 }
 
-static int parse_numbytes(option_t opt, const char *val)
+static int parse_numbytes(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	if (val) {
 		char modifier = 0, error = 0;
@@ -247,7 +247,7 @@ static int parse_numbytes(option_t opt, const char *val)
 	return 0;
 }
 
-static int parse_filename(option_t opt, const char *val)
+static int parse_filename(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	xfree(*((const char **)opt->var));
 	*((const char **)opt->var) = val ? _shell_expand(val) : NULL;
@@ -256,7 +256,7 @@ static int parse_filename(option_t opt, const char *val)
 	return 0;
 }
 
-static int parse_string(option_t opt, const char *val)
+static int parse_string(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	// the strdup'ed string will be released on program exit
 	xfree(*((const char **)opt->var));
@@ -265,7 +265,7 @@ static int parse_string(option_t opt, const char *val)
 	return 0;
 }
 
-static int parse_stringset(option_t opt, const char *val)
+static int parse_stringset(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	wget_stringmap_t *map = *((wget_stringmap_t **)opt->var);
 
@@ -291,7 +291,7 @@ static int compare_wget_http_param(wget_http_header_param_t *a, wget_http_header
 	return 1;
 }
 
-static int parse_header(option_t opt, const char *val)
+static int parse_header(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	wget_vector_t *v = *((wget_vector_t **)opt->var);
 
@@ -365,12 +365,12 @@ static int parse_stringlist_expand(option_t opt, const char *val, int expand)
 	return 0;
 }
 
-static int parse_stringlist(option_t opt, const char *val)
+static int parse_stringlist(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	return parse_stringlist_expand(opt, val, 0);
 }
 
-static int parse_filenames(option_t opt, const char *val)
+static int parse_filenames(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	return parse_stringlist_expand(opt, val, 1);
 }
@@ -421,7 +421,7 @@ static int G_GNUC_WGET_NONNULL_ALL _compare_tag(const wget_html_tag_t *t1, const
 	return n;
 }
 
-static int parse_taglist(option_t opt, const char *val)
+static int parse_taglist(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	if (val && *val) {
 		wget_vector_t *v = *((wget_vector_t **)opt->var);
@@ -443,25 +443,25 @@ static int parse_taglist(option_t opt, const char *val)
 	return 0;
 }
 
-static int parse_bool(option_t opt, const char *val)
+static int parse_bool(option_t opt, const char *val, const char invert)
 {
 	if (opt->var) {
 		if (!val)
-			*((char *) opt->var) = 1;
+			*((char *) opt->var) = !invert;
 		else if (!strcmp(val, "1") || !wget_strcasecmp_ascii(val, "y") || !wget_strcasecmp_ascii(val, "yes") || !wget_strcasecmp_ascii(val, "on"))
-			*((char *) opt->var) = 1;
-		else if (!strcmp(val, "0") || !wget_strcasecmp_ascii(val, "n") || !wget_strcasecmp_ascii(val, "no") || !wget_strcasecmp_ascii(val, "off"))
-			*((char *) opt->var) = 0;
+			*((char *) opt->var) = !invert;
+		else if (!*val || !strcmp(val, "0") || !wget_strcasecmp_ascii(val, "n") || !wget_strcasecmp_ascii(val, "no") || !wget_strcasecmp_ascii(val, "off"))
+			*((char *) opt->var) = invert;
 		else
-			error_printf(_("Boolean value '%s' not recognized\n"), val);
+			return 1;
 	}
 
 	return 0;
 }
 
-static int parse_mirror(option_t opt, const char *val)
+static int parse_mirror(option_t opt, const char *val, const char invert)
 {
-	parse_bool(opt, val);
+	parse_bool(opt, val, invert);
 
 	if (config.mirror) {
 		config.recursive = 1;
@@ -476,7 +476,7 @@ static int parse_mirror(option_t opt, const char *val)
 	return 0;
 }
 
-static int parse_timeout(option_t opt, const char *val)
+static int parse_timeout(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	double fval;
 
@@ -515,7 +515,7 @@ static int parse_timeout(option_t opt, const char *val)
 	return 0;
 }
 
-static int G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL((1)) parse_cert_type(option_t opt, const char *val)
+static int G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL((1)) parse_cert_type(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	if (!val || !wget_strcasecmp_ascii(val, "PEM"))
 		*((char *)opt->var) = WGET_SSL_X509_FMT_PEM;
@@ -527,7 +527,7 @@ static int G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL((1)) parse_cert_type(option_t op
 	return 0;
 }
 
-static int G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL((1)) parse_progress_type(option_t opt, const char *val)
+static int G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL((1)) parse_progress_type(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	if (!val || !*val || !wget_strcasecmp_ascii(val, "none"))
 		*((char *)opt->var) = 0;
@@ -540,7 +540,7 @@ static int G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL((1)) parse_progress_type(option_
 }
 
 // legacy option, needed to succeed test suite
-static int G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL((1)) parse_restrict_names(option_t opt, const char *val)
+static int G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL((1)) parse_restrict_names(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	if (!val || !*val || !wget_strcasecmp_ascii(val, "none"))
 		*((int *)opt->var) = WGET_RESTRICT_NAMES_NONE;
@@ -564,7 +564,7 @@ static int G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL((1)) parse_restrict_names(option
 
 // Wget compatibility: support -nv, -nc, -nd, -nH and -np
 // Wget supports --no-... to all boolean and string options
-static int parse_n_option(G_GNUC_WGET_UNUSED option_t opt, const char *val)
+static int parse_n_option(G_GNUC_WGET_UNUSED option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	if (val) {
 		const char *p;
@@ -597,7 +597,7 @@ static int parse_n_option(G_GNUC_WGET_UNUSED option_t opt, const char *val)
 	return 0;
 }
 
-static int parse_prefer_family(option_t opt, const char *val)
+static int parse_prefer_family(option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	if (!val || !wget_strcasecmp_ascii(val, "none"))
 		*((char *)opt->var) = WGET_NET_FAMILY_ANY;
@@ -613,7 +613,7 @@ static int parse_prefer_family(option_t opt, const char *val)
 
 static int plugin_loading_enabled = 0;
 
-static int parse_plugin(G_GNUC_WGET_UNUSED option_t opt, const char *val)
+static int parse_plugin(G_GNUC_WGET_UNUSED option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	dl_error_t e[1];
 
@@ -631,7 +631,7 @@ static int parse_plugin(G_GNUC_WGET_UNUSED option_t opt, const char *val)
 	return 0;
 }
 
-static int parse_plugin_local(G_GNUC_WGET_UNUSED option_t opt, const char *val)
+static int parse_plugin_local(G_GNUC_WGET_UNUSED option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	dl_error_t e[1];
 
@@ -649,7 +649,7 @@ static int parse_plugin_local(G_GNUC_WGET_UNUSED option_t opt, const char *val)
 	return 0;
 }
 
-static int parse_plugin_dirs(G_GNUC_WGET_UNUSED option_t opt, const char *val)
+static int parse_plugin_dirs(G_GNUC_WGET_UNUSED option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	if (! plugin_loading_enabled)
 		return 0;
@@ -679,7 +679,7 @@ static int parse_plugin_option
 }
 
 static int list_plugins(G_GNUC_WGET_UNUSED option_t opt,
-		G_GNUC_WGET_UNUSED const char *val)
+		G_GNUC_WGET_UNUSED const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	wget_vector_t *v;
 	size_t n_names, i;
@@ -763,7 +763,8 @@ struct config config = {
 	.xattr = 1
 };
 
-static int parse_execute(option_t opt, const char *val);
+static int parse_execute(option_t opt, const char *val, const char invert);
+static int parse_proxy(option_t opt, const char *val, const char invert);
 
 static const struct optionw options[] = {
 	// long name, config variable, parse function, number of arguments, short name
@@ -774,7 +775,7 @@ static const struct optionw options[] = {
 		  "patterns.\n"
 		}
 	},
-	{ "adjust-extension", &config.adjust_extension, parse_bool, 0, 'E',
+	{ "adjust-extension", &config.adjust_extension, parse_bool, -1, 'E',
 		SECTION_HTTP,
 		{ "Append extension to saved file (.html or .css).\n",
 		  "(default: off)\n"
@@ -786,7 +787,7 @@ static const struct optionw options[] = {
 		  "'-' for STDOUT.\n"
 		}
 	},
-	{ "backup-converted", &config.backup_converted, parse_bool, 0, 'K',
+	{ "backup-converted", &config.backup_converted, parse_bool, -1, 'K',
 		SECTION_HTTP,
 		{ "When converting, keep the original file with\n",
 		  "a .orig suffix. (default: off)\n"
@@ -820,7 +821,7 @@ static const struct optionw options[] = {
 		{ "Directory with PEM CA certificates.\n"
 		}
 	},
-	{ "cache", &config.cache, parse_bool, 0, 0,
+	{ "cache", &config.cache, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Enabled using of server cache. (default: on)\n"
 		}
@@ -836,12 +837,12 @@ static const struct optionw options[] = {
 		  "(default: PEM)\n"
 		}
 	},
-	{ "check-certificate", &config.check_certificate, parse_bool, 0, 0,
+	{ "check-certificate", &config.check_certificate, parse_bool, -1, 0,
 		SECTION_SSL,
 		{ "Check the server's certificate. (default: on)\n"
 		}
 	},
-	{ "check-hostname", &config.check_hostname, parse_bool, 0, 0,
+	{ "check-hostname", &config.check_hostname, parse_bool, -1, 0,
 		SECTION_SSL,
 		{ "Check the server's certificate's hostname.\n",
 		  "(default: on)\n"
@@ -854,7 +855,7 @@ static const struct optionw options[] = {
 			"wget --chunk-size=1M\n"
 		}
 	},
-	{ "clobber", &config.clobber, parse_bool, 0, 0,
+	{ "clobber", &config.clobber, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Enable file clobbering. (default: on)\n"
 		}
@@ -874,24 +875,24 @@ static const struct optionw options[] = {
 		{ "Connect timeout in seconds.\n"
 		}
 	},
-	{ "content-disposition", &config.content_disposition, parse_bool, 0, 0,
+	{ "content-disposition", &config.content_disposition, parse_bool, -1, 0,
 		SECTION_HTTP,
 		{ "Take filename from Content-Disposition.\n",
 		  "(default: off)\n"
 		}
 	},
-	{ "content-on-error", &config.content_on_error, parse_bool, 0, 0,
+	{ "content-on-error", &config.content_on_error, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Save response body even on error status.\n",
 		  "(default: off)\n"
 		}
 	},
-	{ "continue", &config.continue_download, parse_bool, 0, 'c',
+	{ "continue", &config.continue_download, parse_bool, -1, 'c',
 		SECTION_DOWNLOAD,
 		{ "Continue download for given files. (default: off)\n"
 		}
 	},
-	{ "convert-links", &config.convert_links, parse_bool, 0, 'k',
+	{ "convert-links", &config.convert_links, parse_bool, -1, 'k',
 		SECTION_DOWNLOAD,
 		{ "Convert embedded URLs to local URLs.\n",
 		  "(default: off)\n"
@@ -905,7 +906,7 @@ static const struct optionw options[] = {
 		  "wget -O suffixes.txt https://publicsuffix.org/list/effective_tld_names.dat\n"
 		}
 	},
-	{ "cookies", &config.cookies, parse_bool, 0, 0,
+	{ "cookies", &config.cookies, parse_bool, -1, 0,
 		SECTION_HTTP,
 		{ "Enable use of cookies. (default: on)\n"
 		}
@@ -921,17 +922,17 @@ static const struct optionw options[] = {
 		  "components. (default: 0)\n"
 		}
 	},
-	{ "cut-file-get-vars", &config.cut_file_get_vars, parse_bool, 0, 0,
+	{ "cut-file-get-vars", &config.cut_file_get_vars, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Cut HTTP GET vars from file names. (default: off)\n"
 		}
 	},
-	{ "cut-url-get-vars", &config.cut_url_get_vars, parse_bool, 0, 0,
+	{ "cut-url-get-vars", &config.cut_url_get_vars, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Cut HTTP GET vars from URLs. (default: off)\n"
 		}
 	},
-	{ "debug", &config.debug, parse_bool, 0, 'd',
+	{ "debug", &config.debug, parse_bool, -1, 'd',
 		SECTION_STARTUP,
 		{ "Print debugging messages.(default: off)\n"
 		}
@@ -941,12 +942,12 @@ static const struct optionw options[] = {
 		{ "Default file name. (default: index.html)\n"
 		}
 	},
-	{ "delete-after", &config.delete_after, parse_bool, 0, 0,
+	{ "delete-after", &config.delete_after, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Don't save downloaded files. (default: off)\n"
 		}
 	},
-	{ "directories", &config.directories, parse_bool, 0, 0,
+	{ "directories", &config.directories, parse_bool, -1, 0,
 		SECTION_DIRECTORY,
 		{ "Create hierarchy of directories when retrieving\n",
 		  "recursively. (default: on)\n"
@@ -957,7 +958,7 @@ static const struct optionw options[] = {
 		{ "Set directory prefix.\n"
 		}
 	},
-	{ "dns-caching", &config.dns_caching, parse_bool, 0, 0,
+	{ "dns-caching", &config.dns_caching, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Caching of domain name lookups. (default: on)\n"
 		}
@@ -994,46 +995,46 @@ static const struct optionw options[] = {
 		  "e.g. --follow-tags=\"img/data-500px,img/data-hires\n"
 		}
 	},
-	{ "force-atom", &config.force_atom, parse_bool, 0, 0,
+	{ "force-atom", &config.force_atom, parse_bool, -1, 0,
 		SECTION_STARTUP,
 		{ "Treat input file as Atom Feed.\n",
 		  "(default: off) (NEW!)\n"
 		}
 	},
-	{ "force-css", &config.force_css, parse_bool, 0, 0,
+	{ "force-css", &config.force_css, parse_bool, -1, 0,
 		SECTION_STARTUP,
 		{ "Treat input file as CSS. (default: off) (NEW!)\n"
 		}
 	},
-	{ "force-directories", &config.force_directories, parse_bool, 0, 'x',
+	{ "force-directories", &config.force_directories, parse_bool, -1, 'x',
 		SECTION_DIRECTORY,
 		{ "Create hierarchy of directories when not\n",
 		  "retrieving recursively. (default: off)\n"
 		}
 	},
-	{ "force-html", &config.force_html, parse_bool, 0, 'F',
+	{ "force-html", &config.force_html, parse_bool, -1, 'F',
 		SECTION_STARTUP,
 		{ "Treat input file as HTML. (default: off)\n"
 		}
 	},
-	{ "force-metalink", &config.force_metalink, parse_bool, 0, 0,
+	{ "force-metalink", &config.force_metalink, parse_bool, -1, 0,
 		SECTION_STARTUP,
 		{ "Treat input file as Metalink.\n",
 		  "(default: off) (NEW!)\n"
 		}
 	},
-	{ "force-rss", &config.force_rss, parse_bool, 0, 0,
+	{ "force-rss", &config.force_rss, parse_bool, -1, 0,
 		SECTION_STARTUP,
 		{ "Treat input file as RSS Feed.\n",
 		  "(default: off) (NEW!)\n"
 		}
 	},
-	{ "force-sitemap", &config.force_sitemap, parse_bool, 0, 0,
+	{ "force-sitemap", &config.force_sitemap, parse_bool, -1, 0,
 		SECTION_STARTUP,
 		{ "Treat input file as Sitemap. (default: off) (NEW!)\n"
 		}
 	},
-	{ "fsync-policy", &config.fsync_policy, parse_bool, 0, 0,
+	{ "fsync-policy", &config.fsync_policy, parse_bool, -1, 0,
 		SECTION_STARTUP,
 		{ "Use fsync() to wait for data being written to\n",
 		  "the pysical layer. (default: off) (NEW!)\n"
@@ -1057,13 +1058,13 @@ static const struct optionw options[] = {
 		{ "Print this help.\n"
 		}
 	},
-	{ "host-directories", &config.host_directories, parse_bool, 0, 0,
+	{ "host-directories", &config.host_directories, parse_bool, -1, 0,
 		SECTION_DIRECTORY,
 		{ "Create host directories when retrieving\n",
 		  "recursively. (default: on)\n"
 		}
 	},
-	{ "hpkp", &config.hpkp, parse_bool, 0, 0,
+	{ "hpkp", &config.hpkp, parse_bool, -1, 0,
 		SECTION_SSL,
 		{ "Use HTTP Public Key Pinning (HPKP). (default: on)\n"
 		}
@@ -1074,7 +1075,7 @@ static const struct optionw options[] = {
 		  "(default: ~/.wget-hpkp)\n"
 		}
 	},
-	{ "hsts", &config.hsts, parse_bool, 0, 0,
+	{ "hsts", &config.hsts, parse_bool, -1, 0,
 		SECTION_SSL,
 		{ "Use HTTP Strict Transport Security (HSTS).\n",
 		  "(default: on)\n"
@@ -1085,12 +1086,12 @@ static const struct optionw options[] = {
 		{ "Set file for HSTS caching. (default: ~/.wget-hsts)\n"
 		}
 	},
-	{ "html-extension", &config.adjust_extension, parse_bool, 0, 0,
+	{ "html-extension", &config.adjust_extension, parse_bool, -1, 0,
 		SECTION_HTTP,
 		{ "Obsoleted by --adjust-extension\n"
 		}
 	}, // obsolete, replaced by --adjust-extension
-	{ "http-keep-alive", &config.keep_alive, parse_bool, 0, 0,
+	{ "http-keep-alive", &config.keep_alive, parse_bool, -1, 0,
 		SECTION_HTTP,
 		{ "Keep connection open for further requests.\n",
 		  "(default: on)\n"
@@ -1126,12 +1127,12 @@ static const struct optionw options[] = {
 		  "(default: empty username)\n"
 		}
 	},
-	{ "http2", &config.http2, parse_bool, 0, 0,
+	{ "http2", &config.http2, parse_bool, -1, 0,
 		SECTION_SSL,
 		{ "Use HTTP/2 protocol if possible. (default: on)\n"
 		}
 	},
-	{ "https-only", &config.https_only, parse_bool, 0, 0,
+	{ "https-only", &config.https_only, parse_bool, -1, 0,
 		SECTION_SSL,
 		{ "Do not follow non-secure URLs. (default: off).\n"
 		}
@@ -1142,7 +1143,7 @@ static const struct optionw options[] = {
 		  "variables. Use comma to separate proxies.\n"
 		}
 	},
-	{ "ignore-case", &config.ignore_case, parse_bool, 0, 0,
+	{ "ignore-case", &config.ignore_case, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Ignore case when matching files. (default: off)\n"
 		}
@@ -1153,12 +1154,12 @@ static const struct optionw options[] = {
 		  "e.g. --ignore-tags=\"img,a/href\n"
 		}
 	},
-	{ "inet4-only", &config.inet4_only, parse_bool, 0, '4',
+	{ "inet4-only", &config.inet4_only, parse_bool, -1, '4',
 		SECTION_DOWNLOAD,
 		{ "Use IPv4 connections only. (default: off)\n"
 		}
 	},
-	{ "inet6-only", &config.inet6_only, parse_bool, 0, '6',
+	{ "inet6-only", &config.inet6_only, parse_bool, -1, '6',
 		SECTION_DOWNLOAD,
 		{ "Use IPv6 connections only. (default: off)\n"
 		}
@@ -1174,13 +1175,13 @@ static const struct optionw options[] = {
 		{ "File where URLs are read from, - for STDIN.\n"
 		}
 	},
-	{ "iri", NULL, parse_bool, 0, 0,
+	{ "iri", NULL, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Wget dummy option, you can't switch off\n",
 		  "international support\n"
 		}
 	}, // Wget compatibility, in fact a do-nothing option
-	{ "keep-session-cookies", &config.keep_session_cookies, parse_bool, 0, 0,
+	{ "keep-session-cookies", &config.keep_session_cookies, parse_bool, -1, 0,
 		SECTION_HTTP,
 		{ "Also save session cookies. (default: off)\n"
 		}
@@ -1222,13 +1223,13 @@ static const struct optionw options[] = {
 		  "(default: 5) (NEW!)\n"
 		}
 	},
-	{ "metalink", &config.metalink, parse_bool, 0, 0,
+	{ "metalink", &config.metalink, parse_bool, -1, 0,
 		SECTION_HTTP,
 		{ "Follow a metalink file instead of storing it\n",
 		  "(default: on)\n"
 		}
 	},
-	{ "mirror", &config.mirror, parse_mirror, 0, 'm',
+	{ "mirror", &config.mirror, parse_mirror, -1, 'm',
 		SECTION_DOWNLOAD,
 		{ "Turn on mirroring options -r -N -l inf\n"
 		}
@@ -1238,7 +1239,7 @@ static const struct optionw options[] = {
 		{ "Special compatibility option\n"
 		}
 	}, // special Wget compatibility option
-	{ "netrc", &config.netrc, parse_bool, 0, 0,
+	{ "netrc", &config.netrc, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Load credentials from ~/.netrc if not given.\n",
 	      "(default: on)\n"
@@ -1250,7 +1251,7 @@ static const struct optionw options[] = {
 		  "~/.netrc. (default: ~/.netrc)\n"
 		}
 	},
-	{ "ocsp", &config.ocsp, parse_bool, 0, 0,
+	{ "ocsp", &config.ocsp, parse_bool, -1, 0,
 		SECTION_SSL,
 		{ "Use OCSP server access to verify server's\n",
 		  "certificate. (default: on)\n"
@@ -1262,7 +1263,7 @@ static const struct optionw options[] = {
 		  "(default: ~/.wget-ocsp)\n"
 		}
 	},
-	{ "ocsp-stapling", &config.ocsp_stapling, parse_bool, 0, 0,
+	{ "ocsp-stapling", &config.ocsp_stapling, parse_bool, -1, 0,
 		SECTION_SSL,
 		{ "Use OCSP stapling to verify the server's\n",
 		  "certificate. (default: on)\n"
@@ -1280,13 +1281,13 @@ static const struct optionw options[] = {
 		  "'-' for STDOUT.\n"
 		}
 	},
-	{ "page-requisites", &config.page_requisites, parse_bool, 0, 'p',
+	{ "page-requisites", &config.page_requisites, parse_bool, -1, 'p',
 		SECTION_DOWNLOAD,
 		{ "Download all necessary files to display a\n",
 		  "HTML page\n"
 		}
 	},
-	{ "parent", &config.parent, parse_bool, 0, 0,
+	{ "parent", &config.parent, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Ascend above parent directory. (default: on)\n"
 		}
@@ -1351,19 +1352,19 @@ static const struct optionw options[] = {
 		  "(default: none)\n"
 		}
 	},
-	{ "protocol-directories", &config.protocol_directories, parse_bool, 0, 0,
+	{ "protocol-directories", &config.protocol_directories, parse_bool, -1, 0,
 		SECTION_DIRECTORY,
 		{ "Force creating protocol directories.\n",
 		  "(default: off)\n"
 		}
 	},
-	{ "proxy", &config.proxy, parse_bool, 0, 0,
+	{ "proxy", &config.proxy, parse_proxy, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Enable support for *_proxy environment variables.\n",
 		  "(default: on)\n"
 		}
 	},
-	{ "quiet", &config.quiet, parse_bool, 0, 'q',
+	{ "quiet", &config.quiet, parse_bool, -1, 'q',
 		SECTION_STARTUP,
 		{ "Print no messages except debugging messages.\n",
 		  "(default: off)\n"
@@ -1379,7 +1380,7 @@ static const struct optionw options[] = {
 		{ "File to be used as source of random data.\n"
 		}
 	},
-	{ "random-wait", &config.random_wait, parse_bool, 0, 0,
+	{ "random-wait", &config.random_wait, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Wait 0.5 up to 1.5*<--wait> seconds between\n",
 		  "downloads (per thread). (default: off)\n"
@@ -1390,7 +1391,7 @@ static const struct optionw options[] = {
 		{ "Read and write timeout in seconds.\n"
 		}
 	},
-	{ "recursive", &config.recursive, parse_bool, 0, 'r',
+	{ "recursive", &config.recursive, parse_bool, -1, 'r',
 		SECTION_DOWNLOAD,
 		{ "Recursive download. (default: off)\n"
 		}
@@ -1420,7 +1421,7 @@ static const struct optionw options[] = {
 		  "uppercase, none\n"
 		}
 	},
-	{ "robots", &config.robots, parse_bool, 0, 0,
+	{ "robots", &config.robots, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Respect robots.txt standard for recursive\n",
 		  "downloads. (default: on)\n"
@@ -1431,7 +1432,7 @@ static const struct optionw options[] = {
 		{ "Save cookies to file.\n"
 		}
 	},
-	{ "save-headers", &config.save_headers, parse_bool, 0, 0,
+	{ "save-headers", &config.save_headers, parse_bool, -1, 0,
 		SECTION_HTTP,
 		{ "Save the response headers in front of the response\n",
 		  "data. (default: off)\n"
@@ -1444,28 +1445,28 @@ static const struct optionw options[] = {
 		  "strings, e.g. NORMAL:-VERS-SSL3.0:-RSA\n"
 		}
 	},
-	{ "server-response", &config.server_response, parse_bool, 0, 'S',
+	{ "server-response", &config.server_response, parse_bool, -1, 'S',
 		SECTION_DOWNLOAD,
 		{ "Print the server response headers. (default: off)\n"
 		}
 	},
-	{ "span-hosts", &config.span_hosts, parse_bool, 0, 'H',
+	{ "span-hosts", &config.span_hosts, parse_bool, -1, 'H',
 		SECTION_DOWNLOAD,
 		{ "Span hosts that were not given on the\n",
 		  "command line. (default: off)\n"
 		}
 	},
-	{ "spider", &config.spider, parse_bool, 0, 0,
+	{ "spider", &config.spider, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Enable web spider mode. (default: off)\n"
 		}
 	},
-	{ "strict-comments", &config.strict_comments, parse_bool, 0, 0,
+	{ "strict-comments", &config.strict_comments, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "A dummy option. Parsing always works non-strict.\n"
 		}
 	},
-	{ "tcp-fastopen", &config.tcp_fastopen, parse_bool, 0, 0,
+	{ "tcp-fastopen", &config.tcp_fastopen, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Enable TCP Fast Open (TFO). (default: on)\n"
 		}
@@ -1475,19 +1476,19 @@ static const struct optionw options[] = {
 		{ "General network timeout in seconds.\n"
 		}
 	},
-	{ "timestamping", &config.timestamping, parse_bool, 0, 'N',
+	{ "timestamping", &config.timestamping, parse_bool, -1, 'N',
 		SECTION_DOWNLOAD,
 		{ "Just retrieve younger files than the local ones.\n",
 		  "(default: off)\n"
 		}
 	},
-	{ "tls-false-start", &config.tls_false_start, parse_bool, 0, 0,
+	{ "tls-false-start", &config.tls_false_start, parse_bool, -1, 0,
 		SECTION_SSL,
 		{ "Enable TLS False Start (needs GnuTLS 3.5+).\n",
 		  "(default: on)\n"
 		}
 	},
-	{ "tls-resume", &config.tls_resume, parse_bool, 0, 0,
+	{ "tls-resume", &config.tls_resume, parse_bool, -1, 0,
 		SECTION_SSL,
 		{ "Enable TLS Session Resumption. (default: on)\n"
 		}
@@ -1503,13 +1504,13 @@ static const struct optionw options[] = {
 		{ "Number of tries for each download. (default 20)\n"
 		}
 	},
-	{ "trust-server-names", &config.trust_server_names, parse_bool, 0, 0,
+	{ "trust-server-names", &config.trust_server_names, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "On redirection use the server's filename.\n",
 		  "(default: off)\n"
 		}
 	},
-	{ "use-server-timestamps", &config.use_server_timestamps, parse_bool, 0, 0,
+	{ "use-server-timestamps", &config.use_server_timestamps, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Set local file's timestamp to server's timestamp.\n",
 		  "(default: on)\n"
@@ -1527,7 +1528,7 @@ static const struct optionw options[] = {
 		  "(default: empty username)\n"
 		}
 	},
-	{ "verbose", &config.verbose, parse_bool, 0, 'v',
+	{ "verbose", &config.verbose, parse_bool, -1, 'v',
 		SECTION_STARTUP,
 		{ "Print more messages. (default: on)\n"\
 		}
@@ -1549,14 +1550,14 @@ static const struct optionw options[] = {
 		  "(per thread). (default: 10)\n"
 		}
 	},
-	{ "xattr", &config.xattr, parse_bool, 0, 0,
+	{ "xattr", &config.xattr, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "Save extended file attributes. (default: on)\n"\
 		}
 	}
 };
 
-static int G_GNUC_WGET_NORETURN print_help(G_GNUC_WGET_UNUSED option_t opt, G_GNUC_WGET_UNUSED const char *val)
+static int G_GNUC_WGET_NORETURN print_help(G_GNUC_WGET_UNUSED option_t opt, G_GNUC_WGET_UNUSED const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	printf(
 		"GNU Wget2 V" PACKAGE_VERSION " - multithreaded metalink/file/website downloader\n"
@@ -1619,25 +1620,36 @@ static int G_GNUC_WGET_NORETURN print_help(G_GNUC_WGET_UNUSED option_t opt, G_GN
 
 static int G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL_ALL opt_compare(const void *key, const void *option)
 {
-	return strcmp((const char *)key, ((const option_t)option)->long_name);
+	return strcmp(key, ((option_t) option)->long_name);
 }
 
-static int G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL_ALL opt_compare_execute(const char *s1, const char *s2)
+static int G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL_ALL opt_compare_config(const void *key, const void *option)
 {
-	while (*s1 && *s2) {
-		if (*s1 == '-' || *s1 == '_') s1++;
-		if (*s2 == '-' || *s2 == '_') s2++;
-		if (*s1 != *s2) break;
-		s1++; s2++;
+	return wget_strcasecmp_ascii(key, ((option_t) option)->long_name);
+}
+
+static int G_GNUC_WGET_PURE G_GNUC_WGET_NONNULL_ALL opt_compare_config_linear(const char *key, const char *command)
+{
+	const char *s1 = key, *s2 = command;
+
+	for (; *s1 && *s2; s1++, s2++) {
+		if (*s2 == '-' || *s2 == '_') {
+			if (*s1 == '-' || *s1 == '_')
+				s1++;
+			s2++;
+		}
+
+		if (!*s1 || !*s2 || c_tolower(*s1) != *s2) break;
+		// *s2 is guaranteed to be lower case so convert *s1 to lower case
 	}
 
-	return *s1 - *s2;
+	return *s1 != *s2; // no need for tolower() here
 }
 
-static int G_GNUC_WGET_NONNULL((1)) set_long_option(const char *name, const char *value, int value_is_next_arg)
+static int G_GNUC_WGET_NONNULL((1)) set_long_option(const char *name, const char *value, char parsing_config)
 {
 	option_t opt;
-	int invert = 0, ret = 0;
+	int invert = 0, ret = 0, case_insensitive = 1;
 	char namebuf[strlen(name) + 1], *p;
 	int value_present = 0;
 
@@ -1650,83 +1662,105 @@ static int G_GNUC_WGET_NONNULL((1)) set_long_option(const char *name, const char
 		value_present = 1;
 	}
 
+	// If the option is  passed from .wget2rc (--*), delete the "--" prefix
+	if (!strncmp(name, "--", 2)) {
+		case_insensitive = 0;
+		name += 2;
+	}
 	// If the option is negated (--no-) delete the "no-" prefix
 	if (!strncmp(name, "no-", 3)) {
 		invert = 1;
 		name += 3;
 	}
-	opt = bsearch(name, options, countof(options), sizeof(options[0]), opt_compare);
 
-	if (!opt) {
-		// Fallback to linear search for 'unsharp' searching.
-		// Maybe the user asked for e.g. https_only or httpsonly instead of https-only
-		// opt_compare_execute() will find these. Wget -e/--execute compatibility.
-		for (unsigned it = 0; it < countof(options); it++) {
-			if (opt_compare_execute(name, options[it].long_name) == 0) {
-				opt = &options[it];
-				break;
-			}
+	if (parsing_config && case_insensitive) {
+		opt = bsearch(name, options, countof(options), sizeof(options[0]), opt_compare_config);
+		if (!opt) {
+			// Fallback to linear search for 'unsharp' searching.
+			// Maybe the user asked for e.g. https_only or httpsonly instead of https-only
+			// opt_compare_config_linear() will find these. Wget -e/--execute compatibility.
+			for (unsigned it = 0; it < countof(options) && !opt; it++)
+				if (opt_compare_config_linear(name, options[it].long_name) == 0)
+					opt = &options[it];
 		}
-	}
+	} else
+		opt = bsearch(name, options, countof(options), sizeof(options[0]), opt_compare);
 
 	if (!opt)
 		error_printf_exit(_("Unknown option '%s'\n"), name);
 
-	if (!value_present && opt->parser == parse_bool)
-		value = NULL;
-
 	debug_printf("name=%s value=%s invert=%d\n", opt->long_name, value, invert);
 
-	if (invert && (opt->parser == parse_string ||
-				opt->parser == parse_stringset ||
-				opt->parser == parse_stringlist ||
-				opt->parser == parse_filename ||
-				opt->parser == parse_filenames)) {
-		// allow no-<option> to set value to NULL
-		if (value && value_present)
-			error_printf_exit(_("Option 'no-%s' doesn't allow an argument\n"), name);
-
-		opt->parser(opt, NULL);
-	}
-	else {
-		if (value && !opt->args && opt->parser != parse_bool && !value_is_next_arg)
+	if (value_present) {
+		// "option=*"
+		if (invert) {
+			if (!opt->args || opt->parser == parse_string ||
+					opt->parser == parse_stringset ||
+					opt->parser == parse_stringlist ||
+					opt->parser == parse_filename ||
+					opt->parser == parse_filenames)
+				error_printf_exit(_("Option 'no-%s' doesn't allow an argument\n"), name);
+		} else if (!opt->args)
 			error_printf_exit(_("Option '%s' doesn't allow an argument\n"), name);
-
-		if (opt->args > 0) {
+	} else {
+		// "option"
+		switch (opt->args) {
+		case 0:
+			value = NULL;
+			break;
+		case 1:
 			if (!value)
 				error_printf_exit(_("Missing argument for option '%s'\n"), name);
+				// empty string is allowed in value i.e. *value = '\0'
 
-			opt->parser(opt, value);
-
-			if (!value_present)
-				ret = opt->args;
-		}
-		else if (opt->args == 0) {
-			if (opt->parser == parse_bool) {
-				opt->parser(opt, value);
-
-				if (invert && opt->var)
-					*((char *)opt->var) = !*((char *)opt->var); // invert boolean value
-			} else
-				opt->parser(opt, NULL);
-		}
-		else {
-			//option with optional argument cannot consume next
-			//commandline argument.
-			if (!value_present && value_is_next_arg)
+			if (invert && (opt->parser == parse_string ||
+					opt->parser == parse_stringset ||
+					opt->parser == parse_stringlist ||
+					opt->parser == parse_filename ||
+					opt->parser == parse_filenames))
 				value = NULL;
-
-			opt->parser(opt, value);
+			else
+				ret = opt->args;
+			break;
+		case -1:
+			if (!parsing_config)
+				value = NULL;
+			else if(value)
+				ret = 1;
+			break;
+		default:
+			break;
 		}
 	}
+
+	if (opt->parser(opt, value, invert) == 1)
+		error_printf(_("Value '%s' not recognized\n"), value);
 
 	return ret;
 }
 
-static int parse_execute(G_GNUC_WGET_UNUSED option_t opt, const char *val)
+static int parse_proxy(option_t opt, const char *val, const char invert)
+{
+	if (parse_bool(opt, val, invert) == 1) {
+		if (invert) {
+			// the strdup'ed string will be released on program exit
+			xfree(config.no_proxy);
+			config.no_proxy = val ? wget_strdup(val) : NULL;
+		} else {
+			if((opt = bsearch("http-proxy", options, countof(options), sizeof(options[0]), opt_compare)))
+				parse_string(opt, val, invert);
+			if((opt = bsearch("https-proxy", options, countof(options), sizeof(options[0]), opt_compare)))
+				parse_string(opt, val, invert);
+		}
+	}
+
+	return 0;
+}
+
+static int parse_execute(G_GNUC_WGET_UNUSED option_t opt, const char *val, G_GNUC_WGET_UNUSED const char invert)
 {
 	// info_printf("### argv=%s val=%s\n",argv[0],val);
-	set_long_option(val, NULL, 0);
+	set_long_option(val, NULL, 1);
 
 	return 0;
 }
@@ -1736,7 +1770,7 @@ static int _parse_option(char *linep, char **name, char **val)
 	int quote;
 
 	while (c_isspace(*linep)) linep++;
-	for (*name = linep; c_isalnum(*linep) || *linep == '-'; linep++);
+	for (*name = linep; c_isalnum(*linep) || *linep == '-' || *linep == '_'; linep++);
 
 	if (!**name) {
 		error_printf(_("Failed to parse: '%s'\n"), linep);
@@ -1873,7 +1907,7 @@ static int G_GNUC_WGET_NONNULL((1)) _read_config(const char *cfgfile, int expand
 
 		if (found == 1) {
 			// debug_printf("%s = %s\n",name,val);
-			set_long_option(name, val, 0);
+			set_long_option(name, val, 1);
 		} else if (found == 2) {
 			// debug_printf("%s %s\n",name,val);
 			if (!strcmp(name, "include")) {
@@ -1948,7 +1982,7 @@ static int G_GNUC_WGET_NONNULL((2)) parse_command_line(int argc, const char **ar
 			if (argp[2] == 0)
 				return n + 1;
 
-			n += set_long_option(argp + 2, n < argc - 1 ? argv[n+1] : NULL, 1);
+			n += set_long_option(argp + 2, n < argc - 1 ? argv[n+1] : NULL, 0);
 
 		} else if (argp[1]) {
 			// short option(s)
@@ -1966,18 +2000,17 @@ static int G_GNUC_WGET_NONNULL((2)) parse_command_line(int argc, const char **ar
 						if (!argp[pos + 1] && argc <= n + opt->args)
 							error_printf_exit(_("Missing argument(s) for option '-%c'\n"), argp[pos]);
 						val = argp[pos + 1] ? argp + pos + 1 : argv[++n];
-						n += opt->parser(opt, val);
+						n += opt->parser(opt, val, 0);
 						break;
-					} else if (opt->args == 0)
-						opt->parser(opt, NULL);
-					else
-					{
+					} else //if (opt->args == 0)
+						opt->parser(opt, NULL, 0);
+/*					else {
 						const char *val;
 						val = argp[pos + 1] ? argp + pos + 1 : NULL;
 						n += opt->parser(opt, val);
 						break;
 					}
-				} else
+*/				} else
 					error_printf_exit(_("Unknown option '-%c'\n"), argp[pos]);
 			}
 		}
@@ -2387,22 +2420,67 @@ int selftest_options(void)
 	int ret = 0;
 	size_t it;
 
-	// check if all options are in order
+	// check if all options are in order (using opt_compare)
 
 	for (it = 1; it < countof(options); it++) {
 		if (opt_compare(options[it - 1].long_name, &options[it]) > 0) {
-			error_printf("%s: Option not in order '%s' after '%s'\n", __func__, options[it].long_name, options[it - 1].long_name);
+			error_printf("%s: Option not in order '%s' after '%s' (using opt_compare())\n", __func__, options[it].long_name, options[it - 1].long_name);
 			ret = 1;
 		}
 	}
 
-	// check if all options are available
+	// check if all options are in order (using opt_compare_config)
+
+	for (it = 1; it < countof(options); it++) {
+		if (opt_compare_config(options[it - 1].long_name, &options[it]) > 0) {
+			error_printf("%s: Option not in order '%s' after '%s' (using opt_compare_config())\n", __func__, options[it].long_name, options[it - 1].long_name);
+			ret = 1;
+		}
+	}
+
+	// check if all options are available (using opt_compare)
 
 	for (it = 0; it < countof(options); it++) {
 		option_t opt = bsearch(options[it].long_name, options, countof(options), sizeof(options[0]), opt_compare);
 		if (!opt) {
-			error_printf("%s: Failed to find option '%s'\n", __func__, options[it].long_name);
+			error_printf("%s: Failed to find option '%s' (using opt_compare())\n", __func__, options[it].long_name);
 			ret = 1;
+		}
+	}
+
+	// check if all options are available (using opt_compare_config)
+
+	for (it = 0; it < countof(options); it++) {
+		option_t opt = bsearch(options[it].long_name, options, countof(options), sizeof(options[0]), opt_compare_config);
+		if (!opt) {
+			error_printf("%s: Failed to find option '%s' (using opt_compare_config())\n", __func__, options[it].long_name);
+			ret = 1;
+		}
+	}
+
+	// explicit test cases for opt_compare_config
+
+	{
+		static const char *test_command[] = {
+			"httpproxy",
+			"http_proxy",
+			"http-proxy",
+			"Httpproxy",
+			"Http_proxy",
+			"Http-proxy",
+		};
+
+		for (it = 0; it < countof(test_command); it++) {
+			option_t opt = bsearch(test_command[it], options, countof(options), sizeof(options[0]), opt_compare_config);
+			if (!opt) {
+				for (unsigned it2 = 0; it2 < countof(options) && !opt; it2++)
+					if (opt_compare_config_linear(test_command[it], options[it2].long_name) == 0)
+						opt = &options[it2];
+				if (!opt) {
+					error_printf("%s: Failed to find option '%s' (using opt_compare_config())\n", __func__, test_command[it]);
+					ret = 1;
+				}
+			}
 		}
 	}
 
