@@ -435,6 +435,7 @@ int wget_plugin_initializer(wget_plugin_t *plugin)
 
 	wget_plugin_register_url_filter(plugin, url_filter);
 	wget_plugin_register_post_processor(plugin, post_processor);
+
 	return 0;
 }
 #else
