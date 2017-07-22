@@ -93,6 +93,13 @@ static const char *rot13_mainpage = "\
 </body>\n\
 </html>\n";
 
+static const char data[129] = "\
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n";
+
+static const char data_part[65] = "\
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n";
+
 int main(void)
 {
 	wget_test_url_t urls[]={
@@ -131,6 +138,13 @@ int main(void)
 				"Content-Type: text/html",
 			}
 		},
+		{	.name = "/data.txt",
+			.code = "200 Dontcare",
+			.body = data,
+			.headers = {
+				"Content-Type: text/plain",
+			},
+		},
 		{	.name = "/error.html",
 			.code = "404 Not exist",
 			.body = errorpage,
@@ -144,6 +158,10 @@ int main(void)
 #ifndef PLUGIN_SUPPORT
 	return 77;
 #endif
+
+	// TODO: Delete it later
+	if (strlen(data) != 128)
+		wget_error_printf_exit("strlen(data) is incorrect");
 
 	wget_test_start_server
 		(WGET_TEST_RESPONSE_URLS, &urls, countof(urls), 0);
@@ -525,6 +543,34 @@ int main(void)
 			{ "rot13_index.html", urls[4].body },
 			{ "secondpage.html", urls[1].body },
 			{ "thirdpage.html", urls[2].body },
+			{	NULL } },
+		0);
+
+	// Check for API behavior with partial downloads
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi") " -c"
+			" --plugin-opt=pluginapi.test-pp",
+		WGET_TEST_REQUEST_URL, "data.txt",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXISTING_FILES, &(wget_test_file_t []) {
+			{	"data.txt", data_part },
+			{	NULL } },
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{	"data.txt", data },
+			{	NULL } },
+		0);
+
+	// Check for API behavior with completed downloads
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi") " -c"
+			" --plugin-opt=pluginapi.test-pp",
+		WGET_TEST_REQUEST_URL, "data.txt",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXISTING_FILES, &(wget_test_file_t []) {
+			{	"data.txt", data },
+			{	NULL } },
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{	"data.txt", data },
 			{	NULL } },
 		0);
 
