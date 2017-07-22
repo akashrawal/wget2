@@ -251,6 +251,8 @@ static int parse_pair(const struct option *option, const char *value)
 }
 
 typedef struct {
+	int n_files_processed;
+
 	char *reject;
 	char *accept;
 	struct pair replace;
@@ -284,6 +286,9 @@ static int argp_fn(wget_plugin_t *plugin, const char *option, const char *value)
 static void finalizer(wget_plugin_t *plugin, G_GNUC_WGET_UNUSED int exit_status)
 {
 	plugin_data_t *d = (plugin_data_t *) plugin->plugin_data;
+
+	if (d->test_pp && !d->n_files_processed)
+		wget_error_printf_exit("Option test-pp supplied but no files encountered\n");
 
 	wget_xfree(d->reject);
 	wget_xfree(d->accept);
@@ -419,6 +424,8 @@ static int post_processor(wget_plugin_t *plugin, wget_downloaded_file_t *file)
 
 			wget_free(refdata);
 		}
+
+		d->n_files_processed++;
 	}
 
 	return 1;
