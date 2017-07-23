@@ -1586,7 +1586,7 @@ static void process_response(wget_http_response_t *resp)
 		}
 	}
 
-	if (resp->code == 200) {
+	if (resp->code == 200 || resp->code == 206) {
 		if (config.recursive && (!config.level || job->level < config.level + config.page_requisites)) {
 			if (resp->content_type && resp->body) {
 				if (!wget_strcasecmp_ascii(resp->content_type, "text/html")) {
@@ -2673,6 +2673,24 @@ static int _get_header(wget_http_response_t *resp, void *context)
 		name = dest = config.output_document ? config.output_document : ctx->job->local_filename;
 
 	if (dest && (resp->code == 200 || resp->code == 206 || config.content_on_error)) {
+		// Load partial content
+		if (resp->code == 206) {
+			long long size = get_file_size(dest);
+			if (size > 0) {
+				int fd = open(dest, O_RDONLY | O_BINARY);
+				if (fd >= 0) {
+					if ((unsigned long long) size > ctx->max_memory)
+						size = ctx->max_memory;
+					wget_buffer_ensure_capacity(ctx->body, size);
+					if (read(fd, ctx->body->data, size) != size)
+						ret = -1;
+					close(fd);
+				} else {
+					ret = -1;
+				}
+			}
+		}
+
 		ctx->outfd = _prepare_file(resp, dest,
 			resp->code == 206 ? O_APPEND : O_TRUNC,
 			ctx->job->iri->uri,
