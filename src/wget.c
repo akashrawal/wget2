@@ -2690,6 +2690,8 @@ static int _get_header(wget_http_response_t *resp, void *context)
 					if ((unsigned long long) size > ctx->max_memory)
 						size = ctx->max_memory;
 					wget_buffer_ensure_capacity(ctx->body, size);
+					// TODO: Do not mess with wget_buffer_t internals
+					ctx->body->length = size;
 					if (read(fd, ctx->body->data, size) != size)
 						ret = -1;
 					close(fd);
@@ -2840,6 +2842,7 @@ static wget_http_request_t *http_create_request(wget_iri_t *iri, JOB *job)
 	if (config.continue_download || config.timestamping) {
 		const char *local_filename = config.output_document ? config.output_document : job->local_filename;
 
+		// TODO: Should we add range header even if file does not exist?
 		if (config.continue_download)
 			wget_http_add_header_printf(req, "Range", "bytes=%lld-",
 				get_file_size(local_filename));
