@@ -1642,8 +1642,6 @@ static void process_response(wget_http_response_t *resp)
 				ext = strrchr(job->local_filename, '.');
 
 			if (ext) {
-				//TODO: This part looks problematic as it does not look as equivalent
-				//      of the code for resp->code == 200
 				if (!wget_strcasecmp_ascii(ext, ".html") || !wget_strcasecmp_ascii(ext, ".htm")) {
 					html_parse_localfile(job, job->level, job->local_filename, resp->content_type_encoding ? resp->content_type_encoding : config.remote_encoding, job->iri);
 				} else if (!wget_strcasecmp_ascii(ext, ".css")) {
@@ -2883,7 +2881,6 @@ static wget_http_request_t *http_create_request(wget_iri_t *iri, JOB *job)
 	if (config.continue_download || config.timestamping) {
 		const char *local_filename = config.output_document ? config.output_document : job->local_filename;
 
-		// TODO: Should we add range header even if file does not exist?
 		if (config.continue_download)
 			wget_http_add_header_printf(req, "Range", "bytes=%lld-",
 				get_file_size(local_filename));
