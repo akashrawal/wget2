@@ -2422,13 +2422,49 @@ static void set_file_mtime(int fd, time_t modified)
 		error_printf (_("Failed to set file date: %s\n"), strerror (errno));
 }
 
+static int _open_unique(const char *fname, int flags, mode_t mode, int multiple, char *unique, size_t unique_len)
+{
+	if (unique_len && unique[0]) {
+		return open(unique, flags, mode);
+	} else {
+		size_t fname_len, i, lim, n_digits;
+		int fd;
+
+		fd = open(fname, flags, mode);
+		if (fd >= 0)
+			return fd;
+
+		fname_len = strlen(fname);
+		if (unique_len < fname_len + 3)
+			return fd;
+
+		for (n_digits = unique_len - fname_len - 2, lim = 1; n_digits; n_digits--, lim *= 10)
+			;
+
+		for (i = 1; i < lim && fd < 0 && ((multiple && errno == EEXIST) || errno == EISDIR); i++) {
+			snprintf(unique, unique_len, "%s.%zu", fname, i);
+			fd = open(unique, flags, mode);
+#ifdef _WIN32
+			// On windows, open() and fopen() return EACCES instead of EISDIR.
+			if (errno == EACCES) {
+				DWORD attrs = GetFileAttributes(unique);
+				if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
+					errno = EISDIR;
+			}
+#endif
+		}
+
+		return fd;
+	}
+}
+
 static int G_GNUC_WGET_NONNULL((1)) _prepare_file(wget_http_response_t *resp, const char *fname, int flag,
 		const char *uri, const char *original_url, int ignore_patterns)
 {
 	static wget_thread_mutex_t
 		savefile_mutex = WGET_THREAD_MUTEX_INITIALIZER;
 	char *alloced_fname = NULL;
-	int fd, multiple = 0, fnum, oflag = flag, maxloop;
+	int fd, multiple = 0, oflag = flag;
 	size_t fname_length;
 
 	if (!fname)
@@ -2566,38 +2602,25 @@ static int G_GNUC_WGET_NONNULL((1)) _prepare_file(wget_http_response_t *resp, co
 
 	// create the complete directory path
 	mkdir_path((char *) fname);
-	fd = open(fname, O_WRONLY | flag | O_CREAT | O_NONBLOCK | O_BINARY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	// debug_printf("1 fd=%d flag=%02x (%02x %02x %02x) errno=%d %s\n",fd,flag,O_EXCL,O_TRUNC,O_APPEND,errno,fname);
-
-	// find a non-existing filename
 	char unique[fname_length + 1];
 	*unique = 0;
-	for (fnum = 0, maxloop = 999; fd < 0 && ((multiple && errno == EEXIST) || errno == EISDIR || errno == EACCES) && fnum < maxloop; fnum++) {
-		snprintf(unique, sizeof(unique), "%s.%d", fname, fnum + 1);
-		fd = open(unique, O_WRONLY | flag | O_CREAT | O_NONBLOCK | O_BINARY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	}
+	fd = _open_unique(fname, O_WRONLY | flag | O_CREAT | O_NONBLOCK | O_BINARY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH,
+			multiple, unique, fname_length + 1);
+	// debug_printf("1 fd=%d flag=%02x (%02x %02x %02x) errno=%d %s\n",fd,flag,O_EXCL,O_TRUNC,O_APPEND,errno,fname);
 
 	if (fd >= 0) {
 		ssize_t rc;
 
-		info_printf(_("Saving '%s'\n"), fnum ? unique : fname);
+		info_printf(_("Saving '%s'\n"), unique[0] ? unique : fname);
 
 		if (config.save_headers) {
 			if ((rc = write(fd, resp->header->data, resp->header->length)) != (ssize_t)resp->header->length) {
-				error_printf(_("Failed to write file %s (%zd, errno=%d)\n"), fnum ? unique : fname, rc, errno);
+				error_printf(_("Failed to write file %s (%zd, errno=%d)\n"), unique[0] ? unique : fname, rc, errno);
 				set_exit_status(3);
 			}
 		}
 	} else {
 		if (fd == -1) {
-#ifdef _WIN32
-			// On windows, open() and fopen() return EACCES instead of EISDIR.
-			if (errno == EACCES) {
-				DWORD attrs = GetFileAttributes(unique);
-				if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
-					errno = EISDIR;
-			}
-#endif
 			if (errno == EEXIST)
 				error_printf(_("File '%s' already there; not retrieving.\n"), fname);
 			else if (errno == EISDIR)
@@ -2611,7 +2634,7 @@ static int G_GNUC_WGET_NONNULL((1)) _prepare_file(wget_http_response_t *resp, co
 
 	if (config.xattr) {
 		FILE *fp;
-		fname = fnum ? unique : fname;
+		fname = unique[0] ? unique : fname;
 		if ((fp = fopen(fname, "ab"))) {
 			set_file_metadata(uri, original_url, resp->content_type, resp->content_type_encoding, fp);
 			fclose(fp);
@@ -2682,6 +2705,7 @@ static int _get_header(wget_http_response_t *resp, void *context)
 
 	if (dest && (resp->code == 200 || resp->code == 206 || config.content_on_error)) {
 		// Load partial content
+		// TODO: Move this logic to _prepare_file
 		if (resp->code == 206) {
 			long long size = get_file_size(dest);
 			if (size > 0) {
@@ -2689,9 +2713,7 @@ static int _get_header(wget_http_response_t *resp, void *context)
 				if (fd >= 0) {
 					if ((unsigned long long) size > ctx->max_memory)
 						size = ctx->max_memory;
-					wget_buffer_ensure_capacity(ctx->body, size);
-					// TODO: Do not mess with wget_buffer_t internals
-					ctx->body->length = size;
+					wget_buffer_memset_append(ctx->body, 0, size);
 					if (read(fd, ctx->body->data, size) != size)
 						ret = -1;
 					close(fd);
@@ -2705,7 +2727,8 @@ static int _get_header(wget_http_response_t *resp, void *context)
 			resp->code == 206 ? O_APPEND : O_TRUNC,
 			ctx->job->iri->uri,
 			ctx->job->original_url->uri,
-			ctx->job->ignore_patterns);
+			ctx->job->ignore_patterns
+			/*resp->code == 206 ? ctx->body : NULL*/);
 		if (ctx->outfd == -1)
 			ret = -1;
 	}
