@@ -48,6 +48,7 @@
 #endif
 
 #include "timespec.h" // gnulib gettime()
+#include "safe-read.h"
 #include "safe-write.h"
 #include "wget_main.h"
 #include "wget_log.h"
@@ -95,7 +96,8 @@ typedef struct {
 static _statistics_t stats;
 
 static int G_GNUC_WGET_NONNULL((1)) _prepare_file(wget_http_response_t *resp, const char *fname, int flag,
-		const char *uri, const char *original_url, int ignore_patterns);
+		const char *uri, const char *original_url, int ignore_patterns, wget_buffer_t *partial_content,
+		size_t max_partial_content);
 
 static void
 	sitemap_parse_xml(JOB *job, const char *data, const char *encoding, wget_iri_t *base),
@@ -2446,7 +2448,7 @@ static int _open_unique(const char *fname, int flags, mode_t mode, int multiple,
 			fd = open(unique, flags, mode);
 #ifdef _WIN32
 			// On windows, open() and fopen() return EACCES instead of EISDIR.
-			if (errno == EACCES) {
+			if (fd < 0 && errno == EACCES) {
 				DWORD attrs = GetFileAttributes(unique);
 				if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
 					errno = EISDIR;
@@ -2459,7 +2461,8 @@ static int _open_unique(const char *fname, int flags, mode_t mode, int multiple,
 }
 
 static int G_GNUC_WGET_NONNULL((1)) _prepare_file(wget_http_response_t *resp, const char *fname, int flag,
-		const char *uri, const char *original_url, int ignore_patterns)
+		const char *uri, const char *original_url, int ignore_patterns, wget_buffer_t *partial_content,
+		size_t max_partial_content)
 {
 	static wget_thread_mutex_t
 		savefile_mutex = WGET_THREAD_MUTEX_INITIALIZER;
@@ -2602,8 +2605,35 @@ static int G_GNUC_WGET_NONNULL((1)) _prepare_file(wget_http_response_t *resp, co
 
 	// create the complete directory path
 	mkdir_path((char *) fname);
+
 	char unique[fname_length + 1];
 	*unique = 0;
+
+	// Load partial content
+	if (partial_content) {
+		long long size = get_file_size(unique[0] ? unique : fname);
+		if (size > 0) {
+			fd = _open_unique(fname, O_RDONLY | O_BINARY, 0, multiple, unique, fname_length + 1);
+			if (fd >= 0) {
+				size_t rc;
+				if ((unsigned long long) size > max_partial_content)
+					size = max_partial_content;
+				wget_buffer_memset_append(partial_content, 0, size);
+				rc = safe_read(fd, partial_content->data, size);
+				if (rc == SAFE_READ_ERROR || (long long) rc != size) {
+					error_printf(_("Failed to load partial content from '%s' (errno=%d): %s\n"),
+							fname, errno, strerror(errno));
+					set_exit_status(3);
+				}
+				close(fd);
+			} else {
+				error_printf(_("Failed to load partial content from '%s' (errno=%d): %s\n"),
+						fname, errno, strerror(errno));
+				set_exit_status(3);
+			}
+		}
+	}
+
 	fd = _open_unique(fname, O_WRONLY | flag | O_CREAT | O_NONBLOCK | O_BINARY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH,
 			multiple, unique, fname_length + 1);
 	// debug_printf("1 fd=%d flag=%02x (%02x %02x %02x) errno=%d %s\n",fd,flag,O_EXCL,O_TRUNC,O_APPEND,errno,fname);
@@ -2704,31 +2734,13 @@ static int _get_header(wget_http_response_t *resp, void *context)
 		name = dest = config.output_document ? config.output_document : ctx->job->local_filename;
 
 	if (dest && (resp->code == 200 || resp->code == 206 || config.content_on_error)) {
-		// Load partial content
-		// TODO: Move this logic to _prepare_file
-		if (resp->code == 206) {
-			long long size = get_file_size(dest);
-			if (size > 0) {
-				int fd = open(dest, O_RDONLY | O_BINARY);
-				if (fd >= 0) {
-					if ((unsigned long long) size > ctx->max_memory)
-						size = ctx->max_memory;
-					wget_buffer_memset_append(ctx->body, 0, size);
-					if (read(fd, ctx->body->data, size) != size)
-						ret = -1;
-					close(fd);
-				} else {
-					ret = -1;
-				}
-			}
-		}
-
 		ctx->outfd = _prepare_file(resp, dest,
 			resp->code == 206 ? O_APPEND : O_TRUNC,
 			ctx->job->iri->uri,
 			ctx->job->original_url->uri,
-			ctx->job->ignore_patterns
-			/*resp->code == 206 ? ctx->body : NULL*/);
+			ctx->job->ignore_patterns,
+			resp->code == 206 ? ctx->body : NULL,
+			ctx->max_memory);
 		if (ctx->outfd == -1)
 			ret = -1;
 	}
