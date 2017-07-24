@@ -2424,15 +2424,29 @@ static void set_file_mtime(int fd, time_t modified)
 		error_printf (_("Failed to set file date: %s\n"), strerror (errno));
 }
 
+// On windows, open() and fopen() return EACCES instead of EISDIR.
+static int _wa_open(const char *fname, int flags, mode_t mode) {
+	int fd = open(fname, flags, mode);
+#ifdef _WIN32
+	if (fd < 0 && errno == EACCES) {
+		DWORD attrs = GetFileAttributes(fname);
+		if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
+			errno = EISDIR;
+	}
+#endif
+	return fd;	
+}
+
+// Opens files uniquely
 static int _open_unique(const char *fname, int flags, mode_t mode, int multiple, char *unique, size_t unique_len)
 {
 	if (unique_len && unique[0]) {
-		return open(unique, flags, mode);
+		return _wa_open(unique, flags, mode);
 	} else {
 		size_t fname_len, i, lim, n_digits;
 		int fd;
 
-		fd = open(fname, flags, mode);
+		fd = _wa_open(fname, flags, mode);
 		if (fd >= 0)
 			return fd;
 
@@ -2445,15 +2459,7 @@ static int _open_unique(const char *fname, int flags, mode_t mode, int multiple,
 
 		for (i = 1; i < lim && fd < 0 && ((multiple && errno == EEXIST) || errno == EISDIR); i++) {
 			snprintf(unique, unique_len, "%s.%zu", fname, i);
-			fd = open(unique, flags, mode);
-#ifdef _WIN32
-			// On windows, open() and fopen() return EACCES instead of EISDIR.
-			if (fd < 0 && errno == EACCES) {
-				DWORD attrs = GetFileAttributes(unique);
-				if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
-					errno = EISDIR;
-			}
-#endif
+			fd = _wa_open(unique, flags, mode);
 		}
 
 		return fd;
