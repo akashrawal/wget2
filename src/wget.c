@@ -2434,7 +2434,7 @@ static int _wa_open(const char *fname, int flags, mode_t mode) {
 			errno = EISDIR;
 	}
 #endif
-	return fd;	
+	return fd;
 }
 
 // Opens files uniquely
