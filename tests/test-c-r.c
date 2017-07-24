@@ -97,18 +97,6 @@ int main(void)
 	wget_test_start_server
 		(WGET_TEST_RESPONSE_URLS, &urls, countof(urls), 0);
 
-	// Control-group, delete it later
-	wget_test(
-		WGET_TEST_OPTIONS, "--recursive --no-host-directories",
-		WGET_TEST_REQUEST_URL, "index.html",
-		WGET_TEST_EXPECTED_ERROR_CODE, 0,
-		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
-			{ "index.html", urls[0].body },
-			{ "secondpage.html", urls[1].body },
-			{ "thirdpage.html", urls[2].body },
-			{	NULL } },
-		0);
-
 	// test-c-r with no existing files
 	wget_test(
 		WGET_TEST_OPTIONS, "--continue --recursive --no-host-directories",
