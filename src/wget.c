@@ -2881,9 +2881,11 @@ static wget_http_request_t *http_create_request(wget_iri_t *iri, JOB *job)
 	if (config.continue_download || config.timestamping) {
 		const char *local_filename = config.output_document ? config.output_document : job->local_filename;
 
-		if (config.continue_download)
-			wget_http_add_header_printf(req, "Range", "bytes=%lld-",
-				get_file_size(local_filename));
+		if (config.continue_download) {
+			long long file_size = get_file_size(local_filename);
+			if (file_size > 0)
+				wget_http_add_header_printf(req, "Range", "bytes=%lld-", file_size);
+		}
 
 		if (config.timestamping) {
 			time_t mtime = get_file_mtime(local_filename);
