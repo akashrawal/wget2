@@ -27,11 +27,17 @@
 #include "wget.h"
 #include "fuzzer.h"
 
-#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+#ifdef TEST_RUN
 
 #include <dirent.h>
 
-static void test_all_from(const char *dirname)
+#ifdef _WIN32
+#  define SLASH '\\'
+#else
+#  define SLASH '/'
+#endif
+
+static int test_all_from(const char *dirname)
 {
 	DIR *dirp;
 	struct dirent *dp;
@@ -52,7 +58,10 @@ static void test_all_from(const char *dirname)
 			}
 		}
 		closedir(dirp);
+		return 0;
 	}
+
+	return 1;
 }
 
 int main(int argc, char **argv)
@@ -81,15 +90,21 @@ int main(int argc, char **argv)
 		WGET_INFO_STREAM, stdout,
 		NULL);
 
-	const char *target = strrchr(argv[0], '/');
+	const char *target = strrchr(argv[0], SLASH);
 	target = target ? target + 1 : argv[0];
+	size_t target_len = strlen(target);
+
+#ifdef _WIN32
+	target_len -= 4; // ignore .exe
+#endif
 
 	char corporadir[sizeof(SRCDIR) + 1 + strlen(target) + 8];
-	snprintf(corporadir, sizeof(corporadir), SRCDIR "/%s.in", target);
+	snprintf(corporadir, sizeof(corporadir), SRCDIR "/%.*s.in", (int) target_len, target);
 
-	test_all_from(corporadir);
+	if (test_all_from(corporadir))
+		wget_error_printf_exit("Failed to find %s\n", corporadir);
 
-	snprintf(corporadir, sizeof(corporadir), SRCDIR "/%s.repro", target);
+	snprintf(corporadir, sizeof(corporadir), SRCDIR "/%.*s.repro", (int) target_len, target);
 
 	test_all_from(corporadir);
 
@@ -130,4 +145,4 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-#endif /* #ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION */
+#endif /* #ifdef TEST_RUN */
