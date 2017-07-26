@@ -306,7 +306,6 @@ static void finalizer(wget_plugin_t *plugin, G_GNUC_WGET_UNUSED int exit_status)
 		test_assert((stream = fopen("files_processed.txt", "wb")));
 		for (i = 0; i < wget_vector_size(d->files_processed); i++) {
 			fprintf(stream, "%s\n", (const char *) wget_vector_get(d->files_processed, i));
-			wget_info_printf("TMP: processed %s\n", (const char *) wget_vector_get(d->files_processed, i));
 		}
 		fclose(stream);
 	}
@@ -414,7 +413,7 @@ static int post_processor(wget_plugin_t *plugin, wget_downloaded_file_t *file)
 	if (d->test_pp) {
 		const wget_iri_t *iri = wget_downloaded_file_get_source_url(file);
 		const char *data;
-		size_t size, i;
+		size_t size;
 		FILE *stream;
 
 		// Compare downloaded file contents with wget_downloaded_file_get_contents()
@@ -435,11 +434,14 @@ static int post_processor(wget_plugin_t *plugin, wget_downloaded_file_t *file)
 		}
 
 		// Compare downloaded file contents with wget_downloaded_file_open_stream()
-		test_assert(stream = wget_downloaded_file_open_stream(file));
-		for (i = 0; i < size; i++)
-			test_assert((int) data[i] == getc(stream));
-		test_assert("At end of stream, wget_downloaded_file_open_stream(file)" && getc(stream) == EOF);
-		fclose(stream);
+		stream = wget_downloaded_file_open_stream(file);
+		if (stream) {
+			size_t i;
+			for (i = 0; i < size; i++)
+				test_assert((int) data[i] == getc(stream));
+			test_assert("At end of stream, wget_downloaded_file_open_stream(file)" && getc(stream) == EOF);
+			fclose(stream);
+		}
 
 		// Update list of files processed
 		{

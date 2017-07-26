@@ -214,7 +214,9 @@ static FILE *impl_file_open_stream(wget_downloaded_file_t *p_file)
 	if (file->data)
 		return fmemopen((void *) file->data, file->size, "rb");
 #endif
-	return fopen(file->filename, "rb");
+	if (file->filename)
+		return fopen(file->filename, "rb");
+	return NULL;
 }
 
 static bool impl_file_get_recurse(wget_downloaded_file_t *p_file)
