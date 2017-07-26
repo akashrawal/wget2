@@ -228,11 +228,8 @@ static void impl_file_add_recurse_url(wget_downloaded_file_t *p_file, const wget
 {
 	downloaded_file_t *file = (downloaded_file_t *) p_file;
 
-	if (! file->recurse_iris) {
-		wget_error_printf_exit("Attempted to add a URL when recursion is disabled\n");
-	}
-
-	wget_vector_add_noalloc(file->recurse_iris, wget_iri_clone(iri));
+	if (file->recurse_iris)
+		wget_vector_add_noalloc(file->recurse_iris, wget_iri_clone(iri));
 }
 
 static void impl_register_post_processor(wget_plugin_t *p_plugin, wget_plugin_post_processor_t fn)
