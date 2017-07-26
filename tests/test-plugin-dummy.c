@@ -304,9 +304,8 @@ static void finalizer(wget_plugin_t *plugin, G_GNUC_WGET_UNUSED int exit_status)
 
 		wget_vector_sort(d->files_processed);
 		test_assert((stream = fopen("files_processed.txt", "wb")));
-		for (i = 0; i < wget_vector_size(d->files_processed); i++) {
+		for (i = 0; i < wget_vector_size(d->files_processed); i++)
 			fprintf(stream, "%s\n", (const char *) wget_vector_get(d->files_processed, i));
-		}
 		fclose(stream);
 	}
 	wget_vector_free(&d->files_processed);
