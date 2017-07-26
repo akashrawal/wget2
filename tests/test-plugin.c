@@ -27,6 +27,8 @@
 #include <string.h> // strlen()
 #include "libtest.h"
 
+// #define LARGEFILE (11 << 20)
+
 #define OBJECT_DIR "../.libs"
 
 #if defined _WIN32
@@ -116,6 +118,11 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n";
 
 int main(void)
 {
+#ifdef LARGEFILE
+	char *largedata = wget_malloc(LARGEFILE + 1);
+	memset(largedata, 'x', LARGEFILE);
+	largedata[LARGEFILE] = 0;
+#endif
 	wget_test_url_t urls[]={
 		{	.name = "/index.html",
 			.code = "200 Dontcare",
@@ -166,6 +173,15 @@ int main(void)
 				"Content-Type: text/plain",
 			},
 		},
+#ifdef LARGEFILE
+		{	.name = "/large.txt",
+			.code = "200 Dontcare",
+			.body = largedata,
+			.headers = {
+				"Content-Type: text/plain",
+			},
+		},
+#endif
 		{	.name = "/error.html",
 			.code = "404 Not exist",
 			.body = errorpage,
@@ -634,6 +650,37 @@ int main(void)
 			{ "files_processed.txt", "data.txt\n" },
 			{	NULL } },
 		0);
+
+	// Check whether intercepting downloaded files works with large files
+#ifdef LARGEFILE
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi") " -c"
+			" --plugin-opt=pluginapi.test-pp",
+		WGET_TEST_REQUEST_URL, "large.txt",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXISTING_FILES, &(wget_test_file_t []) {
+			{	"large.txt", largedata + 16 },
+			{	NULL } },
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{	"large.txt", largedata },
+			{ "files_processed.txt", "large.txt\n" },
+			{	NULL } },
+		0);
+
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi") " -c"
+			" --plugin-opt=pluginapi.test-pp",
+		WGET_TEST_REQUEST_URL, "large.txt",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXISTING_FILES, &(wget_test_file_t []) {
+			{	"large.txt", largedata },
+			{	NULL } },
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{	"large.txt", largedata },
+			{ "files_processed.txt", "large.txt\n" },
+			{	NULL } },
+		0);
+#endif
 
 	exit(0);
 }
