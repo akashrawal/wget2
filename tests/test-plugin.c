@@ -93,6 +93,20 @@ static const char *rot13_mainpage = "\
 </body>\n\
 </html>\n";
 
+static const char *rot13_mainpage_mixed = "\
+<html>\n\
+<head>\n\
+  <title>Main Page</title>\n\
+</head>\n\
+<body>\n\
+  <p>\n\
+    second page: rot13(uggc://ybpnyubfg:{{port}}/frpbaqcntr.ugzy)\n\
+    third page: rot13(uggc://ybpnyubfg:{{port}}/guveqcntr.ugzy)\n\
+    <a href=\"http://localhost:{{port}}/forthpage.html\">forth page</a>.\n\
+  </p>\n\
+</body>\n\
+</html>\n";
+
 static const char data[129] = "\
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n";
@@ -134,6 +148,13 @@ int main(void)
 		{	.name = "/rot13_index.html",
 			.code = "200 Dontcare",
 			.body = rot13_mainpage,
+			.headers = {
+				"Content-Type: text/html",
+			}
+		},
+		{	.name = "/rot13_index_mixed.html",
+			.code = "200 Dontcare",
+			.body = rot13_mainpage_mixed,
 			.headers = {
 				"Content-Type: text/html",
 			}
@@ -544,6 +565,21 @@ int main(void)
 			{ "secondpage.html", urls[1].body },
 			{ "thirdpage.html", urls[2].body },
 			{ "files_processed.txt", "rot13_index.html\nsecondpage.html\nthirdpage.html\n" },
+			{	NULL } },
+		0);
+
+	// Check whether overriding default wget2's post processing works
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi") " --recursive --no-host-directories"
+			" --plugin-opt=pluginapi.parse-rot13 --plugin-opt=pluginapi.test-pp"
+			" --plugin-opt=pluginapi.only-rot13",
+		WGET_TEST_REQUEST_URL, "rot13_index_mixed.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "rot13_index_mixed.html", urls[5].body },
+			{ "secondpage.html", urls[1].body },
+			{ "thirdpage.html", urls[2].body },
+			{ "files_processed.txt", "rot13_index_mixed.html\nsecondpage.html\nthirdpage.html\n" },
 			{	NULL } },
 		0);
 

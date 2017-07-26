@@ -266,6 +266,7 @@ typedef struct {
 	struct pair replace;
 	struct pair saveas;
 	int parse_rot13;
+	int only_rot13;
 	int test_pp;
 } plugin_data_t;
 
@@ -283,6 +284,8 @@ static int argp_fn(wget_plugin_t *plugin, const char *option, const char *value)
 			parse_pair, (void *) &d->saveas},
 		{"parse-rot13", "[=false]", "Parse rot13 obfuscated links (default: false)",
 			parse_boolean, (void *) &d->parse_rot13},
+		{"only-rot13", "[=false]", "Parse only rot13 links (default: false)",
+			parse_boolean, (void *) &d->only_rot13},
 		{"test-pp", "[=false]", "Test post-processing API for consistency",
 			parse_boolean, (void *) &d->test_pp},
 		{NULL, NULL, NULL, NULL, NULL}
@@ -303,6 +306,7 @@ static void finalizer(wget_plugin_t *plugin, G_GNUC_WGET_UNUSED int exit_status)
 		test_assert((stream = fopen("files_processed.txt", "wb")));
 		for (i = 0; i < wget_vector_size(d->files_processed); i++) {
 			fprintf(stream, "%s\n", (const char *) wget_vector_get(d->files_processed, i));
+			wget_info_printf("TMP: processed %s\n", (const char *) wget_vector_get(d->files_processed, i));
 		}
 		fclose(stream);
 	}
@@ -445,7 +449,7 @@ static int post_processor(wget_plugin_t *plugin, wget_downloaded_file_t *file)
 		}
 	}
 
-	return 1;
+	return d->only_rot13 ? 0 : 1;
 }
 
 WGET_EXPORT int wget_plugin_initializer(wget_plugin_t *plugin);

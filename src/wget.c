@@ -1639,7 +1639,7 @@ static void process_response(wget_http_response_t *resp)
 	}
 
 	if (resp->code == 200 || resp->code == 206) {
-		if (config.recursive && (!config.level || job->level < config.level + config.page_requisites)) {
+		if (process_decision && recurse_decision) {
 			if (resp->content_type && resp->body) {
 				if (!wget_strcasecmp_ascii(resp->content_type, "text/html")) {
 					html_parse(job, job->level, resp->body->data, resp->body->length, resp->content_type_encoding ? resp->content_type_encoding : config.remote_encoding, job->iri);
