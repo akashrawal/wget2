@@ -1606,10 +1606,15 @@ static void process_response(wget_http_response_t *resp)
 			int n_recurse_iris = 0;
 			const void *data = NULL;
 			uint64_t size;
+			const char *filename;
 
-			if (resp->code == 304 || resp->code == 416
-					|| (resp->code == 206 && !(config.recursive && config.output_document)))
-				size = get_file_size(job->local_filename);
+			if (config.spider || (config.recursive && config.output_document))
+				filename = NULL;
+			else
+				filename = job->local_filename;
+
+			if ((resp->code == 304 || resp->code == 416 || resp->code == 206) && filename)
+				size = get_file_size(filename);
 			else
 				size = resp->content_length;
 
@@ -1619,8 +1624,7 @@ static void process_response(wget_http_response_t *resp)
 			if (recurse_decision)
 				recurse_iris = wget_vector_create(16, -2, NULL);
 
-			process_decision = plugin_db_forward_downloaded_file(job->iri, size,
-				job->local_filename, data, recurse_iris);
+			process_decision = plugin_db_forward_downloaded_file(job->iri, size, filename, data, recurse_iris);
 
 			if (recurse_decision) {
 				n_recurse_iris = wget_vector_size(recurse_iris);
