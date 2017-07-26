@@ -180,10 +180,6 @@ int main(void)
 	return 77;
 #endif
 
-	// TODO: Delete it later
-	if (strlen(data) != 128)
-		wget_error_printf_exit("strlen(data) is incorrect");
-
 	wget_test_start_server
 		(WGET_TEST_RESPONSE_URLS, &urls, countof(urls), 0);
 
