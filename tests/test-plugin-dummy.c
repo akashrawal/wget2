@@ -156,6 +156,14 @@ int wget_plugin_initializer(wget_plugin_t *plugin)
 	return 0;
 }
 #elif defined TEST_SELECT_API
+
+// Separate assert definition because here assertions are part of the tests
+#define test_assert(expr) \
+do { \
+	if (! (expr)) \
+		wget_error_printf_exit(__FILE__ ":%d: Failed assertion [%s]\n", __LINE__, #expr); \
+} while (0)
+
 // A very simple option parser for plugin
 struct option;
 typedef int (*option_parser)(const struct option *opt, const char *value);
@@ -251,7 +259,7 @@ static int parse_pair(const struct option *option, const char *value)
 }
 
 typedef struct {
-	int n_files_processed;
+	wget_vector_t *files_processed;
 
 	char *reject;
 	char *accept;
@@ -287,8 +295,18 @@ static void finalizer(wget_plugin_t *plugin, G_GNUC_WGET_UNUSED int exit_status)
 {
 	plugin_data_t *d = (plugin_data_t *) plugin->plugin_data;
 
-	if (d->test_pp && !d->n_files_processed)
-		wget_error_printf_exit("Option test-pp supplied but no files encountered\n");
+	if (d->test_pp) {
+		int i;
+		FILE *stream;
+
+		wget_vector_sort(d->files_processed);
+		test_assert((stream = fopen("files_processed.txt", "w")));
+		for (i = 0; i < wget_vector_size(d->files_processed); i++) {
+			fprintf(stream, "%s\n", (const char *) wget_vector_get(d->files_processed, i));
+		}
+		fclose(stream);
+	}
+	wget_vector_free(&d->files_processed);
 
 	wget_xfree(d->reject);
 	wget_xfree(d->accept);
@@ -333,13 +351,6 @@ static void url_filter(wget_plugin_t *plugin, const wget_iri_t *iri, wget_interc
 		wget_buffer_deinit(buf);
 	}
 }
-
-// Separate assert definition because here assertions are part of the tests
-#define test_assert(expr) \
-do { \
-	if (! (expr)) \
-		wget_error_printf_exit(__FILE__ ":%d: Failed assertion [%s]\n", __LINE__, #expr); \
-} while (0)
 
 static int post_processor(wget_plugin_t *plugin, wget_downloaded_file_t *file)
 {
@@ -397,35 +408,41 @@ static int post_processor(wget_plugin_t *plugin, wget_downloaded_file_t *file)
 	}
 
 	if (d->test_pp) {
+		const wget_iri_t *iri = wget_downloaded_file_get_source_url(file);
+		const char *data;
+		size_t size, i;
+		FILE *stream;
+
+		// Compare downloaded file contents with wget_downloaded_file_get_contents()
+		test_assert(wget_downloaded_file_get_contents(file, (const void **) &data, &size) == 0);
+
+		// Compare wget_downloaded_file_get_size() against wget_downloaded_file_get_contents()
+		test_assert(size == wget_downloaded_file_get_size(file));
+
+		// Compare with file on disk
 		const char *fname = wget_downloaded_file_get_local_filename(file);
 		if (fname) {
-			const char *data;
 			char *refdata;
-			size_t refsize, size, i;
-			FILE *stream;
-
-			// Load file into memory
+			size_t refsize;
 			test_assert((refdata = wget_read_file(fname, &refsize)));
-
-			// Compare wget_downloaded_file_get_size() with actual file size
-			test_assert(refsize == wget_downloaded_file_get_size(file));
-
-			// Compare downloaded file contents with wget_downloaded_file_get_contents()
-			test_assert(wget_downloaded_file_get_contents(file, (const void **) &data, &size) == 0);
-			test_assert(refsize == size && "wget_downloaded_file_get_contents()");
+			test_assert(refsize == size && "wget_read_file(fname, &refsize)");
 			test_assert(memcmp(data, refdata, size) == 0);
-
-			// Compare downloaded file contents with wget_downloaded_file_open_stream()
-			test_assert(stream = wget_downloaded_file_open_stream(file));
-			for (i = 0; i < size; i++)
-				test_assert((int) refdata[i] == getc(stream));
-			test_assert("At end of file" && getc(stream) == EOF);
-			fclose(stream);
-
 			wget_free(refdata);
 		}
 
-		d->n_files_processed++;
+		// Compare downloaded file contents with wget_downloaded_file_open_stream()
+		test_assert(stream = wget_downloaded_file_open_stream(file));
+		for (i = 0; i < size; i++)
+			test_assert((int) data[i] == getc(stream));
+		test_assert("At end of stream, wget_downloaded_file_open_stream(file)" && getc(stream) == EOF);
+		fclose(stream);
+
+		// Update list of files processed
+		{
+			const char *basename = strrchr(iri->uri, '/');
+			if (basename)
+				wget_vector_add_str(d->files_processed, basename + 1);
+		}
 	}
 
 	return 1;
@@ -435,6 +452,8 @@ WGET_EXPORT int wget_plugin_initializer(wget_plugin_t *plugin);
 int wget_plugin_initializer(wget_plugin_t *plugin)
 {
 	plugin_data_t *d = (plugin_data_t *) wget_calloc(1, sizeof(plugin_data_t));
+
+	d->files_processed = wget_vector_create(4, -2, (wget_vector_compare_t) strcmp);
 
 	plugin->plugin_data = d;
 	wget_plugin_register_argp(plugin, argp_fn);

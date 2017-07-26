@@ -543,6 +543,7 @@ int main(void)
 			{ "rot13_index.html", urls[4].body },
 			{ "secondpage.html", urls[1].body },
 			{ "thirdpage.html", urls[2].body },
+			{ "files_processed.txt", "rot13_index.html\nsecondpage.html\nthirdpage.html\n" },
 			{	NULL } },
 		0);
 
@@ -557,6 +558,7 @@ int main(void)
 			{	NULL } },
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	"data.txt", data },
+			{ "files_processed.txt", "data.txt\n" },
 			{	NULL } },
 		0);
 
@@ -571,6 +573,7 @@ int main(void)
 			{	NULL } },
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	"data.txt", data },
+			{ "files_processed.txt", "data.txt\n" },
 			{	NULL } },
 		0);
 
