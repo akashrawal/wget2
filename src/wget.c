@@ -119,6 +119,7 @@ static int
 	http_send_request(wget_iri_t *iri, wget_iri_t *original_url, DOWNLOADER *downloader);
 wget_http_response_t
 	*http_receive_response(wget_http_connection_t *conn);
+static long long G_GNUC_WGET_NONNULL_ALL get_file_size(const char *fname);
 
 static wget_stringmap_t
 	*etags;
@@ -1604,14 +1605,21 @@ static void process_response(wget_http_response_t *resp)
 			wget_vector_t *recurse_iris = NULL;
 			int n_recurse_iris = 0;
 			const void *data = NULL;
+			uint64_t size;
 
-			if (resp->code == 200 && resp->body && resp->body->length == resp->content_length)
+			if (resp->code == 304 || resp->code == 416
+					|| (resp->code == 206 && !(config.recursive && config.output_document)))
+				size = get_file_size(job->local_filename);
+			else
+				size = resp->content_length;
+
+			if ((resp->code == 200 || resp->code == 206) && resp->body && resp->body->length == size)
 				data = resp->body->data;
 
 			if (recurse_decision)
 				recurse_iris = wget_vector_create(16, -2, NULL);
 
-			process_decision = plugin_db_forward_downloaded_file(job->iri, resp->content_length,
+			process_decision = plugin_db_forward_downloaded_file(job->iri, size,
 				job->local_filename, data, recurse_iris);
 
 			if (recurse_decision) {
