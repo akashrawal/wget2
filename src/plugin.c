@@ -190,7 +190,7 @@ static int impl_file_get_contents(wget_downloaded_file_t *p_file, const void **d
 {
 	downloaded_file_t *file = (downloaded_file_t *) p_file;
 
-	if (! file->data) {
+	if ((! file->data) && file->filename) {
 		size_t dummy;
 		// TODO: Check behavior with --output-document= option
 		file->data_buf = wget_read_file(file->filename, &dummy);
