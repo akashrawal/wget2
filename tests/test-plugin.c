@@ -547,7 +547,7 @@ int main(void)
 			{	NULL } },
 		0);
 
-	// Check for API behavior with partial downloads
+	// Check whether intercepting downloaded files works with existing partial files
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi") " -c"
 			" --plugin-opt=pluginapi.test-pp",
@@ -562,7 +562,7 @@ int main(void)
 			{	NULL } },
 		0);
 
-	// Check for API behavior with completed downloads
+	// Check whether intercepting downloaded files works with existing files
 	wget_test(
 		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi") " -c"
 			" --plugin-opt=pluginapi.test-pp",
@@ -573,6 +573,32 @@ int main(void)
 			{	NULL } },
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{	"data.txt", data },
+			{ "files_processed.txt", "data.txt\n" },
+			{	NULL } },
+		0);
+
+	// Check whether intercepting downloaded files works with --spider
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi") " --recursive --spider"
+			" --plugin-opt=pluginapi.parse-rot13 --plugin-opt=pluginapi.test-pp",
+		WGET_TEST_REQUEST_URL, "rot13_index.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "files_processed.txt", "rot13_index.html\nsecondpage.html\nthirdpage.html\n" },
+			{	NULL } },
+		0);
+
+	// Check whether intercepting downloaded files works with --output-document=
+	wget_test(
+		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("pluginapi") " --output-document=data2.txt"
+			" --plugin-opt=pluginapi.test-pp",
+		WGET_TEST_REQUEST_URL, "data.txt",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXISTING_FILES, &(wget_test_file_t []) {
+			{	"data2.txt", data_part },
+			{	NULL } },
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{	"data2.txt", data },
 			{ "files_processed.txt", "data.txt\n" },
 			{	NULL } },
 		0);
