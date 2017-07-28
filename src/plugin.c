@@ -561,8 +561,8 @@ int plugin_db_forward_downloaded_file(const wget_iri_t *iri, uint64_t size, cons
 		wget_vector_t *recurse_iris)
 {
 	downloaded_file_t file;
-	size_t n_plugins;
-	size_t i;
+	int n_plugins;
+	int i;
 
 	// Initialize the structure
 	file.parent.vtable = &vtable;
