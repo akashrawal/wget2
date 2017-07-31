@@ -300,8 +300,10 @@ const char *wget_http_parse_link(const char *s, wget_http_link_t *link)
 					} else if (!wget_strcasecmp_ascii(name, "pri")) {
 						link->pri = atoi(value);
 					} else if (!wget_strcasecmp_ascii(name, "type")) {
-						link->type = value;
-						value = NULL;
+						if (!link->type) {
+							link->type = value;
+							value = NULL;
+						}
 					}
 					//				http_add_param(&link->params,&param);
 					while (c_isblank(*s)) s++;
@@ -509,7 +511,7 @@ const char *wget_http_parse_content_disposition(const char *s, const char **file
 	if (filename) {
 		*filename = NULL;
 
-		while (*s) {
+		while (*s && !*filename) {
 			s = wget_http_parse_param(s, &param.name, &param.value);
 			if (param.value && !wget_strcasecmp_ascii("filename", param.name)) {
 				// just take the last path part as filename
