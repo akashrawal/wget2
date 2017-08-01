@@ -1177,9 +1177,9 @@ WGETAPI void
 WGETAPI void
 	wget_ocsp_db_free(wget_ocsp_db_t **ocsp_db);
 WGETAPI void
-	wget_ocsp_db_add_fingerprint(wget_ocsp_db_t *ocsp_db, wget_ocsp_t *ocsp);
+	wget_ocsp_db_add_fingerprint(wget_ocsp_db_t *ocsp_db, const char *fingerprint, time_t maxage, int valid);
 WGETAPI void
-	wget_ocsp_db_add_host(wget_ocsp_db_t *ocsp_db, wget_ocsp_t *ocsp);
+	wget_ocsp_db_add_host(wget_ocsp_db_t *ocsp_db, const char *host, time_t maxage);
 WGETAPI int
 	wget_ocsp_db_save(wget_ocsp_db_t *ocsp_db, const char *fname);
 WGETAPI int

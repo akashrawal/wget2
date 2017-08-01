@@ -180,7 +180,7 @@ void wget_ocsp_db_free(wget_ocsp_db_t **ocsp_db)
 	}
 }
 
-void wget_ocsp_db_add_fingerprint(wget_ocsp_db_t *ocsp_db, wget_ocsp_t *ocsp)
+static void _ocsp_db_add_fingerprint_entry(wget_ocsp_db_t *ocsp_db, wget_ocsp_t *ocsp)
 {
 	if (!ocsp)
 		return;
@@ -218,7 +218,14 @@ void wget_ocsp_db_add_fingerprint(wget_ocsp_db_t *ocsp_db, wget_ocsp_t *ocsp)
 	wget_thread_mutex_unlock(&ocsp_db->mutex);
 }
 
-void wget_ocsp_db_add_host(wget_ocsp_db_t *ocsp_db, wget_ocsp_t *ocsp)
+void wget_ocsp_db_add_fingerprint(wget_ocsp_db_t *ocsp_db, const char *fingerprint, time_t maxage, int valid)
+{
+	wget_ocsp_t *ocsp = wget_ocsp_new(fingerprint, maxage, valid);
+
+	_ocsp_db_add_fingerprint_entry(ocsp_db, ocsp);
+}
+
+static void _ocsp_db_add_host_entry(wget_ocsp_db_t *ocsp_db, wget_ocsp_t *ocsp)
 {
 	if (!ocsp)
 		return;
@@ -254,6 +261,13 @@ void wget_ocsp_db_add_host(wget_ocsp_db_t *ocsp_db, wget_ocsp_t *ocsp)
 	}
 
 	wget_thread_mutex_unlock(&ocsp_db->mutex);
+}
+
+void wget_ocsp_db_add_host(wget_ocsp_db_t *ocsp_db, const char *host, time_t maxage)
+{
+	wget_ocsp_t *ocsp = wget_ocsp_new(host, maxage, 0);
+
+	_ocsp_db_add_host_entry(ocsp_db, ocsp);
 }
 
 // load the OCSP cache from a flat file
@@ -316,9 +330,9 @@ static int _ocsp_db_load(wget_ocsp_db_t *ocsp_db, FILE *fp, int load_hosts)
 
 		if (ok) {
 			if (load_hosts)
-				wget_ocsp_db_add_host(ocsp_db, wget_memdup(&ocsp, sizeof(ocsp)));
+				_ocsp_db_add_host_entry(ocsp_db, wget_memdup(&ocsp, sizeof(ocsp)));
 			else
-				wget_ocsp_db_add_fingerprint(ocsp_db, wget_memdup(&ocsp, sizeof(ocsp)));
+				_ocsp_db_add_fingerprint_entry(ocsp_db, wget_memdup(&ocsp, sizeof(ocsp)));
 		} else {
 			wget_ocsp_deinit(&ocsp);
 			error_printf(_("Failed to parse OCSP line: '%s'\n"), buf);
