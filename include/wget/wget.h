@@ -1146,17 +1146,8 @@ WGETAPI int
  */
 
 // structure for Online Certificate Status Protocol (OCSP) entries
-typedef struct _wget_ocsp_st wget_ocsp_t;
 typedef struct _wget_ocsp_db_st wget_ocsp_db_t;
 
-WGETAPI wget_ocsp_t *
-	wget_ocsp_init(wget_ocsp_t *ocsp);
-WGETAPI void
-	wget_ocsp_deinit(wget_ocsp_t *ocsp);
-WGETAPI void
-	wget_ocsp_free(wget_ocsp_t *ocsp);
-WGETAPI wget_ocsp_t *
-	wget_ocsp_new(const char *fingerprint, time_t maxage, int valid);
 WGETAPI int
 	wget_ocsp_fingerprint_in_cache(const wget_ocsp_db_t *ocsp_db, const char *fingerprint, int *valid);
 WGETAPI int
