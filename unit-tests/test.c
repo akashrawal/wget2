@@ -1304,7 +1304,7 @@ static void test_hsts(void)
 	for (unsigned it = 0; it < countof(hsts_db_data); it++) {
 		const struct hsts_db_data *t = &hsts_db_data[it];
 		wget_http_parse_strict_transport_security(t->hsts_params, &maxage, &include_subdomains);
-		wget_hsts_db_add(hsts_db, wget_hsts_new(t->host, t->port, maxage, include_subdomains));
+		wget_hsts_db_add(hsts_db, t->host, t->port, maxage, include_subdomains);
 	}
 
 	// check HSTS database with values

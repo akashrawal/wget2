@@ -1062,7 +1062,7 @@ WGETAPI void
 WGETAPI void
 	wget_hsts_db_free(wget_hsts_db_t **hsts_db);
 WGETAPI void
-	wget_hsts_db_add(wget_hsts_db_t *hsts_db, wget_hsts_t *hsts);
+	wget_hsts_db_add(wget_hsts_db_t *hsts_db, const char *host, uint16_t port, time_t maxage, int include_subdomains);
 WGETAPI int
 	wget_hsts_db_save(wget_hsts_db_t *hsts_db, const char *fname);
 WGETAPI int

@@ -187,7 +187,7 @@ void wget_hsts_db_free(wget_hsts_db_t **hsts_db)
 	}
 }
 
-void wget_hsts_db_add(wget_hsts_db_t *hsts_db, wget_hsts_t *hsts)
+static void _hsts_db_add_entry(wget_hsts_db_t *hsts_db, wget_hsts_t *hsts)
 {
 	wget_thread_mutex_lock(&hsts_db->mutex);
 
@@ -218,6 +218,13 @@ void wget_hsts_db_add(wget_hsts_db_t *hsts_db, wget_hsts_t *hsts)
 	}
 
 	wget_thread_mutex_unlock(&hsts_db->mutex);
+}
+
+void wget_hsts_db_add(wget_hsts_db_t *hsts_db, const char *host, uint16_t port, time_t maxage, int include_subdomains)
+{
+	wget_hsts_t *hsts = wget_hsts_new(host, port, maxage, include_subdomains);
+
+	_hsts_db_add_entry(hsts_db, hsts);
 }
 
 static int _hsts_db_load(wget_hsts_db_t *hsts_db, FILE *fp)
@@ -305,7 +312,7 @@ static int _hsts_db_load(wget_hsts_db_t *hsts_db, FILE *fp)
 		}
 
 		if (ok) {
-			wget_hsts_db_add(hsts_db, wget_memdup(&hsts, sizeof(hsts)));
+			_hsts_db_add_entry(hsts_db, wget_memdup(&hsts, sizeof(hsts)));
 		} else {
 			wget_hsts_deinit(&hsts);
 			error_printf(_("Failed to parse HSTS line: '%s'\n"), buf);

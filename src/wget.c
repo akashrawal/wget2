@@ -1290,7 +1290,7 @@ static int process_response_header(wget_http_response_t *resp)
 		&& iri->scheme == WGET_IRI_SCHEME_HTTPS && !iri->is_ip_address
 		&& resp->hsts)
 	{
-		wget_hsts_db_add(config.hsts_db, wget_hsts_new(iri->host, iri->port, resp->hsts_maxage, resp->hsts_include_subdomains));
+		wget_hsts_db_add(config.hsts_db, iri->host, iri->port, resp->hsts_maxage, resp->hsts_include_subdomains);
 		hsts_changed = 1;
 	}
 
