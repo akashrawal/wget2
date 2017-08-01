@@ -1042,17 +1042,8 @@ WGETAPI char *
  */
 
 // structure for HTTP Strict Transport Security (HSTS) entries
-typedef struct _wget_hsts_st wget_hsts_t;
 typedef struct _wget_hsts_db_st wget_hsts_db_t;
 
-WGETAPI wget_hsts_t *
-	wget_hsts_init(wget_hsts_t *hsts);
-WGETAPI void
-	wget_hsts_deinit(wget_hsts_t *hsts);
-WGETAPI void
-	wget_hsts_free(wget_hsts_t *hsts);
-WGETAPI wget_hsts_t *
-	wget_hsts_new(const char *host, uint16_t port, time_t maxage, int include_subdomains);
 WGETAPI int
 	wget_hsts_host_match(const wget_hsts_db_t *hsts_db, const char *host, uint16_t port);
 WGETAPI wget_hsts_db_t *

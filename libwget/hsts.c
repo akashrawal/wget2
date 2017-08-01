@@ -48,7 +48,7 @@ struct _wget_hsts_db_st {
 		load_time;
 };
 
-struct _wget_hsts_st {
+typedef struct {
 	const char *
 		host;
 	int64_t
@@ -61,7 +61,7 @@ struct _wget_hsts_st {
 		port;
 	unsigned char
 		include_subdomains : 1; // whether or not subdomains are included
-};
+} wget_hsts_t;
 
 #ifdef __clang__
 __attribute__((no_sanitize("integer")))
@@ -87,7 +87,7 @@ static int G_GNUC_WGET_NONNULL_ALL G_GNUC_WGET_PURE _compare_hsts(const wget_hst
 	return h1->port < h2->port ? -1 : (h1->port > h2->port ? 1 : 0);
 }
 
-wget_hsts_t *wget_hsts_init(wget_hsts_t *hsts)
+static wget_hsts_t *_init_hsts(wget_hsts_t *hsts)
 {
 	if (!hsts)
 		hsts = xmalloc(sizeof(wget_hsts_t));
@@ -98,24 +98,24 @@ wget_hsts_t *wget_hsts_init(wget_hsts_t *hsts)
 	return hsts;
 }
 
-void wget_hsts_deinit(wget_hsts_t *hsts)
+static void _deinit_hsts(wget_hsts_t *hsts)
 {
 	if (hsts) {
 		xfree(hsts->host);
 	}
 }
 
-void wget_hsts_free(wget_hsts_t *hsts)
+static void _free_hsts(wget_hsts_t *hsts)
 {
 	if (hsts) {
-		wget_hsts_deinit(hsts);
+		_deinit_hsts(hsts);
 		xfree(hsts);
 	}
 }
 
-wget_hsts_t *wget_hsts_new(const char *host, uint16_t port, time_t maxage, int include_subdomains)
+static wget_hsts_t *_new_hsts(const char *host, uint16_t port, time_t maxage, int include_subdomains)
 {
-	wget_hsts_t *hsts = wget_hsts_init(NULL);
+	wget_hsts_t *hsts = _init_hsts(NULL);
 
 	hsts->host = wget_strdup(host);
 	hsts->port = port ? port : 443;
@@ -163,8 +163,8 @@ wget_hsts_db_t *wget_hsts_db_init(wget_hsts_db_t *hsts_db)
 
 	memset(hsts_db, 0, sizeof(*hsts_db));
 	hsts_db->entries = wget_hashmap_create(16, (wget_hashmap_hash_t)_hash_hsts, (wget_hashmap_compare_t)_compare_hsts);
-	wget_hashmap_set_key_destructor(hsts_db->entries, (wget_hashmap_key_destructor_t)wget_hsts_free);
-	wget_hashmap_set_value_destructor(hsts_db->entries, (wget_hashmap_value_destructor_t)wget_hsts_free);
+	wget_hashmap_set_key_destructor(hsts_db->entries, (wget_hashmap_key_destructor_t)_free_hsts);
+	wget_hashmap_set_value_destructor(hsts_db->entries, (wget_hashmap_value_destructor_t)_free_hsts);
 	wget_thread_mutex_init(&hsts_db->mutex);
 
 	return hsts_db;
@@ -194,7 +194,7 @@ static void _hsts_db_add_entry(wget_hsts_db_t *hsts_db, wget_hsts_t *hsts)
 	if (hsts->maxage == 0) {
 		if (wget_hashmap_remove(hsts_db->entries, hsts))
 			debug_printf("removed HSTS %s:%hu\n", hsts->host, hsts->port);
-		wget_hsts_free(hsts);
+		_free_hsts(hsts);
 		hsts = NULL;
 	} else {
 		wget_hsts_t *old = wget_hashmap_get(hsts_db->entries, hsts);
@@ -207,7 +207,7 @@ static void _hsts_db_add_entry(wget_hsts_db_t *hsts_db, wget_hsts_t *hsts)
 				old->include_subdomains = hsts->include_subdomains;
 				debug_printf("update HSTS %s:%hu (maxage=%lld, includeSubDomains=%d)\n", old->host, old->port, (long long)old->maxage, old->include_subdomains);
 			}
-			wget_hsts_free(hsts);
+			_free_hsts(hsts);
 			hsts = NULL;
 		} else {
 			// key and value are the same to make wget_hashmap_get() return old 'hsts'
@@ -222,7 +222,7 @@ static void _hsts_db_add_entry(wget_hsts_db_t *hsts_db, wget_hsts_t *hsts)
 
 void wget_hsts_db_add(wget_hsts_db_t *hsts_db, const char *host, uint16_t port, time_t maxage, int include_subdomains)
 {
-	wget_hsts_t *hsts = wget_hsts_new(host, port, maxage, include_subdomains);
+	wget_hsts_t *hsts = _new_hsts(host, port, maxage, include_subdomains);
 
 	_hsts_db_add_entry(hsts_db, hsts);
 }
@@ -260,7 +260,7 @@ static int _hsts_db_load(wget_hsts_db_t *hsts_db, FILE *fp)
 		while (buflen > 0 && (buf[buflen] == '\n' || buf[buflen] == '\r'))
 			buf[--buflen] = 0;
 
-		wget_hsts_init(&hsts);
+		_init_hsts(&hsts);
 		ok = 0;
 
 		// parse host
@@ -305,7 +305,7 @@ static int _hsts_db_load(wget_hsts_db_t *hsts_db, FILE *fp)
 			hsts.expires = hsts.maxage ? hsts.created + hsts.maxage : 0;
 			if (hsts.expires < now) {
 				// drop expired entry
-				wget_hsts_deinit(&hsts);
+				_deinit_hsts(&hsts);
 				continue;
 			}
 			ok = 1;
@@ -314,7 +314,7 @@ static int _hsts_db_load(wget_hsts_db_t *hsts_db, FILE *fp)
 		if (ok) {
 			_hsts_db_add_entry(hsts_db, wget_memdup(&hsts, sizeof(hsts)));
 		} else {
-			wget_hsts_deinit(&hsts);
+			_deinit_hsts(&hsts);
 			error_printf(_("Failed to parse HSTS line: '%s'\n"), buf);
 		}
 	}
