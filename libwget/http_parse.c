@@ -577,7 +577,7 @@ const char *wget_http_parse_content_disposition(const char *s, const char **file
 								*filename = wget_strdup(p);
 
 							// just take the last path part as filename
-							if ((p = strpbrk(*filename, "/\\"))) {
+							if (*filename && (p = strpbrk(*filename, "/\\"))) {
 								p = wget_strdup(p + 1);
 								xfree(*filename);
 								*filename = p;
@@ -1213,7 +1213,7 @@ wget_http_response_t *wget_http_parse_response_header(char *buf)
 			return resp;
 		}
 	} else if (sscanf(buf, " ICY %3hd %31[^\r\n] ", &resp->code, resp->reason) >= 1) {
-		if ((eol = strchr(buf + 5, '\n'))) {
+		if ((eol = strchr(buf + 4, '\n'))) {
 			// eol[-1]=0;
 			// debug_printf("# %s\n",buf);
 		} else {
