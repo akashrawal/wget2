@@ -32,6 +32,8 @@
 #include "private.h"
 
 struct _wget_hpkp_db_st {
+	char *
+		fname;
 	wget_hashmap_t *
 		entries;
 	wget_thread_mutex_t
@@ -203,13 +205,15 @@ void wget_hpkp_set_include_subdomains(wget_hpkp_t *hpkp, int include_subdomains)
  *
  * Initializes a new HPKP database.
  */
-wget_hpkp_db_t *wget_hpkp_db_init(wget_hpkp_db_t *hpkp_db)
+wget_hpkp_db_t *wget_hpkp_db_init(wget_hpkp_db_t *hpkp_db, const char *fname)
 {
 	if (!hpkp_db)
 		hpkp_db = xcalloc(1, sizeof(wget_hpkp_db_t));
 	else
 		memset(hpkp_db, 0, sizeof(*hpkp_db));
 
+	if (fname)
+		hpkp_db->fname = wget_strdup(fname);
 	hpkp_db->entries = wget_hashmap_create(16, (wget_hashmap_hash_t)_hash_hpkp, (wget_hashmap_compare_t)_compare_hpkp);
 	wget_hashmap_set_key_destructor(hpkp_db->entries, (wget_hashmap_key_destructor_t)wget_hpkp_free);
 
@@ -226,9 +230,17 @@ wget_hpkp_db_t *wget_hpkp_db_init(wget_hpkp_db_t *hpkp_db)
 	return hpkp_db;
 }
 
+void wget_hpkp_db_set_fname(wget_hpkp_db_t *hpkp_db, const char *fname)
+{
+	xfree(hpkp_db->fname);
+	if (fname)
+		hpkp_db->fname = wget_strdup(fname);
+}
+
 void wget_hpkp_db_deinit(wget_hpkp_db_t *hpkp_db)
 {
 	if (hpkp_db) {
+		xfree(hpkp_db->fname);
 		wget_thread_mutex_lock(&hpkp_db->mutex);
 		wget_hashmap_free(&hpkp_db->entries);
 		wget_thread_mutex_unlock(&hpkp_db->mutex);
@@ -442,16 +454,16 @@ static int _hpkp_db_load(wget_hpkp_db_t *hpkp_db, FILE *fp)
 	return 0;
 }
 
-int wget_hpkp_db_load(wget_hpkp_db_t *hpkp_db, const char *fname)
+int wget_hpkp_db_load(wget_hpkp_db_t *hpkp_db)
 {
-	if (!hpkp_db || !fname || !*fname)
+	if (!hpkp_db || !hpkp_db->fname || !*hpkp_db->fname)
 		return 0;
 
-	if (wget_update_file(fname, (wget_update_load_t)_hpkp_db_load, NULL, hpkp_db)) {
+	if (wget_update_file(hpkp_db->fname, (wget_update_load_t)_hpkp_db_load, NULL, hpkp_db)) {
 		error_printf(_("Failed to read HPKP data\n"));
 		return -1;
 	} else {
-		debug_printf("Fetched HPKP data from '%s'\n", fname);
+		debug_printf("Fetched HPKP data from '%s'\n", hpkp_db->fname);
 		return 0;
 	}
 }
@@ -523,20 +535,20 @@ static int _hpkp_db_save(wget_hpkp_db_t *hpkp_db, FILE *fp)
  * If the file cannot be opened for writing `WGET_HPKP_ERROR_FILE_OPEN` is returned, and
  * `WGET_HPKP_ERROR` in any other case.
  */
-int wget_hpkp_db_save(wget_hpkp_db_t *hpkp_db, const char *fname)
+int wget_hpkp_db_save(wget_hpkp_db_t *hpkp_db)
 {
 	int size;
 
-	if (!hpkp_db || !fname || !*fname)
+	if (!hpkp_db || !hpkp_db->fname || !*hpkp_db->fname)
 		return -1;
 
-	if (wget_update_file(fname, (wget_update_load_t)_hpkp_db_load, (wget_update_load_t)_hpkp_db_save, hpkp_db)) {
-		error_printf(_("Failed to write HPKP file '%s'\n"), fname);
+	if (wget_update_file(hpkp_db->fname, (wget_update_load_t)_hpkp_db_load, (wget_update_load_t)_hpkp_db_save, hpkp_db)) {
+		error_printf(_("Failed to write HPKP file '%s'\n"), hpkp_db->fname);
 		return -1;
 	}
 
 	if ((size = wget_hashmap_size(hpkp_db->entries)))
-		debug_printf("Saved %d HPKP entr%s into '%s'\n", size, size != 1 ? "ies" : "y", fname);
+		debug_printf("Saved %d HPKP entr%s into '%s'\n", size, size != 1 ? "ies" : "y", hpkp_db->fname);
 	else
 		debug_printf("No HPKP entries to save. Table is empty.\n");
 

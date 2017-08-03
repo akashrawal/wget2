@@ -38,6 +38,8 @@
 #include "private.h"
 
 struct _wget_ocsp_db_st {
+	char *
+		fname;
 	wget_hashmap_t *
 		fingerprints;
 	wget_hashmap_t *
@@ -145,13 +147,15 @@ int wget_ocsp_hostname_is_valid(const wget_ocsp_db_t *ocsp_db, const char *hostn
 	return 0;
 }
 
-wget_ocsp_db_t *wget_ocsp_db_init(wget_ocsp_db_t *ocsp_db)
+wget_ocsp_db_t *wget_ocsp_db_init(wget_ocsp_db_t *ocsp_db, const char *fname)
 {
 	if (!ocsp_db)
 		ocsp_db = xmalloc(sizeof(wget_ocsp_db_t));
 
 	memset(ocsp_db, 0, sizeof(*ocsp_db));
 
+	if (fname)
+		ocsp_db->fname = wget_strdup(fname);
 	ocsp_db->fingerprints = wget_hashmap_create(16, (wget_hashmap_hash_t)_hash_ocsp, (wget_hashmap_compare_t)_compare_ocsp);
 	wget_hashmap_set_key_destructor(ocsp_db->fingerprints, (wget_hashmap_key_destructor_t)_free_ocsp);
 	wget_hashmap_set_value_destructor(ocsp_db->fingerprints, (wget_hashmap_value_destructor_t)_free_ocsp);
@@ -165,9 +169,17 @@ wget_ocsp_db_t *wget_ocsp_db_init(wget_ocsp_db_t *ocsp_db)
 	return ocsp_db;
 }
 
+void wget_ocsp_db_set_fname(wget_ocsp_db_t *ocsp_db, const char *fname)
+{
+	xfree(ocsp_db->fname);
+	if (fname)
+		ocsp_db->fname = wget_strdup(fname);
+}
+
 void wget_ocsp_db_deinit(wget_ocsp_db_t *ocsp_db)
 {
 	if (ocsp_db) {
+		xfree(ocsp_db->fname);
 		wget_thread_mutex_lock(&ocsp_db->mutex);
 		wget_hashmap_free(&ocsp_db->fingerprints);
 		wget_hashmap_free(&ocsp_db->hosts);
@@ -360,26 +372,26 @@ static int _ocsp_db_load_fingerprints(void *ocsp_db, FILE *fp)
 	return _ocsp_db_load(ocsp_db, fp, 0);
 }
 
-int wget_ocsp_db_load(wget_ocsp_db_t *ocsp_db, const char *fname)
+int wget_ocsp_db_load(wget_ocsp_db_t *ocsp_db)
 {
 	int ret;
 
-	if (!ocsp_db || !fname || !*fname)
+	if (!ocsp_db || !ocsp_db->fname || !*ocsp_db->fname)
 		return -1;
 
-	char fname_hosts[strlen(fname) + 6 + 1];
-	snprintf(fname_hosts, sizeof(fname_hosts), "%s_hosts", fname);
+	char fname_hosts[strlen(ocsp_db->fname) + 6 + 1];
+	snprintf(fname_hosts, sizeof(fname_hosts), "%s_hosts", ocsp_db->fname);
 
 	if ((ret = wget_update_file(fname_hosts, _ocsp_db_load_hosts, NULL, ocsp_db)))
 		error_printf(_("Failed to read OCSP hosts\n"));
 	else
 		debug_printf(_("Fetched OCSP hosts from '%s'\n"), fname_hosts);
 
-	if (wget_update_file(fname, _ocsp_db_load_fingerprints, NULL, ocsp_db)) {
+	if (wget_update_file(ocsp_db->fname, _ocsp_db_load_fingerprints, NULL, ocsp_db)) {
 		error_printf(_("Failed to read OCSP fingerprints\n"));
 		ret = -1;
 	} else
-		debug_printf(_("Fetched OCSP fingerprints from '%s'\n"), fname);
+		debug_printf(_("Fetched OCSP fingerprints from '%s'\n"), ocsp_db->fname);
 
 	return ret;
 }
@@ -434,26 +446,26 @@ static int _ocsp_db_save_fingerprints(void *ocsp_db, FILE *fp)
 // Save the OCSP hosts and fingerprints to flat files.
 // Protected by flock()
 
-int wget_ocsp_db_save(wget_ocsp_db_t *ocsp_db, const char *fname)
+int wget_ocsp_db_save(wget_ocsp_db_t *ocsp_db)
 {
 	int ret;
 
-	if (!ocsp_db || !fname || !*fname)
+	if (!ocsp_db || !ocsp_db->fname || !*ocsp_db->fname)
 		return -1;
 
-	char fname_hosts[strlen(fname) + 6 + 1];
-	snprintf(fname_hosts, sizeof(fname_hosts), "%s_hosts", fname);
+	char fname_hosts[strlen(ocsp_db->fname) + 6 + 1];
+	snprintf(fname_hosts, sizeof(fname_hosts), "%s_hosts", ocsp_db->fname);
 
 	if ((ret = wget_update_file(fname_hosts, _ocsp_db_load_hosts, _ocsp_db_save_hosts, ocsp_db)))
 		error_printf(_("Failed to write to OCSP hosts to '%s'\n"), fname_hosts);
 	else
 		debug_printf(_("Saved OCSP hosts to '%s'\n"), fname_hosts);
 
-	if (wget_update_file(fname, _ocsp_db_load_fingerprints, _ocsp_db_save_fingerprints, ocsp_db)) {
-		error_printf(_("Failed to write to OCSP fingerprints to '%s'\n"), fname);
+	if (wget_update_file(ocsp_db->fname, _ocsp_db_load_fingerprints, _ocsp_db_save_fingerprints, ocsp_db)) {
+		error_printf(_("Failed to write to OCSP fingerprints to '%s'\n"), ocsp_db->fname);
 		ret = -1;
 	} else
-		debug_printf(_("Saved OCSP fingerprints to '%s'\n"), fname);
+		debug_printf(_("Saved OCSP fingerprints to '%s'\n"), ocsp_db->fname);
 
 	return ret;
 }

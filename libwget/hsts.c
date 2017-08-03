@@ -40,6 +40,8 @@
 #include "private.h"
 
 struct _wget_hsts_db_st {
+	char *
+		fname;
 	wget_hashmap_t *
 		entries;
 	wget_thread_mutex_t
@@ -156,12 +158,14 @@ int wget_hsts_host_match(const wget_hsts_db_t *hsts_db, const char *host, uint16
 	return 0;
 }
 
-wget_hsts_db_t *wget_hsts_db_init(wget_hsts_db_t *hsts_db)
+wget_hsts_db_t *wget_hsts_db_init(wget_hsts_db_t *hsts_db, const char *fname)
 {
 	if (!hsts_db)
 		hsts_db = xmalloc(sizeof(wget_hsts_db_t));
 
 	memset(hsts_db, 0, sizeof(*hsts_db));
+	if (fname)
+		hsts_db->fname = wget_strdup(fname);
 	hsts_db->entries = wget_hashmap_create(16, (wget_hashmap_hash_t)_hash_hsts, (wget_hashmap_compare_t)_compare_hsts);
 	wget_hashmap_set_key_destructor(hsts_db->entries, (wget_hashmap_key_destructor_t)_free_hsts);
 	wget_hashmap_set_value_destructor(hsts_db->entries, (wget_hashmap_value_destructor_t)_free_hsts);
@@ -170,9 +174,17 @@ wget_hsts_db_t *wget_hsts_db_init(wget_hsts_db_t *hsts_db)
 	return hsts_db;
 }
 
+void wget_hsts_db_set_fname(wget_hsts_db_t *hsts_db, const char *fname)
+{
+	xfree(hsts_db->fname);
+	if (fname)
+		hsts_db->fname = wget_strdup(fname);
+}
+
 void wget_hsts_db_deinit(wget_hsts_db_t *hsts_db)
 {
 	if (hsts_db) {
+		xfree(hsts_db->fname);
 		wget_thread_mutex_lock(&hsts_db->mutex);
 		wget_hashmap_free(&hsts_db->entries);
 		wget_thread_mutex_unlock(&hsts_db->mutex);
@@ -332,16 +344,16 @@ static int _hsts_db_load(wget_hsts_db_t *hsts_db, FILE *fp)
 // Load the HSTS cache from a flat file
 // Protected by flock()
 
-int wget_hsts_db_load(wget_hsts_db_t *hsts_db, const char *fname)
+int wget_hsts_db_load(wget_hsts_db_t *hsts_db)
 {
-	if (!hsts_db || !fname || !*fname)
+	if (!hsts_db || !hsts_db->fname || !*hsts_db->fname)
 		return 0;
 
-	if (wget_update_file(fname, (wget_update_load_t)_hsts_db_load, NULL, hsts_db)) {
+	if (wget_update_file(hsts_db->fname, (wget_update_load_t)_hsts_db_load, NULL, hsts_db)) {
 		error_printf(_("Failed to read HSTS data\n"));
 		return -1;
 	} else {
-		debug_printf(_("Fetched HSTS data from '%s'\n"), fname);
+		debug_printf(_("Fetched HSTS data from '%s'\n"), hsts_db->fname);
 		return 0;
 	}
 }
@@ -373,20 +385,20 @@ static int _hsts_db_save(void *hsts_db, FILE *fp)
 // Save the HSTS cache to a flat file
 // Protected by flock()
 
-int wget_hsts_db_save(wget_hsts_db_t *hsts_db, const char *fname)
+int wget_hsts_db_save(wget_hsts_db_t *hsts_db)
 {
 	int size;
 
-	if (!hsts_db || !fname || !*fname)
+	if (!hsts_db || !hsts_db->fname || !*hsts_db->fname)
 		return -1;
 
-	if (wget_update_file(fname, (wget_update_load_t)_hsts_db_load, _hsts_db_save, hsts_db)) {
-		error_printf(_("Failed to write HSTS file '%s'\n"), fname);
+	if (wget_update_file(hsts_db->fname, (wget_update_load_t)_hsts_db_load, _hsts_db_save, hsts_db)) {
+		error_printf(_("Failed to write HSTS file '%s'\n"), hsts_db->fname);
 		return -1;
 	}
 
 	if ((size = wget_hashmap_size(hsts_db->entries)))
-		debug_printf(_("Saved %d HSTS entr%s into '%s'\n"), size, size != 1 ? "ies" : "y", fname);
+		debug_printf(_("Saved %d HSTS entr%s into '%s'\n"), size, size != 1 ? "ies" : "y", hsts_db->fname);
 	else
 		debug_printf(_("No HSTS entries to save. Table is empty.\n"));
 

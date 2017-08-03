@@ -1295,7 +1295,7 @@ static void test_hsts(void)
 		{ "www.example.com", 80, 1 }, // default port
 		{ "www.example.com", 8080, 0 }, // wrong port
 	};
-	wget_hsts_db_t *hsts_db = wget_hsts_db_init(NULL);
+	wget_hsts_db_t *hsts_db = wget_hsts_db_init(NULL, NULL);
 	time_t maxage;
 	char include_subdomains;
 	int n;
@@ -1388,7 +1388,7 @@ static void test_hpkp(void)
 		{ "www.example2.com", HPKP_PUBKEY_1, 0 }, // entry should have been removed due to max-age=0
 		{ "www.example3.com", HPKP_PUBKEY_1, 0 }, // entry should have been removed due to no PINs
 	};
-	wget_hpkp_db_t *hpkp_db = wget_hpkp_db_init(NULL);
+	wget_hpkp_db_t *hpkp_db = wget_hpkp_db_init(NULL, NULL);
 	int n;
 
 	/* generate values for pin-sha256 */

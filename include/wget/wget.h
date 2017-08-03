@@ -1047,7 +1047,9 @@ typedef struct _wget_hsts_db_st wget_hsts_db_t;
 WGETAPI int
 	wget_hsts_host_match(const wget_hsts_db_t *hsts_db, const char *host, uint16_t port);
 WGETAPI wget_hsts_db_t *
-	wget_hsts_db_init(wget_hsts_db_t *hsts_db);
+	wget_hsts_db_init(wget_hsts_db_t *hsts_db, const char *fname);
+WGETAPI void
+	wget_hsts_db_set_fname(wget_hsts_db_t *hsts_db, const char *fname);
 WGETAPI void
 	wget_hsts_db_deinit(wget_hsts_db_t *hsts_db);
 WGETAPI void
@@ -1055,9 +1057,9 @@ WGETAPI void
 WGETAPI void
 	wget_hsts_db_add(wget_hsts_db_t *hsts_db, const char *host, uint16_t port, time_t maxage, int include_subdomains);
 WGETAPI int
-	wget_hsts_db_save(wget_hsts_db_t *hsts_db, const char *fname);
+	wget_hsts_db_save(wget_hsts_db_t *hsts_db);
 WGETAPI int
-	wget_hsts_db_load(wget_hsts_db_t *hsts_db, const char *fname);
+	wget_hsts_db_load(wget_hsts_db_t *hsts_db);
 
 /*
  * HTTP Public Key Pinning (HPKP)
@@ -1094,7 +1096,9 @@ WGETAPI void
 WGETAPI void
 	wget_hpkp_set_include_subdomains(wget_hpkp_t *hpkp, int include_subdomains);
 WGETAPI wget_hpkp_db_t *
-	wget_hpkp_db_init(wget_hpkp_db_t *hpkp_db);
+	wget_hpkp_db_init(wget_hpkp_db_t *hpkp_db, const char *fname);
+WGETAPI void
+	wget_hpkp_db_set_fname(wget_hpkp_db_t *hpkp_db, const char *fname);
 WGETAPI void
 	wget_hpkp_db_deinit(wget_hpkp_db_t *hpkp_db);
 WGETAPI void
@@ -1104,9 +1108,9 @@ WGETAPI int
 WGETAPI void
 	wget_hpkp_db_add(wget_hpkp_db_t *hpkp_db, wget_hpkp_t **hpkp);
 WGETAPI int
-	wget_hpkp_db_load(wget_hpkp_db_t *hpkp_db, const char *fname);
+	wget_hpkp_db_load(wget_hpkp_db_t *hpkp_db);
 WGETAPI int
-	wget_hpkp_db_save(wget_hpkp_db_t *hpkp_db, const char *fname);
+	wget_hpkp_db_save(wget_hpkp_db_t *hpkp_db);
 
 /*
  * TLS session resumption
@@ -1153,7 +1157,9 @@ WGETAPI int
 WGETAPI int
 	wget_ocsp_hostname_is_valid(const wget_ocsp_db_t *ocsp_db, const char *fingerprint);
 WGETAPI wget_ocsp_db_t *
-	wget_ocsp_db_init(wget_ocsp_db_t *ocsp_db);
+	wget_ocsp_db_init(wget_ocsp_db_t *ocsp_db, const char *fname);
+WGETAPI void
+	wget_ocsp_db_set_fname(wget_ocsp_db_t *ocsp_db, const char *fname);
 WGETAPI void
 	wget_ocsp_db_deinit(wget_ocsp_db_t *ocsp_db);
 WGETAPI void
@@ -1163,9 +1169,9 @@ WGETAPI void
 WGETAPI void
 	wget_ocsp_db_add_host(wget_ocsp_db_t *ocsp_db, const char *host, time_t maxage);
 WGETAPI int
-	wget_ocsp_db_save(wget_ocsp_db_t *ocsp_db, const char *fname);
+	wget_ocsp_db_save(wget_ocsp_db_t *ocsp_db);
 WGETAPI int
-	wget_ocsp_db_load(wget_ocsp_db_t *ocsp_db, const char *fname);
+	wget_ocsp_db_load(wget_ocsp_db_t *ocsp_db);
 
 /*
  * .netrc routines
