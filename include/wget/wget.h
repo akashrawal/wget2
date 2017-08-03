@@ -1042,7 +1042,20 @@ WGETAPI char *
  */
 
 // structure for HTTP Strict Transport Security (HSTS) entries
-typedef struct _wget_hsts_db_st wget_hsts_db_t;
+typedef struct {
+	struct wget_hsts_db_vtable *vtable;
+} wget_hsts_db_t;
+
+// TODO: Move implementation to virtual functions
+// TODO: Add/amend documentation
+// vtable for implementation
+struct wget_hsts_db_vtable {
+	int (*load)(wget_hsts_db_t *);
+	int (*save)(wget_hsts_db_t *);
+	int (*host_match)(const wget_hsts_db_t *, const char *, uint16_t);
+	void (*add)(wget_hsts_db_t *, const char *, uint16_t, time_t, int);
+	void (*free)(wget_hsts_db_t *);
+};
 
 WGETAPI int
 	wget_hsts_host_match(const wget_hsts_db_t *hsts_db, const char *host, uint16_t port);
@@ -1082,6 +1095,15 @@ typedef struct _wget_hpkp_st wget_hpkp_t;
 #define WGET_HPKP_ENTRY_EXISTS		-5
 #define WGET_HPKP_ERROR_FILE_OPEN	-6
 /* @} */
+
+// vtable for implementation
+struct wget_hpkp_db_vtable {
+	int (*load)(wget_hpkp_db_t *);
+	int (*save)(wget_hpkp_db_t *);
+	void (*free)(wget_hpkp_db_t *);
+	void (*add)(wget_hpkp_db_t *, wget_hpkp_t *hpkp);
+	bool (*check_pubkey)(wget_hpkp_db_t *, const char *, const void *, size_t);
+};
 
 WGETAPI wget_hpkp_t *
 	wget_hpkp_new(void);
@@ -1151,6 +1173,17 @@ WGETAPI int
 
 // structure for Online Certificate Status Protocol (OCSP) entries
 typedef struct _wget_ocsp_db_st wget_ocsp_db_t;
+
+// vtable for implementation
+struct wget_ocsp_db_vtable {
+	int (*load)(wget_ocsp_db_t *);
+	int (*save)(wget_ocsp_db_t *);
+	int (*fingerprint_in_cache)(wget_ocsp_db_t *, const char *, int *);
+	int (*check_hostname_is_valid)(wget_ocsp_db_t *, const char *);
+	void (*add_fingerprint)(wget_ocsp_db_t *, const char *, time_t, int);
+	void (*add_hostname)(wget_ocsp_db_t *, const char *, time_t);
+	void (*free)(wget_ocsp_db_t *);
+};
 
 WGETAPI int
 	wget_ocsp_fingerprint_in_cache(const wget_ocsp_db_t *ocsp_db, const char *fingerprint, int *valid);
