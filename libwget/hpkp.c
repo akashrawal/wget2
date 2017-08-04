@@ -551,7 +551,7 @@ static int impl_hpkp_db_save(wget_hpkp_db_t *p_hpkp_db)
 	return 0;
 }
 
-struct wget_hpkp_db_vtable vtable = {
+static struct wget_hpkp_db_vtable vtable = {
 	.load = impl_hpkp_db_load,
 	.save = impl_hpkp_db_save,
 	.free = impl_hpkp_db_free,

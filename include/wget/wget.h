@@ -1184,11 +1184,15 @@ typedef struct _wget_ocsp_db_st wget_ocsp_db_t;
 struct wget_ocsp_db_vtable {
 	int (*load)(wget_ocsp_db_t *);
 	int (*save)(wget_ocsp_db_t *);
-	int (*fingerprint_in_cache)(wget_ocsp_db_t *, const char *, int *);
-	int (*check_hostname_is_valid)(wget_ocsp_db_t *, const char *);
+	int (*fingerprint_in_cache)(const wget_ocsp_db_t *, const char *, int *);
+	int (*hostname_is_valid)(const wget_ocsp_db_t *, const char *);
 	void (*add_fingerprint)(wget_ocsp_db_t *, const char *, time_t, int);
-	void (*add_hostname)(wget_ocsp_db_t *, const char *, time_t);
+	void (*add_host)(wget_ocsp_db_t *, const char *, time_t);
 	void (*free)(wget_ocsp_db_t *);
+};
+
+struct _wget_ocsp_db_st {
+	struct wget_ocsp_db_vtable *vtable;
 };
 
 WGETAPI int
