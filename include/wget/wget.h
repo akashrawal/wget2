@@ -1042,9 +1042,7 @@ WGETAPI char *
  */
 
 // structure for HTTP Strict Transport Security (HSTS) entries
-typedef struct {
-	struct wget_hsts_db_vtable *vtable;
-} wget_hsts_db_t;
+typedef struct _wget_hsts_db_st wget_hsts_db_t;
 
 // TODO: Move implementation to virtual functions
 // TODO: Add/amend documentation
@@ -1055,6 +1053,10 @@ struct wget_hsts_db_vtable {
 	int (*host_match)(const wget_hsts_db_t *, const char *, uint16_t);
 	void (*add)(wget_hsts_db_t *, const char *, uint16_t, time_t, int);
 	void (*free)(wget_hsts_db_t *);
+};
+
+struct _wget_hsts_db_st {
+	struct wget_hsts_db_vtable *vtable;
 };
 
 WGETAPI int
