@@ -202,6 +202,53 @@ void wget_hpkp_set_include_subdomains(wget_hpkp_t *hpkp, int include_subdomains)
 	hpkp->include_subdomains = !!include_subdomains;
 }
 
+size_t wget_hpkp_get_n_pins(wget_hpkp_t *hpkp)
+{
+	return (size_t) wget_vector_size(hpkp->pins);
+}
+
+void wget_hpkp_get_pins_b64(wget_hpkp_t *hpkp, const char **pin_types, const char **pins_b64)
+{
+	int i, n_pins;
+
+	n_pins = wget_vector_size(hpkp->pins);
+
+	for (i = 0; i < n_pins; i++) {
+		wget_hpkp_pin_t *pin = (wget_hpkp_pin_t *) wget_vector_get(hpkp->pins, i);
+		pin_types[i] = pin->hash_type;
+		pins_b64[i] = pin->pin_b64;
+	}
+}
+
+void wget_hpkp_get_pins(wget_hpkp_t *hpkp, const char **pin_types, size_t *sizes, const void **pins)
+{
+	int i, n_pins;
+
+	n_pins = wget_vector_size(hpkp->pins);
+
+	for (i = 0; i < n_pins; i++) {
+		wget_hpkp_pin_t *pin = (wget_hpkp_pin_t *) wget_vector_get(hpkp->pins, i);
+		pin_types[i] = pin->hash_type;
+		sizes[i] = pin->pinsize;
+		pins[i] = pin->pin;
+	}
+}
+
+const char * wget_hpkp_get_host(wget_hpkp_t *hpkp)
+{
+	return hpkp->host;
+}
+
+time_t wget_hpkp_get_maxage(wget_hpkp_t *hpkp)
+{
+	return hpkp->maxage;
+}
+
+int wget_hpkp_get_include_subdomains(wget_hpkp_t *hpkp)
+{
+	return hpkp->include_subdomains;
+}
+
 void wget_hpkp_db_deinit(wget_hpkp_db_t *p_hpkp_db)
 {
 	_hpkp_db_impl_t *hpkp_db = (_hpkp_db_impl_t *) p_hpkp_db;

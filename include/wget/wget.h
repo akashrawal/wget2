@@ -1123,6 +1123,18 @@ WGETAPI void
 	wget_hpkp_set_maxage(wget_hpkp_t *hpkp, time_t maxage);
 WGETAPI void
 	wget_hpkp_set_include_subdomains(wget_hpkp_t *hpkp, int include_subdomains);
+WGETAPI size_t
+	wget_hpkp_get_n_pins(wget_hpkp_t *hpkp);
+WGETAPI void
+	wget_hpkp_get_pins_b64(wget_hpkp_t *hpkp, const char **pin_types, const char **pins_b64);
+WGETAPI void
+	wget_hpkp_get_pins(wget_hpkp_t *hpkp, const char **pin_types, size_t *sizes, const void **pins);
+WGETAPI const char *
+	wget_hpkp_get_host(wget_hpkp_t *hpkp);
+WGETAPI time_t
+	wget_hpkp_get_maxage(wget_hpkp_t *hpkp);
+WGETAPI int
+	wget_hpkp_get_include_subdomains(wget_hpkp_t *hpkp);
 WGETAPI wget_hpkp_db_t *
 	wget_hpkp_db_init(wget_hpkp_db_t *hpkp_db, const char *fname);
 WGETAPI void
