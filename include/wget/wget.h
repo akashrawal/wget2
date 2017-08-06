@@ -2172,6 +2172,16 @@ typedef void (*wget_plugin_url_filter_t)(wget_plugin_t *plugin, const wget_iri_t
 WGETAPI void
 wget_plugin_register_url_filter(wget_plugin_t *plugin, wget_plugin_url_filter_t filter_fn);
 
+
+// Provides wget2 with another HSTS database to use.
+WGETAPI void wget_plugin_add_hsts_db(wget_plugin_t *plugin, wget_hsts_db_t *hsts_db, int priority);
+
+// Provides wget2 with another HPKP database to use.
+WGETAPI void wget_plugin_add_hpkp_db(wget_plugin_t *plugin, wget_hpkp_db_t *hpkp_db, int priority);
+
+// Provides wget2 with another OCSP database to use.
+WGETAPI void wget_plugin_add_ocsp_db(wget_plugin_t *plugin, wget_ocsp_db_t *ocsp_db, int priority);
+
 /**
  * \ingroup libwget-plugin
  *
@@ -2188,6 +2198,10 @@ struct wget_plugin_vtable
 	void (* action_set_alt_url)(wget_intercept_action_t *, const wget_iri_t *);
 	void (* action_set_local_filename)(wget_intercept_action_t *, const char *);
 	void (* register_url_filter)(wget_plugin_t *, wget_plugin_url_filter_t);
+
+	void (* add_hsts_db)(wget_plugin_t *, wget_hsts_db_t *, int);
+	void (* add_hpkp_db)(wget_plugin_t *, wget_hpkp_db_t *, int);
+	void (* add_ocsp_db)(wget_plugin_t *, wget_ocsp_db_t *, int);
 };
 
 WGET_END_DECLS

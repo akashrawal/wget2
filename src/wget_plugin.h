@@ -84,6 +84,18 @@ void plugin_db_forward_url(const wget_iri_t *iri, struct plugin_db_forward_url_v
 // Free's all contents of plugin_db_forward_url_verdict
 void plugin_db_forward_url_verdict_free(struct plugin_db_forward_url_verdict *verdict);
 
+// Fetches the plugin-provided HSTS database, or NULL.
+// Ownership of the returned HSTS database is transferred to the caller, so it must be free'd with wget_hsts_db_free().
+wget_hsts_db_t *plugin_db_fetch_provided_hsts_db(void);
+
+// Fetches the plugin-provided HPKP database, or NULL.
+// Ownership of the returned HPKP database is transferred to the caller, so it must be free'd with wget_hpkp_db_free().
+wget_hpkp_db_t *plugin_db_fetch_provided_hpkp_db(void);
+
+// Fetches the plugin-provided OCSP database, or NULL.
+// Ownership of the returned OCSP database is transferred to the caller, so it must be free'd with wget_ocsp_db_free().
+wget_ocsp_db_t *plugin_db_fetch_provided_ocsp_db(void);
+
 // Sends 'finalize' signal to all plugins and unloads all plugins
 void plugin_db_finalize(int exitcode);
 
