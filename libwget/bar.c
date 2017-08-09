@@ -107,7 +107,6 @@ struct _wget_bar_st {
 		*spaces;
 	int
 		nslots,
-		max_slots,
 		screen_width,
 		max_width;
 	wget_thread_mutex_t
@@ -160,7 +159,7 @@ _bar_set_progress(const wget_bar_t *bar, int slot)
 
 		snprintf(slotp->progress, bar->max_width + 1, "%.*s<=>%.*s",
 				pre_space, bar->spaces,
-				bar->max_width - pre_space - 3, bar->spaces);
+				bar->max_width - pre_space - 4, bar->spaces);
 	}
 }
 
@@ -221,9 +220,9 @@ static int _bar_get_width(void)
 	return width - _BAR_DECOR_COST;
 }
 
-static void _bar_update(wget_bar_t *bar)
-{
-	if (winsize_changed) {
+static void _bar_update_winsize(wget_bar_t *bar, bool slots_changed) {
+
+	if (winsize_changed || slots_changed) {
 		int max_width = _bar_get_width();
 
 		if (bar->max_width < max_width) {
@@ -238,26 +237,32 @@ static void _bar_update(wget_bar_t *bar)
 			xfree(bar->spaces);
 			bar->spaces = xmalloc(max_width);
 			memset(bar->spaces, ' ', max_width);
-
+		}
+		if (bar->max_width < max_width || slots_changed) {
 			xfree(bar->progress_mem_holder);
-			bar->progress_mem_holder = xcalloc(bar->max_slots, max_width+1);
-			for (int i = 0; i < bar->max_slots; i++) {
-				bar->slots[i].progress = bar->progress_mem_holder + (i * (max_width+1));
+			bar->progress_mem_holder = xcalloc(bar->nslots, max_width);
+			for (int i = 0; i < bar->nslots; i++) {
+				bar->slots[i].progress = bar->progress_mem_holder + (i * max_width);
 			}
 		}
 
 		bar->max_width = max_width;
 	}
+	winsize_changed = 0;
 
+}
+
+static void _bar_update(wget_bar_t *bar)
+{
+	_bar_update_winsize(bar, false);
 	for (int i = 0; i < bar->nslots; i++) {
 		if (bar->slots[i].redraw || winsize_changed) {
 			_bar_update_slot(bar, i);
 			bar->slots[i].redraw = 0;
 		}
 	}
-
-	winsize_changed = 0;
 }
+
 
 /**
  * \param[in] bar Pointer to a \p wget_bar_t object
@@ -288,32 +293,7 @@ wget_bar_t *wget_bar_init(wget_bar_t *bar, int nslots)
 	} else
 		memset(bar, 0, sizeof(*bar));
 
-	if (bar->max_slots < nslots) {
-		bar->slots = xcalloc(nslots, sizeof(_bar_slot_t));
-		bar->max_slots = nslots;
-	} else {
-		memset(bar->slots, 0, sizeof(_bar_slot_t) * nslots);
-	}
-
-	if (bar->max_width < max_width) {
-		bar->known_size = xmalloc(max_width);
-		memset(bar->known_size, '=', max_width);
-
-		bar->unknown_size = xmalloc(max_width);
-		memset(bar->unknown_size, '*', max_width);
-
-		bar->spaces = xmalloc(max_width);
-		memset(bar->spaces, ' ', max_width);
-
-		bar->progress_mem_holder = xcalloc(bar->max_slots, max_width+1);
-		for (int i = 0; i < bar->max_slots; i++) {
-			bar->slots[i].progress = bar->progress_mem_holder + (i*(max_width+1));
-			bar->slots[i].status = EMPTY;
-		}
-
-		bar->max_width = max_width;
-	}
-
+	wget_bar_set_slots(bar, nslots);
 
 	return bar;
 }
@@ -334,10 +314,13 @@ void wget_bar_set_slots(wget_bar_t *bar, int nslots)
 	int more_slots = nslots - bar->nslots;
 
 	if (more_slots > 0) {
-		// CSI <n>S: Scroll up whole screen
-		printf("\033[%dS", more_slots);
-
+		xfree(bar->slots);
+		bar->slots = xcalloc(nslots, sizeof(_bar_slot_t));
 		bar->nslots = nslots;
+		for (int i = 0; i < more_slots; i++) {
+			printf("\n");
+		}
+		_bar_update_winsize(bar, true);
 		_bar_update(bar);
 	}
 	wget_thread_mutex_unlock(&bar->mutex);
@@ -369,7 +352,7 @@ void wget_bar_slot_downloaded(wget_bar_t *bar, int slot, size_t nbytes)
 void wget_bar_slot_deregister(wget_bar_t *bar, int slot)
 {
 	wget_thread_mutex_lock(&bar->mutex);
-	if (slot >= 0 && slot < bar->max_slots) {
+	if (slot >= 0 && slot < bar->nslots) {
 		_bar_slot_t *slotp = &bar->slots[slot];
 
 		slotp->status = COMPLETE;
@@ -393,7 +376,7 @@ void wget_bar_update(wget_bar_t *bar)
 void wget_bar_deinit(wget_bar_t *bar)
 {
 	if (bar) {
-		for (int i = 0; i < bar->max_slots; i++) {
+		for (int i = 0; i < bar->nslots; i++) {
 			xfree(bar->slots[i].filename);
 		}
 		xfree(bar->progress_mem_holder);
