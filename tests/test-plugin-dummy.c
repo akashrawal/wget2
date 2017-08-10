@@ -322,6 +322,86 @@ int wget_plugin_initializer(wget_plugin_t *plugin)
 	wget_plugin_register_url_filter(plugin, url_filter);
 	return 0;
 }
+#elif defined TEST_SELECT_DATABASE
+typedef struct {
+	wget_hpkp_db_t parent;
+	wget_hpkp_db_t *backend_db;
+} test_hpkp_db_t;
+
+static int test_hpkp_db_load(wget_hpkp_db_t *p_hpkp_db)
+{
+	test_hpkp_db_t *hpkp_db = (test_hpkp_db_t *) p_hpkp_db;
+
+	if (! hpkp_db->backend_db)
+		wget_error_printf_exit("wget using wrong HPKP database\n");
+
+	return wget_hpkp_db_load(hpkp_db->backend_db);
+}
+static int test_hpkp_db_save(wget_hpkp_db_t *p_hpkp_db)
+{
+	test_hpkp_db_t *hpkp_db = (test_hpkp_db_t *) p_hpkp_db;
+
+	if (! hpkp_db->backend_db)
+		wget_error_printf_exit("wget using wrong HPKP database\n");
+
+	return wget_hpkp_db_save(hpkp_db->backend_db);
+}
+static void test_hpkp_db_free(wget_hpkp_db_t *p_hpkp_db)
+{
+	test_hpkp_db_t *hpkp_db = (test_hpkp_db_t *) p_hpkp_db;
+
+	if (hpkp_db->backend_db)
+		wget_hpkp_db_free(&hpkp_db->backend_db);
+	wget_free(hpkp_db);
+}
+static void test_hpkp_db_add(wget_hpkp_db_t *p_hpkp_db, wget_hpkp_t *hpkp)
+{
+	test_hpkp_db_t *hpkp_db = (test_hpkp_db_t *) p_hpkp_db;
+
+	if (! hpkp_db->backend_db)
+		wget_error_printf_exit("wget using wrong HPKP database\n");
+
+	wget_hpkp_db_add(hpkp_db->backend_db, &hpkp);
+}
+static int test_hpkp_db_check_pubkey(wget_hpkp_db_t *p_hpkp_db, const char *host, const void *pubkey, size_t pubkeysize)
+{
+	test_hpkp_db_t *hpkp_db = (test_hpkp_db_t *) p_hpkp_db;
+
+	if (! hpkp_db->backend_db)
+		wget_error_printf_exit("wget using wrong HPKP database\n");
+
+	return wget_hpkp_db_check_pubkey(hpkp_db->backend_db, host, pubkey, pubkeysize);
+}
+
+static struct wget_hpkp_db_vtable test_hpkp_db_vtable = {
+	.load = test_hpkp_db_load,
+	.save = test_hpkp_db_save,
+	.free = test_hpkp_db_free,
+	.add = test_hpkp_db_add,
+	.check_pubkey = test_hpkp_db_check_pubkey
+};
+
+static wget_hpkp_db_t *test_hpkp_db_new(int usable) {
+	test_hpkp_db_t *hpkp_db = wget_malloc(sizeof(test_hpkp_db_t));
+
+	hpkp_db->parent.vtable = &test_hpkp_db_vtable;
+	if (usable) {
+		hpkp_db->backend_db = wget_hpkp_db_init(NULL, NULL);
+	} else {
+		hpkp_db->backend_db = NULL;
+	}
+
+	return (wget_hpkp_db_t *) hpkp_db;
+}
+
+WGET_EXPORT int wget_plugin_initializer(wget_plugin_t *plugin);
+int wget_plugin_initializer(wget_plugin_t *plugin)
+{
+	wget_plugin_add_hpkp_db(plugin, test_hpkp_db_new(0), 1);
+	wget_plugin_add_hpkp_db(plugin, test_hpkp_db_new(1), 3);
+	wget_plugin_add_hpkp_db(plugin, test_hpkp_db_new(0), 2);
+	return 0;
+}
 #else
 #error One of the TEST_SELECT_* must be defined to build this file
 #endif
