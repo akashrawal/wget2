@@ -69,13 +69,13 @@ static wget_stringmap_t *plugin_name_index;
 static int plugin_help_forwarded;
 // Plugin supplied HSTS database
 static wget_hsts_db_t *hsts_db;
-int hsts_db_priority;
+static int hsts_db_priority;
 // Plugin supplied HPKP database
 static wget_hpkp_db_t *hpkp_db;
-int hpkp_db_priority;
+static int hpkp_db_priority;
 // Pluign supplied OCSP database
 static wget_ocsp_db_t *ocsp_db;
-int ocsp_db_priority;
+static int ocsp_db_priority;
 
 // Sets a list of directories to search for plugins, separated by
 // _separator_.
