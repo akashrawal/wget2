@@ -168,6 +168,8 @@ static void impl_add_hsts_db(G_GNUC_WGET_UNUSED wget_plugin_t *p_plugin, wget_hs
 		if (hsts_db)
 			wget_hsts_db_free(&hsts_db);
 		hsts_db = new_hsts_db;
+	} else {
+		wget_hsts_db_free(&new_hsts_db);
 	}
 }
 
@@ -178,6 +180,8 @@ static void impl_add_hpkp_db(G_GNUC_WGET_UNUSED wget_plugin_t *p_plugin, wget_hp
 		if (hpkp_db)
 			wget_hpkp_db_free(&hpkp_db);
 		hpkp_db = new_hpkp_db;
+	} else {
+		wget_hpkp_db_free(&new_hpkp_db);
 	}
 }
 
@@ -188,6 +192,8 @@ static void impl_add_ocsp_db(G_GNUC_WGET_UNUSED wget_plugin_t *p_plugin, wget_oc
 		if (ocsp_db)
 			wget_ocsp_db_free(&ocsp_db);
 		ocsp_db = new_ocsp_db;
+	} else {
+		wget_ocsp_db_free(&new_ocsp_db);
 	}
 }
 
