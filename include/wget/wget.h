@@ -1103,7 +1103,7 @@ struct wget_hpkp_db_vtable {
 	int (*load)(wget_hpkp_db_t *);
 	int (*save)(wget_hpkp_db_t *);
 	void (*free)(wget_hpkp_db_t *);
-	void (*add)(wget_hpkp_db_t *, wget_hpkp_t *hpkp);
+	void (*add)(wget_hpkp_db_t *, wget_hpkp_t *);
 	int (*check_pubkey)(wget_hpkp_db_t *, const char *, const void *, size_t);
 };
 
