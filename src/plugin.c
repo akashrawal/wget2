@@ -163,7 +163,7 @@ static void impl_register_url_filter(wget_plugin_t *p_plugin, wget_plugin_url_fi
 // API for custom HSTS, HPKP and OCSP databases
 static void impl_add_hsts_db(G_GNUC_WGET_UNUSED wget_plugin_t *p_plugin, wget_hsts_db_t *new_hsts_db, int priority)
 {
-	if (hsts_db_priority > priority) {
+	if (hsts_db_priority < priority) {
 		hsts_db_priority = priority;
 		if (hsts_db)
 			wget_hsts_db_free(&hsts_db);
@@ -175,7 +175,8 @@ static void impl_add_hsts_db(G_GNUC_WGET_UNUSED wget_plugin_t *p_plugin, wget_hs
 
 static void impl_add_hpkp_db(G_GNUC_WGET_UNUSED wget_plugin_t *p_plugin, wget_hpkp_db_t *new_hpkp_db, int priority)
 {
-	if (hpkp_db_priority > priority) {
+	if (hpkp_db_priority < priority) {
+		wget_info_printf("TMP: Adding HPKP database with priority %d\n", priority);
 		hpkp_db_priority = priority;
 		if (hpkp_db)
 			wget_hpkp_db_free(&hpkp_db);

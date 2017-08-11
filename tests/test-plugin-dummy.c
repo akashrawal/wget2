@@ -328,6 +328,8 @@ typedef struct {
 	wget_hpkp_db_t *backend_db;
 } test_hpkp_db_t;
 
+static int hpkp_db_load_counter = 0;
+
 static int test_hpkp_db_load(wget_hpkp_db_t *p_hpkp_db)
 {
 	test_hpkp_db_t *hpkp_db = (test_hpkp_db_t *) p_hpkp_db;
@@ -335,6 +337,7 @@ static int test_hpkp_db_load(wget_hpkp_db_t *p_hpkp_db)
 	if (! hpkp_db->backend_db)
 		wget_error_printf_exit("wget using wrong HPKP database\n");
 
+	hpkp_db_load_counter++;
 	return wget_hpkp_db_load(hpkp_db->backend_db);
 }
 static int test_hpkp_db_save(wget_hpkp_db_t *p_hpkp_db)
@@ -394,12 +397,22 @@ static wget_hpkp_db_t *test_hpkp_db_new(int usable) {
 	return (wget_hpkp_db_t *) hpkp_db;
 }
 
+static void finalizer(wget_plugin_t *plugin, G_GNUC_WGET_UNUSED int exit_status)
+{
+	if (hpkp_db_load_counter != 1) {
+		wget_error_printf_exit("wget using wrong HPKP database (%d)\n", hpkp_db_load_counter);
+	}
+}
+
 WGET_EXPORT int wget_plugin_initializer(wget_plugin_t *plugin);
 int wget_plugin_initializer(wget_plugin_t *plugin)
 {
 	wget_plugin_add_hpkp_db(plugin, test_hpkp_db_new(0), 1);
 	wget_plugin_add_hpkp_db(plugin, test_hpkp_db_new(1), 3);
 	wget_plugin_add_hpkp_db(plugin, test_hpkp_db_new(0), 2);
+
+	wget_plugin_register_finalizer(plugin, finalizer);
+
 	return 0;
 }
 #else
