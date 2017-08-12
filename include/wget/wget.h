@@ -1210,7 +1210,7 @@ struct _wget_ocsp_db_st {
 WGETAPI int
 	wget_ocsp_fingerprint_in_cache(const wget_ocsp_db_t *ocsp_db, const char *fingerprint, int *valid);
 WGETAPI int
-	wget_ocsp_hostname_is_valid(const wget_ocsp_db_t *ocsp_db, const char *fingerprint);
+	wget_ocsp_hostname_is_valid(const wget_ocsp_db_t *ocsp_db, const char *hostname);
 WGETAPI wget_ocsp_db_t *
 	wget_ocsp_db_init(wget_ocsp_db_t *ocsp_db, const char *fname);
 WGETAPI void

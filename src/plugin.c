@@ -176,7 +176,6 @@ static void impl_add_hsts_db(G_GNUC_WGET_UNUSED wget_plugin_t *p_plugin, wget_hs
 static void impl_add_hpkp_db(G_GNUC_WGET_UNUSED wget_plugin_t *p_plugin, wget_hpkp_db_t *new_hpkp_db, int priority)
 {
 	if (hpkp_db_priority < priority) {
-		wget_info_printf("TMP: Adding HPKP database with priority %d\n", priority);
 		hpkp_db_priority = priority;
 		if (hpkp_db)
 			wget_hpkp_db_free(&hpkp_db);
@@ -188,7 +187,7 @@ static void impl_add_hpkp_db(G_GNUC_WGET_UNUSED wget_plugin_t *p_plugin, wget_hp
 
 static void impl_add_ocsp_db(G_GNUC_WGET_UNUSED wget_plugin_t *p_plugin, wget_ocsp_db_t *new_ocsp_db, int priority)
 {
-	if (ocsp_db_priority > priority) {
+	if (ocsp_db_priority < priority) {
 		ocsp_db_priority = priority;
 		if (ocsp_db)
 			wget_ocsp_db_free(&ocsp_db);
