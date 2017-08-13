@@ -223,7 +223,7 @@ void wget_hpkp_set_maxage(wget_hpkp_t *hpkp, time_t maxage)
  * \param hpkp a HPKP database entry
  * \param include_subdomains Nonzero if this entry is also valid for all subdomains, zero otherwise.
  *
- * Sets whether the entry is also valid for all subdomains. 
+ * Sets whether the entry is also valid for all subdomains.
  * Corresponds to the optional 'includeSubDomains' directive in 'Public-Key-Pins' HTTP response header.
  */
 void wget_hpkp_set_include_subdomains(wget_hpkp_t *hpkp, int include_subdomains)
