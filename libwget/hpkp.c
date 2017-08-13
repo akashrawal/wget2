@@ -127,6 +127,13 @@ static void _hpkp_pin_free(wget_hpkp_pin_t *pin)
 	}
 }
 
+/**
+ * \param hpkp a HPKP database entry
+ * \param pin_type The type of hash supplied, e.g. "sha256"
+ * \param pin_b64 The public key hash in base64 format
+ *
+ * Adds a public key hash to HPKP database entry.
+ */
 void wget_hpkp_pin_add(wget_hpkp_t *hpkp, const char *pin_type, const char *pin_b64)
 {
 	wget_hpkp_pin_t *pin = xcalloc(1, sizeof(wget_hpkp_pin_t));
@@ -144,9 +151,11 @@ void wget_hpkp_pin_add(wget_hpkp_t *hpkp, const char *pin_type, const char *pin_
 	wget_vector_add_noalloc(hpkp->pins, pin);
 }
 
-/*
+/**
  * Free hpkp_t instance created by wget_hpkp_new()
  * It can be used as destructor function in vectors and hashmaps.
+ *
+ * \param hpkp a HPKP database entry
  */
 void wget_hpkp_free(wget_hpkp_t *hpkp)
 {
@@ -177,12 +186,25 @@ wget_hpkp_t *wget_hpkp_new(void)
 	return hpkp;
 }
 
+/**
+ * \param hpkp a HPKP database entry
+ * \param host Hostname of the web server
+ *
+ * Sets the hostname of the web server into given HPKP database entry.
+ */
 void wget_hpkp_set_host(wget_hpkp_t *hpkp, const char *host)
 {
 	xfree(hpkp->host);
 	hpkp->host = wget_strdup(host);
 }
 
+/**
+ * \param hpkp a HPKP database entry
+ * \param maxage Maximum time the entry is valid (in seconds)
+ *
+ * Sets the maximum time the HPKP entry is valid.
+ * Corresponds to 'max-age' directive in 'Public-Key-Pins' HTTP response header.
+ */
 void wget_hpkp_set_maxage(wget_hpkp_t *hpkp, time_t maxage)
 {
 	int64_t now;
@@ -197,16 +219,39 @@ void wget_hpkp_set_maxage(wget_hpkp_t *hpkp, time_t maxage)
 	}
 }
 
+/**
+ * \param hpkp a HPKP database entry
+ * \param include_subdomains Nonzero if this entry is also valid for all subdomains, zero otherwise.
+ *
+ * Sets whether the entry is also valid for all subdomains. 
+ * Corresponds to the optional 'includeSubDomains' directive in 'Public-Key-Pins' HTTP response header.
+ */
 void wget_hpkp_set_include_subdomains(wget_hpkp_t *hpkp, int include_subdomains)
 {
 	hpkp->include_subdomains = !!include_subdomains;
 }
 
+//TODO: Set parameter directions (for the entire file)
+/**
+ * \param hpkp a HPKP database entry
+ * \return The number of public key hashes added.
+ *
+ * Gets the number of public key hashes added to the given HPKP database entry.
+ */
 size_t wget_hpkp_get_n_pins(wget_hpkp_t *hpkp)
 {
 	return (size_t) wget_vector_size(hpkp->pins);
 }
 
+/**
+ * \param hpkp a HPKP database entry
+ * \param[out] pin_types An array of pointers where hash types will be stored.
+ * \param[out] pins_b64 An array of pointers where the public keys in base64 format will be stored
+ *
+ * Gets all the public key hashes added to the given HPKP database entry.
+ *
+ * The size of the arrays used must be atleast one returned by \ref wget_hpkp_get_n_pins "wget_hpkp_get_n_pins()".
+ */
 void wget_hpkp_get_pins_b64(wget_hpkp_t *hpkp, const char **pin_types, const char **pins_b64)
 {
 	int i, n_pins;
@@ -220,6 +265,15 @@ void wget_hpkp_get_pins_b64(wget_hpkp_t *hpkp, const char **pin_types, const cha
 	}
 }
 
+/**
+ * \param hpkp a HPKP database entry
+ * \param[out] pin_types An array of pointers where hash types will be stored.
+ * \param[out] pins An array of pointers where the public keys in binary format will be stored
+ *
+ * Gets all the public key hashes added to the given HPKP database entry.
+ *
+ * The size of the arrays used must be atleast one returned by \ref wget_hpkp_get_n_pins "wget_hpkp_get_n_pins()".
+ */
 void wget_hpkp_get_pins(wget_hpkp_t *hpkp, const char **pin_types, size_t *sizes, const void **pins)
 {
 	int i, n_pins;
@@ -234,21 +288,49 @@ void wget_hpkp_get_pins(wget_hpkp_t *hpkp, const char **pin_types, size_t *sizes
 	}
 }
 
+/**
+ * \param hpkp a HPKP database entry
+ * \return The hostname this entry is valid for
+ *
+ * Gets the hostname this entry is valid for, as set by \ref wget_hpkp_set_host "wget_hpkp_set_host()"
+ */
 const char * wget_hpkp_get_host(wget_hpkp_t *hpkp)
 {
 	return hpkp->host;
 }
 
+/**
+ * \param hpkp a HPKP database entry
+ * \return The maximum time (in seconds) the entry is valid
+ *
+ * Gets the maximum time this entry is valid for, as set by \ref wget_hpkp_set_maxage "wget_hpkp_set_maxage()"
+ */
 time_t wget_hpkp_get_maxage(wget_hpkp_t *hpkp)
 {
 	return hpkp->maxage;
 }
 
+/**
+ * \param hpkp a HPKP database entry
+ * \return 1 if the HPKP entry is also valid for all subdomains, 0 otherwise
+ *
+ * Gets whether the HPKP database entry is also valid for the subdomains.
+ */
 int wget_hpkp_get_include_subdomains(wget_hpkp_t *hpkp)
 {
 	return hpkp->include_subdomains;
 }
 
+/*
+ * TODO: Fix parameter names
+ *       It was easier when all documentation is done in the headers!
+ */
+/**
+ * \param[in] hpkp_db Pointer to the pointer of an HPKP database, provided by wget_hpkp_db_init()
+ *
+ * Closes and frees the HPKP database, except for the structure.
+ * `hpkp_db` can then be passed to \ref wget_hpkp_db_init "wget_hpkp_db_init()".
+ */
 void wget_hpkp_db_deinit(wget_hpkp_db_t *p_hpkp_db)
 {
 	_hpkp_db_impl_t *hpkp_db = (_hpkp_db_impl_t *) p_hpkp_db;
@@ -295,6 +377,19 @@ static int _wget_hpkp_compare_pins(wget_hpkp_t *hpkp1, wget_hpkp_t *hpkp2)
 	return wget_vector_browse(hpkp1->pins, (wget_vector_browse_t)_wget_hpkp_contains_pin, hpkp2);
 }
 */
+
+// TODO: Shouldn't the return values be put into enum?
+/**
+ * \param[in] hpkp_db a HPKP database
+ * \param[in] host The hostname in question.
+ * \param[in] pubkey The public key
+ * \param[in] pubkeysize Size of `pubkey`
+ * \return  1 if both host and public key was found in the database,
+ *         <0 if host was found and public key was not found,
+ *          0 if host was not found.
+ *
+ * Checks the validity of the given hostname and public key combination.
+ */
 int wget_hpkp_db_check_pubkey(wget_hpkp_db_t *p_hpkp_db, const char *host, const void *pubkey, size_t pubkeysize)
 {
 	return (*p_hpkp_db->vtable->check_pubkey)(p_hpkp_db, host, pubkey, pubkeysize);
@@ -338,6 +433,14 @@ static int impl_hpkp_db_check_pubkey(wget_hpkp_db_t *p_hpkp_db, const char *host
 
 /* We 'consume' _hpkp and thus set *_hpkp to NULL, so that the calling function
  * can't access it any more */
+/**
+ * TODO: Fix parameter name
+ * \param[in] hpkp_db a HPKP database
+ * \param[in] hpkp pointer to HPKP database entry (will be set to NULL)
+ *
+ * Adds an entry to given HPKP database.
+ * The database takes the ownership of the HPKP entry and the calling function must not access the entry afterwards.
+ */
 void wget_hpkp_db_add(wget_hpkp_db_t *p_hpkp_db, wget_hpkp_t **_hpkp)
 {
 	(*p_hpkp_db->vtable->add)(p_hpkp_db, *_hpkp);
@@ -380,29 +483,6 @@ static void impl_hpkp_db_add(wget_hpkp_db_t *p_hpkp_db, wget_hpkp_t *hpkp)
 	wget_thread_mutex_unlock(&hpkp_db->mutex);
 }
 
-/**
- * \param[in] hpkp_db Handle to an HPKP database, obtained with wget_hpkp_db_init()
- * \param[in] fname Path to a file
- * \return WGET_HPKP_OK on success, or a negative number on error
- *
- * Reads the file specified by `filename` and loads its contents into the HPKP database
- * provided by `hpkp_db`.
- *
- * If this function cannot correctly parse the whole file, `WGET_HPKP_ERROR` is returned.
- * Since the format of the file might change without notice, hand-crafted files are discouraged.
- * To create an HPKP database file that is guaranteed to be correctly parsed by this function,
- * wget_hpkp_db_save() should be used.
- *
- * The entries in the file are subject to sanity checks as if they were added to the HPKP database
- * via wget_hpkp_db_add(). In particular, if an entry is expired due to `creation_time + max_age > cur_time`
- * it will not be added to the database, and a subsequent call to wget_hpkp_db_save() with the same `hpkp_db` handle
- * and file name will overwrite the file without all the expired entries. Thus, if all the entries in the file are
- * expired, the database will be empty and a subsequent call to wget_hpkp_db_save() with the same parameters will
- * cause the file to be deleted.
- *
- * If the file cannot be opened for writing `WGET_HPKP_ERROR_FILE_OPEN` is returned,
- * or `WGET_HPKP_ERROR` in any other case.
- */
 static int _hpkp_db_load(_hpkp_db_impl_t *hpkp_db, FILE *fp)
 {
 	int64_t created, max_age;
@@ -485,6 +565,29 @@ static int _hpkp_db_load(_hpkp_db_impl_t *hpkp_db, FILE *fp)
 	return 0;
 }
 
+/**
+ * \param[in] hpkp_db Handle to an HPKP database, obtained with wget_hpkp_db_init()
+ * \param[in] fname Path to a file
+ * \return WGET_HPKP_OK on success, or a negative number on error
+ *
+ * Reads the file specified by `filename` and loads its contents into the HPKP database
+ * provided by `hpkp_db`.
+ *
+ * If this function cannot correctly parse the whole file, `WGET_HPKP_ERROR` is returned.
+ * Since the format of the file might change without notice, hand-crafted files are discouraged.
+ * To create an HPKP database file that is guaranteed to be correctly parsed by this function,
+ * wget_hpkp_db_save() should be used.
+ *
+ * The entries in the file are subject to sanity checks as if they were added to the HPKP database
+ * via wget_hpkp_db_add(). In particular, if an entry is expired due to `creation_time + max_age > cur_time`
+ * it will not be added to the database, and a subsequent call to wget_hpkp_db_save() with the same `hpkp_db` handle
+ * and file name will overwrite the file without all the expired entries. Thus, if all the entries in the file are
+ * expired, the database will be empty and a subsequent call to wget_hpkp_db_save() with the same parameters will
+ * cause the file to be deleted.
+ *
+ * If the file cannot be opened for writing `WGET_HPKP_ERROR_FILE_OPEN` is returned,
+ * or `WGET_HPKP_ERROR` in any other case.
+ */
 int wget_hpkp_db_load(wget_hpkp_db_t *p_hpkp_db)
 {
 	return (*p_hpkp_db->vtable->load)(p_hpkp_db);

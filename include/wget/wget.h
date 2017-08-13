@@ -1079,11 +1079,25 @@ WGETAPI int
 /*
  * HTTP Public Key Pinning (HPKP)
  */
+
+/**
+ * \addtogroup libwget-hpkp
+ *
+ * HPKP database
+ */
 typedef struct _wget_hpkp_db_st wget_hpkp_db_t;
+
+/**
+ * \addtogroup libwget-hpkp
+ *
+ * HPKP database entry. Corresponds to one 'Public-Key-Pins' HTTP response header.
+ */
 typedef struct _wget_hpkp_st wget_hpkp_t;
+
 //typedef struct _wget_hpkp_pin_st wget_hpkp_pin_t;
 
 /* FIXME this doesn't work */
+// TODO: Find out where this thing fits
 /**
  * \addtogroup libwget-hpkp
  * Return values
@@ -1099,11 +1113,22 @@ typedef struct _wget_hpkp_st wget_hpkp_t;
 /* @} */
 
 // vtable for implementation
+/**
+ * \addtogroup libwget-hpkp
+ *
+ * vtable for implementing custom HPKP databases
+ * TODO: Add notes for implementation whenever applicable
+ */
 struct wget_hpkp_db_vtable {
+	// Implementation of \ref wget_hpkp_db_load "wget_hpkp_db_load()"
 	int (*load)(wget_hpkp_db_t *);
+	// Implementation of \ref wget_hpkp_db_save "wget_hpkp_db_save()"
 	int (*save)(wget_hpkp_db_t *);
+	// Implementation of \ref wget_hpkp_db_free "wget_hpkp_db_free()"
 	void (*free)(wget_hpkp_db_t *);
+	// Implementation of \ref wget_hpkp_db_add "wget_hpkp_db_add()"
 	void (*add)(wget_hpkp_db_t *, wget_hpkp_t *);
+	// Implementation of \ref wget_hpkp_db_check_pubkey "wget_hpkp_db_check_pubkey()"
 	int (*check_pubkey)(wget_hpkp_db_t *, const char *, const void *, size_t);
 };
 
