@@ -128,9 +128,9 @@ static void _hpkp_pin_free(wget_hpkp_pin_t *pin)
 }
 
 /**
- * \param hpkp a HPKP database entry
- * \param pin_type The type of hash supplied, e.g. "sha256"
- * \param pin_b64 The public key hash in base64 format
+ * \param[in] hpkp a HPKP database entry
+ * \param[in] pin_type The type of hash supplied, e.g. "sha256"
+ * \param[in] pin_b64 The public key hash in base64 format
  *
  * Adds a public key hash to HPKP database entry.
  */
@@ -155,7 +155,7 @@ void wget_hpkp_pin_add(wget_hpkp_t *hpkp, const char *pin_type, const char *pin_
  * Free hpkp_t instance created by wget_hpkp_new()
  * It can be used as destructor function in vectors and hashmaps.
  *
- * \param hpkp a HPKP database entry
+ * \param[in] hpkp a HPKP database entry
  */
 void wget_hpkp_free(wget_hpkp_t *hpkp)
 {
@@ -187,8 +187,8 @@ wget_hpkp_t *wget_hpkp_new(void)
 }
 
 /**
- * \param hpkp a HPKP database entry
- * \param host Hostname of the web server
+ * \param[in] hpkp a HPKP database entry
+ * \param[in] host Hostname of the web server
  *
  * Sets the hostname of the web server into given HPKP database entry.
  */
@@ -199,8 +199,8 @@ void wget_hpkp_set_host(wget_hpkp_t *hpkp, const char *host)
 }
 
 /**
- * \param hpkp a HPKP database entry
- * \param maxage Maximum time the entry is valid (in seconds)
+ * \param[in] hpkp a HPKP database entry
+ * \param[in] maxage Maximum time the entry is valid (in seconds)
  *
  * Sets the maximum time the HPKP entry is valid.
  * Corresponds to 'max-age' directive in 'Public-Key-Pins' HTTP response header.
@@ -220,8 +220,8 @@ void wget_hpkp_set_maxage(wget_hpkp_t *hpkp, time_t maxage)
 }
 
 /**
- * \param hpkp a HPKP database entry
- * \param include_subdomains Nonzero if this entry is also valid for all subdomains, zero otherwise.
+ * \param[in] hpkp a HPKP database entry
+ * \param[in] include_subdomains Nonzero if this entry is also valid for all subdomains, zero otherwise.
  *
  * Sets whether the entry is also valid for all subdomains.
  * Corresponds to the optional 'includeSubDomains' directive in 'Public-Key-Pins' HTTP response header.
@@ -231,9 +231,8 @@ void wget_hpkp_set_include_subdomains(wget_hpkp_t *hpkp, int include_subdomains)
 	hpkp->include_subdomains = !!include_subdomains;
 }
 
-//TODO: Set parameter directions (for the entire file)
 /**
- * \param hpkp a HPKP database entry
+ * \param[in] hpkp a HPKP database entry
  * \return The number of public key hashes added.
  *
  * Gets the number of public key hashes added to the given HPKP database entry.
@@ -244,7 +243,7 @@ size_t wget_hpkp_get_n_pins(wget_hpkp_t *hpkp)
 }
 
 /**
- * \param hpkp a HPKP database entry
+ * \param[in] hpkp a HPKP database entry
  * \param[out] pin_types An array of pointers where hash types will be stored.
  * \param[out] pins_b64 An array of pointers where the public keys in base64 format will be stored
  *
@@ -266,7 +265,7 @@ void wget_hpkp_get_pins_b64(wget_hpkp_t *hpkp, const char **pin_types, const cha
 }
 
 /**
- * \param hpkp a HPKP database entry
+ * \param[in] hpkp a HPKP database entry
  * \param[out] pin_types An array of pointers where hash types will be stored.
  * \param[out] pins An array of pointers where the public keys in binary format will be stored
  *
@@ -289,7 +288,7 @@ void wget_hpkp_get_pins(wget_hpkp_t *hpkp, const char **pin_types, size_t *sizes
 }
 
 /**
- * \param hpkp a HPKP database entry
+ * \param[in] hpkp a HPKP database entry
  * \return The hostname this entry is valid for
  *
  * Gets the hostname this entry is valid for, as set by \ref wget_hpkp_set_host "wget_hpkp_set_host()"
@@ -300,7 +299,7 @@ const char * wget_hpkp_get_host(wget_hpkp_t *hpkp)
 }
 
 /**
- * \param hpkp a HPKP database entry
+ * \param[in] hpkp a HPKP database entry
  * \return The maximum time (in seconds) the entry is valid
  *
  * Gets the maximum time this entry is valid for, as set by \ref wget_hpkp_set_maxage "wget_hpkp_set_maxage()"
@@ -311,7 +310,7 @@ time_t wget_hpkp_get_maxage(wget_hpkp_t *hpkp)
 }
 
 /**
- * \param hpkp a HPKP database entry
+ * \param[in] hpkp a HPKP database entry
  * \return 1 if the HPKP entry is also valid for all subdomains, 0 otherwise
  *
  * Gets whether the HPKP database entry is also valid for the subdomains.
