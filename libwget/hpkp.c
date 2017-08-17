@@ -348,11 +348,11 @@ void wget_hpkp_db_deinit(wget_hpkp_db_t *p_hpkp_db)
  * Closes and frees the HPKP database. A double pointer is required because this function will
  * set the handle (pointer) to the HPKP database to NULL to prevent potential use-after-free conditions.
  */
-void wget_hpkp_db_free(wget_hpkp_db_t **p_hpkp_db)
+void wget_hpkp_db_free(wget_hpkp_db_t **hpkp_db)
 {
-	if (p_hpkp_db) {
-		(*(*p_hpkp_db)->vtable->free)(*p_hpkp_db);
-		*p_hpkp_db = NULL;
+	if (hpkp_db) {
+		(*(*hpkp_db)->vtable->free)(*hpkp_db);
+		*hpkp_db = NULL;
 	}
 }
 static void impl_hpkp_db_free(wget_hpkp_db_t *p_hpkp_db)
@@ -389,9 +389,9 @@ static int _wget_hpkp_compare_pins(wget_hpkp_t *hpkp1, wget_hpkp_t *hpkp2)
  *
  * Checks the validity of the given hostname and public key combination.
  */
-int wget_hpkp_db_check_pubkey(wget_hpkp_db_t *p_hpkp_db, const char *host, const void *pubkey, size_t pubkeysize)
+int wget_hpkp_db_check_pubkey(wget_hpkp_db_t *hpkp_db, const char *host, const void *pubkey, size_t pubkeysize)
 {
-	return (*p_hpkp_db->vtable->check_pubkey)(p_hpkp_db, host, pubkey, pubkeysize);
+	return (*hpkp_db->vtable->check_pubkey)(hpkp_db, host, pubkey, pubkeysize);
 }
 static int impl_hpkp_db_check_pubkey(wget_hpkp_db_t *p_hpkp_db, const char *host, const void *pubkey, size_t pubkeysize)
 {
@@ -433,16 +433,15 @@ static int impl_hpkp_db_check_pubkey(wget_hpkp_db_t *p_hpkp_db, const char *host
 /* We 'consume' _hpkp and thus set *_hpkp to NULL, so that the calling function
  * can't access it any more */
 /**
- * TODO: Fix parameter name
  * \param[in] hpkp_db a HPKP database
  * \param[in] hpkp pointer to HPKP database entry (will be set to NULL)
  *
  * Adds an entry to given HPKP database.
  * The database takes the ownership of the HPKP entry and the calling function must not access the entry afterwards.
  */
-void wget_hpkp_db_add(wget_hpkp_db_t *p_hpkp_db, wget_hpkp_t **_hpkp)
+void wget_hpkp_db_add(wget_hpkp_db_t *hpkp_db, wget_hpkp_t **_hpkp)
 {
-	(*p_hpkp_db->vtable->add)(p_hpkp_db, *_hpkp);
+	(*hpkp_db->vtable->add)(hpkp_db, *_hpkp);
 	*_hpkp = NULL;
 }
 static void impl_hpkp_db_add(wget_hpkp_db_t *p_hpkp_db, wget_hpkp_t *hpkp)
@@ -587,9 +586,9 @@ static int _hpkp_db_load(_hpkp_db_impl_t *hpkp_db, FILE *fp)
  * If the file cannot be opened for writing `WGET_HPKP_ERROR_FILE_OPEN` is returned,
  * or `WGET_HPKP_ERROR` in any other case.
  */
-int wget_hpkp_db_load(wget_hpkp_db_t *p_hpkp_db)
+int wget_hpkp_db_load(wget_hpkp_db_t *hpkp_db)
 {
-	return (*p_hpkp_db->vtable->load)(p_hpkp_db);
+	return (*hpkp_db->vtable->load)(hpkp_db);
 }
 static int impl_hpkp_db_load(wget_hpkp_db_t *p_hpkp_db)
 {
@@ -674,9 +673,9 @@ static int _hpkp_db_save(_hpkp_db_impl_t *hpkp_db, FILE *fp)
  * If the file cannot be opened for writing `WGET_HPKP_ERROR_FILE_OPEN` is returned, and
  * `WGET_HPKP_ERROR` in any other case.
  */
-int wget_hpkp_db_save(wget_hpkp_db_t *p_hpkp_db)
+int wget_hpkp_db_save(wget_hpkp_db_t *hpkp_db)
 {
-	return (*p_hpkp_db->vtable->save)(p_hpkp_db);
+	return (*hpkp_db->vtable->save)(hpkp_db);
 }
 static int impl_hpkp_db_save(wget_hpkp_db_t *p_hpkp_db)
 {
@@ -708,6 +707,7 @@ static struct wget_hpkp_db_vtable vtable = {
 	.check_pubkey = impl_hpkp_db_check_pubkey
 };
 
+//TODO: Fix parameter names
 /**
  * \return Handle (pointer) to an HPKP database
  *
@@ -741,6 +741,7 @@ wget_hpkp_db_t *wget_hpkp_db_init(wget_hpkp_db_t *p_hpkp_db, const char *fname)
 	return (wget_hpkp_db_t *) hpkp_db;
 }
 
+//TODO: Fix parameter names
 void wget_hpkp_db_set_fname(wget_hpkp_db_t *p_hpkp_db, const char *fname)
 {
 	_hpkp_db_impl_t *hpkp_db = (_hpkp_db_impl_t *) p_hpkp_db;
