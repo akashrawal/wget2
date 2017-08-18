@@ -320,25 +320,21 @@ int wget_hpkp_get_include_subdomains(wget_hpkp_t *hpkp)
 	return hpkp->include_subdomains;
 }
 
-/*
- * TODO: Fix parameter names
- *       It was easier when all documentation is done in the headers!
- */
 /**
  * \param[in] hpkp_db Pointer to the pointer of an HPKP database, provided by wget_hpkp_db_init()
  *
  * Closes and frees the HPKP database, except for the structure.
- * `hpkp_db` can then be passed to \ref wget_hpkp_db_init "wget_hpkp_db_init()".
+ * `hpkp_db_priv` can then be passed to \ref wget_hpkp_db_init "wget_hpkp_db_init()".
  */
-void wget_hpkp_db_deinit(wget_hpkp_db_t *p_hpkp_db)
+void wget_hpkp_db_deinit(wget_hpkp_db_t *hpkp_db)
 {
-	_hpkp_db_impl_t *hpkp_db = (_hpkp_db_impl_t *) p_hpkp_db;
+	_hpkp_db_impl_t *hpkp_db_priv = (_hpkp_db_impl_t *) hpkp_db;
 
-	if (hpkp_db) {
-		xfree(hpkp_db->fname);
-		wget_thread_mutex_lock(&hpkp_db->mutex);
-		wget_hashmap_free(&hpkp_db->entries);
-		wget_thread_mutex_unlock(&hpkp_db->mutex);
+	if (hpkp_db_priv) {
+		xfree(hpkp_db_priv->fname);
+		wget_thread_mutex_lock(&hpkp_db_priv->mutex);
+		wget_hashmap_free(&hpkp_db_priv->entries);
+		wget_thread_mutex_unlock(&hpkp_db_priv->mutex);
 	}
 }
 
@@ -355,13 +351,13 @@ void wget_hpkp_db_free(wget_hpkp_db_t **hpkp_db)
 		*hpkp_db = NULL;
 	}
 }
-static void impl_hpkp_db_free(wget_hpkp_db_t *p_hpkp_db)
+static void impl_hpkp_db_free(wget_hpkp_db_t *hpkp_db)
 {
-	_hpkp_db_impl_t *hpkp_db = (_hpkp_db_impl_t *) p_hpkp_db;
+	_hpkp_db_impl_t *hpkp_db_priv = (_hpkp_db_impl_t *) hpkp_db;
 
-	if (hpkp_db) {
-		wget_hpkp_db_deinit(p_hpkp_db);
-		xfree(hpkp_db);
+	if (hpkp_db_priv) {
+		wget_hpkp_db_deinit(hpkp_db);
+		xfree(hpkp_db_priv);
 	}
 }
 
@@ -393,9 +389,9 @@ int wget_hpkp_db_check_pubkey(wget_hpkp_db_t *hpkp_db, const char *host, const v
 {
 	return (*hpkp_db->vtable->check_pubkey)(hpkp_db, host, pubkey, pubkeysize);
 }
-static int impl_hpkp_db_check_pubkey(wget_hpkp_db_t *p_hpkp_db, const char *host, const void *pubkey, size_t pubkeysize)
+static int impl_hpkp_db_check_pubkey(wget_hpkp_db_t *hpkp_db, const char *host, const void *pubkey, size_t pubkeysize)
 {
-	_hpkp_db_impl_t *hpkp_db = (_hpkp_db_impl_t *) p_hpkp_db;
+	_hpkp_db_impl_t *hpkp_db_priv = (_hpkp_db_impl_t *) hpkp_db;
 
 	wget_hpkp_t key;
 	wget_hpkp_t *hpkp = NULL;
@@ -407,7 +403,7 @@ static int impl_hpkp_db_check_pubkey(wget_hpkp_db_t *p_hpkp_db, const char *host
 			domain++;
 
 		key.host = domain;
-		hpkp = wget_hashmap_get(hpkp_db->entries, &key);
+		hpkp = wget_hashmap_get(hpkp_db_priv->entries, &key);
 
 		if (!hpkp)
 			subdomain = 1;
@@ -444,21 +440,21 @@ void wget_hpkp_db_add(wget_hpkp_db_t *hpkp_db, wget_hpkp_t **_hpkp)
 	(*hpkp_db->vtable->add)(hpkp_db, *_hpkp);
 	*_hpkp = NULL;
 }
-static void impl_hpkp_db_add(wget_hpkp_db_t *p_hpkp_db, wget_hpkp_t *hpkp)
+static void impl_hpkp_db_add(wget_hpkp_db_t *hpkp_db, wget_hpkp_t *hpkp)
 {
-	_hpkp_db_impl_t *hpkp_db = (_hpkp_db_impl_t *) p_hpkp_db;
+	_hpkp_db_impl_t *hpkp_db_priv = (_hpkp_db_impl_t *) hpkp_db;
 
 	if (!hpkp)
 		return;
 
-	wget_thread_mutex_lock(&hpkp_db->mutex);
+	wget_thread_mutex_lock(&hpkp_db_priv->mutex);
 
 	if (hpkp->maxage == 0 || wget_vector_size(hpkp->pins) == 0) {
-		if (wget_hashmap_remove(hpkp_db->entries, hpkp))
+		if (wget_hashmap_remove(hpkp_db_priv->entries, hpkp))
 			debug_printf("removed HPKP %s\n", hpkp->host);
 		wget_hpkp_free(hpkp);
 	} else {
-		wget_hpkp_t *old = wget_hashmap_get(hpkp_db->entries, hpkp);
+		wget_hpkp_t *old = wget_hashmap_get(hpkp_db_priv->entries, hpkp);
 
 		if (old) {
 			old->created = hpkp->created;
@@ -473,15 +469,15 @@ static void impl_hpkp_db_add(wget_hpkp_db_t *p_hpkp_db, wget_hpkp_t *hpkp)
 		} else {
 			// key and value are the same to make wget_hashmap_get() return old 'hpkp'
 			/* debug_printf("add HPKP %s (maxage=%lld, includeSubDomains=%d)\n", hpkp->host, (long long)hpkp->maxage, hpkp->include_subdomains); */
-			wget_hashmap_put_noalloc(hpkp_db->entries, hpkp, hpkp);
+			wget_hashmap_put_noalloc(hpkp_db_priv->entries, hpkp, hpkp);
 			// no need to free anything here
 		}
 	}
 
-	wget_thread_mutex_unlock(&hpkp_db->mutex);
+	wget_thread_mutex_unlock(&hpkp_db_priv->mutex);
 }
 
-static int _hpkp_db_load(_hpkp_db_impl_t *hpkp_db, FILE *fp)
+static int _hpkp_db_load(_hpkp_db_impl_t *hpkp_db_priv, FILE *fp)
 {
 	int64_t created, max_age;
 	long long _created, _max_age;
@@ -499,8 +495,8 @@ static int _hpkp_db_load(_hpkp_db_impl_t *hpkp_db, FILE *fp)
 	// there's no need to reload
 
 	if (fstat(fileno(fp), &st) == 0) {
-		if (st.st_mtime != hpkp_db->load_time)
-			hpkp_db->load_time = st.st_mtime;
+		if (st.st_mtime != hpkp_db_priv->load_time)
+			hpkp_db_priv->load_time = st.st_mtime;
 		else
 			return 0;
 	}
@@ -519,7 +515,7 @@ static int _hpkp_db_load(_hpkp_db_impl_t *hpkp_db, FILE *fp)
 			buf[--buflen] = 0;
 
 		if (*linep != '*') {
-			wget_hpkp_db_add((wget_hpkp_db_t *) hpkp_db, &hpkp);
+			wget_hpkp_db_add((wget_hpkp_db_t *) hpkp_db_priv, &hpkp);
 
 			if (sscanf(linep, "%255s %d %lld %lld", host, &include_subdomains, &_created, &_max_age) == 4) {
 				created = _created;
@@ -551,12 +547,12 @@ static int _hpkp_db_load(_hpkp_db_impl_t *hpkp_db, FILE *fp)
 		}
 	}
 
-	wget_hpkp_db_add((wget_hpkp_db_t *) hpkp_db, &hpkp);
+	wget_hpkp_db_add((wget_hpkp_db_t *) hpkp_db_priv, &hpkp);
 
 	xfree(buf);
 
 	if (ferror(fp)) {
-		hpkp_db->load_time = 0; // reload on next call to this function
+		hpkp_db_priv->load_time = 0; // reload on next call to this function
 		return -1;
 	}
 
@@ -569,7 +565,7 @@ static int _hpkp_db_load(_hpkp_db_impl_t *hpkp_db, FILE *fp)
  * \return WGET_HPKP_OK on success, or a negative number on error
  *
  * Reads the file specified by `filename` and loads its contents into the HPKP database
- * provided by `hpkp_db`.
+ * provided by `hpkp_db_priv`.
  *
  * If this function cannot correctly parse the whole file, `WGET_HPKP_ERROR` is returned.
  * Since the format of the file might change without notice, hand-crafted files are discouraged.
@@ -578,7 +574,7 @@ static int _hpkp_db_load(_hpkp_db_impl_t *hpkp_db, FILE *fp)
  *
  * The entries in the file are subject to sanity checks as if they were added to the HPKP database
  * via wget_hpkp_db_add(). In particular, if an entry is expired due to `creation_time + max_age > cur_time`
- * it will not be added to the database, and a subsequent call to wget_hpkp_db_save() with the same `hpkp_db` handle
+ * it will not be added to the database, and a subsequent call to wget_hpkp_db_save() with the same `hpkp_db_priv` handle
  * and file name will overwrite the file without all the expired entries. Thus, if all the entries in the file are
  * expired, the database will be empty and a subsequent call to wget_hpkp_db_save() with the same parameters will
  * cause the file to be deleted.
@@ -590,18 +586,18 @@ int wget_hpkp_db_load(wget_hpkp_db_t *hpkp_db)
 {
 	return (*hpkp_db->vtable->load)(hpkp_db);
 }
-static int impl_hpkp_db_load(wget_hpkp_db_t *p_hpkp_db)
+static int impl_hpkp_db_load(wget_hpkp_db_t *hpkp_db)
 {
-	_hpkp_db_impl_t *hpkp_db = (_hpkp_db_impl_t *) p_hpkp_db;
+	_hpkp_db_impl_t *hpkp_db_priv = (_hpkp_db_impl_t *) hpkp_db;
 
-	if (!hpkp_db || !hpkp_db->fname || !*hpkp_db->fname)
+	if (!hpkp_db_priv || !hpkp_db_priv->fname || !*hpkp_db_priv->fname)
 		return 0;
 
-	if (wget_update_file(hpkp_db->fname, (wget_update_load_t)_hpkp_db_load, NULL, hpkp_db)) {
+	if (wget_update_file(hpkp_db_priv->fname, (wget_update_load_t)_hpkp_db_load, NULL, hpkp_db_priv)) {
 		error_printf(_("Failed to read HPKP data\n"));
 		return -1;
 	} else {
-		debug_printf("Fetched HPKP data from '%s'\n", hpkp_db->fname);
+		debug_printf("Fetched HPKP data from '%s'\n", hpkp_db_priv->fname);
 		return 0;
 	}
 }
@@ -634,9 +630,9 @@ static int G_GNUC_WGET_NONNULL_ALL _hpkp_save(FILE *fp, const wget_hpkp_t *hpkp)
 	return 0;
 }
 
-static int _hpkp_db_save(_hpkp_db_impl_t *hpkp_db, FILE *fp)
+static int _hpkp_db_save(_hpkp_db_impl_t *hpkp_db_priv, FILE *fp)
 {
-	wget_hashmap_t *entries = hpkp_db->entries;
+	wget_hashmap_t *entries = hpkp_db_priv->entries;
 
 	if (wget_hashmap_size(entries) > 0) {
 		fputs("# HPKP 1.0 file\n", fp);
@@ -677,22 +673,22 @@ int wget_hpkp_db_save(wget_hpkp_db_t *hpkp_db)
 {
 	return (*hpkp_db->vtable->save)(hpkp_db);
 }
-static int impl_hpkp_db_save(wget_hpkp_db_t *p_hpkp_db)
+static int impl_hpkp_db_save(wget_hpkp_db_t *hpkp_db)
 {
-	_hpkp_db_impl_t *hpkp_db = (_hpkp_db_impl_t *) p_hpkp_db;
+	_hpkp_db_impl_t *hpkp_db_priv = (_hpkp_db_impl_t *) hpkp_db;
 
 	int size;
 
-	if (!hpkp_db || !hpkp_db->fname || !*hpkp_db->fname)
+	if (!hpkp_db_priv || !hpkp_db_priv->fname || !*hpkp_db_priv->fname)
 		return -1;
 
-	if (wget_update_file(hpkp_db->fname, (wget_update_load_t)_hpkp_db_load, (wget_update_load_t)_hpkp_db_save, hpkp_db)) {
-		error_printf(_("Failed to write HPKP file '%s'\n"), hpkp_db->fname);
+	if (wget_update_file(hpkp_db_priv->fname, (wget_update_load_t)_hpkp_db_load, (wget_update_load_t)_hpkp_db_save, hpkp_db_priv)) {
+		error_printf(_("Failed to write HPKP file '%s'\n"), hpkp_db_priv->fname);
 		return -1;
 	}
 
-	if ((size = wget_hashmap_size(hpkp_db->entries)))
-		debug_printf("Saved %d HPKP entr%s into '%s'\n", size, size != 1 ? "ies" : "y", hpkp_db->fname);
+	if ((size = wget_hashmap_size(hpkp_db_priv->entries)))
+		debug_printf("Saved %d HPKP entr%s into '%s'\n", size, size != 1 ? "ies" : "y", hpkp_db_priv->fname);
 	else
 		debug_printf("No HPKP entries to save. Table is empty.\n");
 
@@ -707,26 +703,25 @@ static struct wget_hpkp_db_vtable vtable = {
 	.check_pubkey = impl_hpkp_db_check_pubkey
 };
 
-//TODO: Fix parameter names
 /**
  * \return Handle (pointer) to an HPKP database
  *
  * Initializes a new HPKP database.
  */
-wget_hpkp_db_t *wget_hpkp_db_init(wget_hpkp_db_t *p_hpkp_db, const char *fname)
+wget_hpkp_db_t *wget_hpkp_db_init(wget_hpkp_db_t *hpkp_db, const char *fname)
 {
-	_hpkp_db_impl_t *hpkp_db = (_hpkp_db_impl_t *) p_hpkp_db;
+	_hpkp_db_impl_t *hpkp_db_priv = (_hpkp_db_impl_t *) hpkp_db;
 
-	if (!hpkp_db)
-		hpkp_db = xcalloc(1, sizeof(_hpkp_db_impl_t));
+	if (!hpkp_db_priv)
+		hpkp_db_priv = xcalloc(1, sizeof(_hpkp_db_impl_t));
 	else
-		memset(hpkp_db, 0, sizeof(*hpkp_db));
+		memset(hpkp_db_priv, 0, sizeof(*hpkp_db_priv));
 
-	hpkp_db->parent.vtable = &vtable;
+	hpkp_db_priv->parent.vtable = &vtable;
 	if (fname)
-		hpkp_db->fname = wget_strdup(fname);
-	hpkp_db->entries = wget_hashmap_create(16, (wget_hashmap_hash_t)_hash_hpkp, (wget_hashmap_compare_t)_compare_hpkp);
-	wget_hashmap_set_key_destructor(hpkp_db->entries, (wget_hashmap_key_destructor_t)wget_hpkp_free);
+		hpkp_db_priv->fname = wget_strdup(fname);
+	hpkp_db_priv->entries = wget_hashmap_create(16, (wget_hashmap_hash_t)_hash_hpkp, (wget_hashmap_compare_t)_compare_hpkp);
+	wget_hashmap_set_key_destructor(hpkp_db_priv->entries, (wget_hashmap_key_destructor_t)wget_hpkp_free);
 
 	/*
 	 * Keys and values for the hashmap are 'hpkp' entries, so value == key.
@@ -736,19 +731,18 @@ wget_hpkp_db_t *wget_hpkp_db_init(wget_hpkp_db_t *p_hpkp_db, const char *fname)
 	 * Since the value == key, we just need the value destructor for freeing hashmap entries.
 	 */
 
-	wget_thread_mutex_init(&hpkp_db->mutex);
+	wget_thread_mutex_init(&hpkp_db_priv->mutex);
 
-	return (wget_hpkp_db_t *) hpkp_db;
+	return (wget_hpkp_db_t *) hpkp_db_priv;
 }
 
-//TODO: Fix parameter names
-void wget_hpkp_db_set_fname(wget_hpkp_db_t *p_hpkp_db, const char *fname)
+void wget_hpkp_db_set_fname(wget_hpkp_db_t *hpkp_db, const char *fname)
 {
-	_hpkp_db_impl_t *hpkp_db = (_hpkp_db_impl_t *) p_hpkp_db;
+	_hpkp_db_impl_t *hpkp_db_priv = (_hpkp_db_impl_t *) hpkp_db;
 
-	xfree(hpkp_db->fname);
+	xfree(hpkp_db_priv->fname);
 	if (fname)
-		hpkp_db->fname = wget_strdup(fname);
+		hpkp_db_priv->fname = wget_strdup(fname);
 }
 
 /**@}*/
