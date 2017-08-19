@@ -1041,21 +1041,33 @@ WGETAPI char *
  * HTTP Strict Transport Security (HSTS) routines
  */
 
-// structure for HTTP Strict Transport Security (HSTS) entries
+/**
+ * \addtogroup libwget-hsts
+ *
+ * Structure representing HSTS database for storing HTTP Strict Transport Security (HSTS) entries
+ */
 typedef struct _wget_hsts_db_st wget_hsts_db_t;
 
-// TODO: Move implementation to virtual functions
-// TODO: Add/amend documentation
-// vtable for implementation
+/**
+ * \addtogroup libwget-hsts
+ * 
+ * vtable for implementing custom HSTS databases
+ */
 struct wget_hsts_db_vtable {
+	/// Implementation of wget_hsts_db_load()
 	int (*load)(wget_hsts_db_t *);
+	/// Implementation of wget_hsts_db_save()
 	int (*save)(wget_hsts_db_t *);
+	/// Implementation of wget_hsts_host_match()
 	int (*host_match)(const wget_hsts_db_t *, const char *, uint16_t);
+	/// Implementation of wget_hsts_db_add()
 	void (*add)(wget_hsts_db_t *, const char *, uint16_t, time_t, int);
+	/// Implementation of wget_hsts_db_free()
 	void (*free)(wget_hsts_db_t *);
 };
 
 struct _wget_hsts_db_st {
+	/// Pointer to the implementation vtable
 	struct wget_hsts_db_vtable *vtable;
 };
 
@@ -1083,7 +1095,7 @@ WGETAPI int
 /**
  * \addtogroup libwget-hpkp
  *
- * HPKP database
+ * HPKP database for storing HTTP Public Kay Pinning (HPKP) entries
  */
 typedef struct _wget_hpkp_db_st wget_hpkp_db_t;
 
@@ -1097,7 +1109,6 @@ typedef struct _wget_hpkp_st wget_hpkp_t;
 //typedef struct _wget_hpkp_pin_st wget_hpkp_pin_t;
 
 /* FIXME this doesn't work */
-// TODO: Find out where this thing fits
 /**
  * \addtogroup libwget-hpkp
  * Return values
@@ -1112,27 +1123,26 @@ typedef struct _wget_hpkp_st wget_hpkp_t;
 #define WGET_HPKP_ERROR_FILE_OPEN	-6
 /* @} */
 
-// vtable for implementation
 /**
  * \addtogroup libwget-hpkp
  *
  * vtable for implementing custom HPKP databases
- * TODO: Add notes for implementation whenever applicable
  */
 struct wget_hpkp_db_vtable {
-	// Implementation of \ref wget_hpkp_db_load "wget_hpkp_db_load()"
+	/// Implementation of \ref wget_hpkp_db_load "wget_hpkp_db_load()"
 	int (*load)(wget_hpkp_db_t *);
-	// Implementation of \ref wget_hpkp_db_save "wget_hpkp_db_save()"
+	/// Implementation of \ref wget_hpkp_db_save "wget_hpkp_db_save()"
 	int (*save)(wget_hpkp_db_t *);
-	// Implementation of \ref wget_hpkp_db_free "wget_hpkp_db_free()"
+	/// Implementation of \ref wget_hpkp_db_free "wget_hpkp_db_free()"
 	void (*free)(wget_hpkp_db_t *);
-	// Implementation of \ref wget_hpkp_db_add "wget_hpkp_db_add()"
+	/// Implementation of \ref wget_hpkp_db_add "wget_hpkp_db_add()"
 	void (*add)(wget_hpkp_db_t *, wget_hpkp_t *);
-	// Implementation of \ref wget_hpkp_db_check_pubkey "wget_hpkp_db_check_pubkey()"
+	/// Implementation of \ref wget_hpkp_db_check_pubkey "wget_hpkp_db_check_pubkey()"
 	int (*check_pubkey)(wget_hpkp_db_t *, const char *, const void *, size_t);
 };
 
 struct _wget_hpkp_db_st {
+	/// Pointer to the implemetation vtable
 	struct wget_hpkp_db_vtable *vtable;
 };
 
@@ -1214,21 +1224,38 @@ WGETAPI int
  * Online Certificate Status Protocol (OCSP) routines
  */
 
-// structure for Online Certificate Status Protocol (OCSP) entries
+/**
+ * \addtogroup libwget-ocsp
+ *
+ * structure for Online Certificate Status Protocol (OCSP) entries
+ */
 typedef struct _wget_ocsp_db_st wget_ocsp_db_t;
 
-// vtable for implementation
+//TODO: Add implementation specific notes
+/**
+ * \addtogroup libwget-ocsp
+ *
+ * vtable for implementing custom OCSP databases
+ */
 struct wget_ocsp_db_vtable {
+	/// Implementation of wget_ocsp_db_load()
 	int (*load)(wget_ocsp_db_t *);
+	/// Implementation of wget_ocsp_db_save()
 	int (*save)(wget_ocsp_db_t *);
+	/// Implementation of wget_ocsp_db_fingerprint_in_cache()
 	int (*fingerprint_in_cache)(const wget_ocsp_db_t *, const char *, int *);
+	/// Implementation of wget_ocsp_db_hostname_is_valid()
 	int (*hostname_is_valid)(const wget_ocsp_db_t *, const char *);
+	/// Implementation of wget_ocsp_db_add_fingerprint()
 	void (*add_fingerprint)(wget_ocsp_db_t *, const char *, time_t, int);
+	/// Implementation of wget_ocsp_db_add_host()
 	void (*add_host)(wget_ocsp_db_t *, const char *, time_t);
+	/// Implementation of wget_ocsp_db_free()
 	void (*free)(wget_ocsp_db_t *);
 };
 
 struct _wget_ocsp_db_st {
+	/// Pointer to the implemetation vtable
 	struct wget_ocsp_db_vtable *vtable;
 };
 

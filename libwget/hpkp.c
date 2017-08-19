@@ -21,6 +21,8 @@
  *
  */
 
+//TODO: Replace function names with links if not automatically converted by doxygen
+
 #include <config.h>
 
 #include <wget.h>
@@ -203,7 +205,7 @@ void wget_hpkp_set_host(wget_hpkp_t *hpkp, const char *host)
  * \param[in] maxage Maximum time the entry is valid (in seconds)
  *
  * Sets the maximum time the HPKP entry is valid.
- * Corresponds to 'max-age' directive in 'Public-Key-Pins' HTTP response header.
+ * Corresponds to `max-age` directive in `Public-Key-Pins` HTTP response header.
  */
 void wget_hpkp_set_maxage(wget_hpkp_t *hpkp, time_t maxage)
 {
@@ -224,7 +226,7 @@ void wget_hpkp_set_maxage(wget_hpkp_t *hpkp, time_t maxage)
  * \param[in] include_subdomains Nonzero if this entry is also valid for all subdomains, zero otherwise.
  *
  * Sets whether the entry is also valid for all subdomains.
- * Corresponds to the optional 'includeSubDomains' directive in 'Public-Key-Pins' HTTP response header.
+ * Corresponds to the optional `includeSubDomains` directive in `Public-Key-Pins` HTTP response header.
  */
 void wget_hpkp_set_include_subdomains(wget_hpkp_t *hpkp, int include_subdomains)
 {
@@ -323,8 +325,9 @@ int wget_hpkp_get_include_subdomains(wget_hpkp_t *hpkp)
 /**
  * \param[in] hpkp_db Pointer to the pointer of an HPKP database, provided by wget_hpkp_db_init()
  *
- * Closes and frees the HPKP database, except for the structure.
- * `hpkp_db_priv` can then be passed to \ref wget_hpkp_db_init "wget_hpkp_db_init()".
+ * Frees all resources allocated for the HPKP database, except for the structure.
+ * Works only for databases created by wget_hpkp_db_init().
+ * `hpkp_db` can then be passed to \ref wget_hpkp_db_init "wget_hpkp_db_init()".
  */
 void wget_hpkp_db_deinit(wget_hpkp_db_t *hpkp_db)
 {
@@ -339,10 +342,12 @@ void wget_hpkp_db_deinit(wget_hpkp_db_t *hpkp_db)
 }
 
 /**
- * \param[in] hpkp_db Pointer to the pointer of an HPKP database, provided by wget_hpkp_db_init()
+ * \param[in] hpkp_db Pointer to the pointer of an HPKP database
  *
  * Closes and frees the HPKP database. A double pointer is required because this function will
  * set the handle (pointer) to the HPKP database to NULL to prevent potential use-after-free conditions.
+ *
+ * Newly added entries will be lost unless commited to persistent storage using wget_hsts_db_save().
  */
 void wget_hpkp_db_free(wget_hpkp_db_t **hpkp_db)
 {
@@ -377,11 +382,12 @@ static int _wget_hpkp_compare_pins(wget_hpkp_t *hpkp1, wget_hpkp_t *hpkp2)
 /**
  * \param[in] hpkp_db a HPKP database
  * \param[in] host The hostname in question.
- * \param[in] pubkey The public key
+ * \param[in] pubkey The public key in DER format
  * \param[in] pubkeysize Size of `pubkey`
  * \return  1 if both host and public key was found in the database,
- *         <0 if host was found and public key was not found,
- *          0 if host was not found.
+ *         -2 if host was found and public key was not found,
+ *          0 if host was not found,
+ *         -1 for any other error condition.
  *
  * Checks the validity of the given hostname and public key combination.
  */
@@ -561,26 +567,13 @@ static int _hpkp_db_load(_hpkp_db_impl_t *hpkp_db_priv, FILE *fp)
 
 /**
  * \param[in] hpkp_db Handle to an HPKP database, obtained with wget_hpkp_db_init()
- * \param[in] fname Path to a file
- * \return WGET_HPKP_OK on success, or a negative number on error
+ * \return 0 on success, or a negative number on error
  *
- * Reads the file specified by `filename` and loads its contents into the HPKP database
- * provided by `hpkp_db_priv`.
+ * Performs all operations necessary to access the HPKP database entries from persistent storage
+ * using wget_hpkp_db_check_pubkey() for example.
  *
- * If this function cannot correctly parse the whole file, `WGET_HPKP_ERROR` is returned.
- * Since the format of the file might change without notice, hand-crafted files are discouraged.
- * To create an HPKP database file that is guaranteed to be correctly parsed by this function,
- * wget_hpkp_db_save() should be used.
- *
- * The entries in the file are subject to sanity checks as if they were added to the HPKP database
- * via wget_hpkp_db_add(). In particular, if an entry is expired due to `creation_time + max_age > cur_time`
- * it will not be added to the database, and a subsequent call to wget_hpkp_db_save() with the same `hpkp_db_priv` handle
- * and file name will overwrite the file without all the expired entries. Thus, if all the entries in the file are
- * expired, the database will be empty and a subsequent call to wget_hpkp_db_save() with the same parameters will
- * cause the file to be deleted.
- *
- * If the file cannot be opened for writing `WGET_HPKP_ERROR_FILE_OPEN` is returned,
- * or `WGET_HPKP_ERROR` in any other case.
+ * For databases created by wget_hpkp_db_init() data is loaded from `fname` parameter of wget_hpkp_db_init().
+ * If this function cannot correctly parse the whole file, -1 is returned.
  */
 int wget_hpkp_db_load(wget_hpkp_db_t *hpkp_db)
 {
@@ -649,25 +642,13 @@ static int _hpkp_db_save(_hpkp_db_impl_t *hpkp_db_priv, FILE *fp)
 }
 
 /**
- * \param[in] hpkp_db Handle to an HPKP database, obtained with wget_hpkp_db_init()
- * \param[in] fname Path to a file
- * \return The number of SPKIs written to the file, or a negative number on error.
+ * \param[in] hpkp_db Handle to an HPKP database
+ * \return 0 if the operation was successful, negative number in case of error.
  *
- * Saves the current HPKP database to the specified file.
+ * Saves the current HPKP database to persistent storage
  *
- * The information will be stored in a human-readable format for inspection,
- * but it is discouraged to rely on it for external processing. In particular,
- * no application other than wget2 should modify the contents of the file
- * as the format might change between releases without notice.
- *
- * This function returns the number of SPKIs written to the file, which is effectively
- * equal to the number of SPKIs in the database when this function was called, and thus,
- * might be zero. If the file specified by `filename` exists, all its contents
- * will be overwritten with the current contents of the database. Otherwise, if the file exists
- * but there are no SPKIs in the database, the file will be deleted to avoid leaving an empty file.
- *
- * If the file cannot be opened for writing `WGET_HPKP_ERROR_FILE_OPEN` is returned, and
- * `WGET_HPKP_ERROR` in any other case.
+ * In case of databases created by wget_hpkp_db_init(), HPKP entries will be saved into file specified by
+ * `fname` parameter of wget_hpkp_db_init(). In case of failure -1 will be returned with errno set.
  */
 int wget_hpkp_db_save(wget_hpkp_db_t *hpkp_db)
 {
@@ -704,9 +685,22 @@ static struct wget_hpkp_db_vtable vtable = {
 };
 
 /**
+ * \param hpkp_db Older HPKP database already passed to wget_hpkp_db_deinit(), or NULL
+ * \param fname Name of the file where the data should be stored, or NULL
  * \return Handle (pointer) to an HPKP database
  *
- * Initializes a new HPKP database.
+ * Constructor for the default implementation of HSTS database.
+ *
+ * This function does no file IO, data is loaded from file specified by `fname` when wget_hpkp_db_load() is called.
+ * The entries in the file are subject to sanity checks as if they were added to the HPKP database
+ * via wget_hpkp_db_add(). In particular, if an entry is expired due to `creation_time + max_age > cur_time`
+ * it will not be added to the database, and a subsequent call to wget_hpkp_db_save() with the same `hpkp_db_priv`
+ * handle and file name will overwrite the file without all the expired entries. 
+ *
+ * Since the format of the file might change without notice, hand-crafted files are discouraged.
+ * To create an HPKP database file that is guaranteed to be correctly parsed by this function,
+ * wget_hpkp_db_save() should be used.
+ *
  */
 wget_hpkp_db_t *wget_hpkp_db_init(wget_hpkp_db_t *hpkp_db, const char *fname)
 {
@@ -736,6 +730,13 @@ wget_hpkp_db_t *wget_hpkp_db_init(wget_hpkp_db_t *hpkp_db, const char *fname)
 	return (wget_hpkp_db_t *) hpkp_db_priv;
 }
 
+/**
+ * \param hpkp_db HPKP database created using wget_hpkp_db_init()
+ * \param fname Name of the file where the data should be stored, or NULL
+ * 
+ * Changes the file where data should be stored. Works only for databases created by wget_hpkp_db_init().
+ * This function does no file IO, data is loaded when wget_hpkp_db_load() is called.
+ */
 void wget_hpkp_db_set_fname(wget_hpkp_db_t *hpkp_db, const char *fname)
 {
 	_hpkp_db_impl_t *hpkp_db_priv = (_hpkp_db_impl_t *) hpkp_db;

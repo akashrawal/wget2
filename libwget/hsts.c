@@ -136,13 +136,24 @@ static wget_hsts_t *_new_hsts(const char *host, uint16_t port, time_t maxage, in
 	return hsts;
 }
 
-int wget_hsts_host_match(const wget_hsts_db_t *p_hsts_db, const char *host, uint16_t port)
+/**
+ * \param[in] hsts_db a HSTS database
+ * \param[in] host Hostname to search for
+ * \param[in] port Port number in the original URI/IRI.
+ *                 Port number 80 is treated similar to 443, as 80 is default port for HTTP.
+ * \return 1 if the host must be accessed only through TLS, 0 if there is no such condition.
+ *
+ * Searches for a given host in the database for any previously added entry.
+ *
+ * HSTS entries older than amount of time specified by `maxage` are considered `expired` and are ignored.
+ */
+int wget_hsts_host_match(const wget_hsts_db_t *hsts_db, const char *host, uint16_t port)
 {
-	return (* p_hsts_db->vtable->host_match)(p_hsts_db, host, port);
+	return (* hsts_db->vtable->host_match)(hsts_db, host, port);
 }
-static int impl_hsts_db_host_match(const wget_hsts_db_t *p_hsts_db, const char *host, uint16_t port)
+static int impl_hsts_db_host_match(const wget_hsts_db_t *hsts_db, const char *host, uint16_t port)
 {
-	_hsts_db_impl_t *hsts_db = (_hsts_db_impl_t *) p_hsts_db;
+	_hsts_db_impl_t *hsts_db_priv = (_hsts_db_impl_t *) hsts_db;
 
 	wget_hsts_t hsts, *hstsp;
 	const char *p;
@@ -153,42 +164,48 @@ static int impl_hsts_db_host_match(const wget_hsts_db_t *p_hsts_db, const char *
 	// we assume the scheme is HTTP
 	hsts.port = (port == 80 ? 443 : port);
 	hsts.host = host;
-	if ((hstsp = wget_hashmap_get(hsts_db->entries, &hsts)) && hstsp->expires >= now)
+	if ((hstsp = wget_hashmap_get(hsts_db_priv->entries, &hsts)) && hstsp->expires >= now)
 		return 1;
 
 	// now look for a valid subdomain match
 	for (p = host; (p = strchr(p, '.')); ) {
 		hsts.host = ++p;
-		if ((hstsp = wget_hashmap_get(hsts_db->entries, &hsts)) && hstsp->include_subdomains && hstsp->expires >= now)
+		if ((hstsp = wget_hashmap_get(hsts_db_priv->entries, &hsts)) && hstsp->include_subdomains && hstsp->expires >= now)
 			return 1;
 	}
 
 	return 0;
 }
 
-
-void wget_hsts_db_set_fname(wget_hsts_db_t *p_hsts_db, const char *fname)
+/**
+ * \param[in] hsts_db HSTS database created by wget_hsts_db_init()
+ *
+ * Frees all resources allocated for HSTS database, except for the structure itself. The hsts_db pointer can then
+ * be passed to wget_hsts_db_init() for reinitialization. 
+ *
+ * This function only works with databases created by wget_hsts_db_init().
+ */
+void wget_hsts_db_deinit(wget_hsts_db_t *hsts_db)
 {
-	_hsts_db_impl_t *hsts_db = (_hsts_db_impl_t *) p_hsts_db;
+	_hsts_db_impl_t *hsts_db_priv = (_hsts_db_impl_t *) hsts_db;
 
-	xfree(hsts_db->fname);
-	if (fname)
-		hsts_db->fname = wget_strdup(fname);
-}
-
-//TODO: Where does this fit in virtualization?
-void wget_hsts_db_deinit(wget_hsts_db_t *p_hsts_db)
-{
-	_hsts_db_impl_t *hsts_db = (_hsts_db_impl_t *) p_hsts_db;
-
-	if (hsts_db) {
-		xfree(hsts_db->fname);
-		wget_thread_mutex_lock(&hsts_db->mutex);
-		wget_hashmap_free(&hsts_db->entries);
-		wget_thread_mutex_unlock(&hsts_db->mutex);
+	if (hsts_db_priv) {
+		xfree(hsts_db_priv->fname);
+		wget_thread_mutex_lock(&hsts_db_priv->mutex);
+		wget_hashmap_free(&hsts_db_priv->entries);
+		wget_thread_mutex_unlock(&hsts_db_priv->mutex);
 	}
 }
 
+/**
+ * \param[in] hsts_db Pointer to the HSTS database handle (will be set to NULL)
+ *
+ * Frees all resources allocated for the HSTS database.
+ * A double pointer is required because this function will
+ * set the handle (pointer) to the HPKP database to NULL to prevent potential use-after-free conditions.
+ *
+ * Newly added entries will be lost unless commited to persistent storage using wget_hsts_db_save().
+ */
 void wget_hsts_db_free(wget_hsts_db_t **hsts_db)
 {
 	if (hsts_db) {
@@ -196,25 +213,25 @@ void wget_hsts_db_free(wget_hsts_db_t **hsts_db)
 		*hsts_db = NULL;
 	}
 }
-static void impl_hsts_db_free(wget_hsts_db_t *hsts_db)
+static void impl_hsts_db_free(wget_hsts_db_t *hsts_db_priv)
 {
-	if (hsts_db) {
-		wget_hsts_db_deinit(hsts_db);
-		xfree(hsts_db);
+	if (hsts_db_priv) {
+		wget_hsts_db_deinit(hsts_db_priv);
+		xfree(hsts_db_priv);
 	}
 }
 
-static void _hsts_db_add_entry(_hsts_db_impl_t *hsts_db, wget_hsts_t *hsts)
+static void _hsts_db_add_entry(_hsts_db_impl_t *hsts_db_priv, wget_hsts_t *hsts)
 {
-	wget_thread_mutex_lock(&hsts_db->mutex);
+	wget_thread_mutex_lock(&hsts_db_priv->mutex);
 
 	if (hsts->maxage == 0) {
-		if (wget_hashmap_remove(hsts_db->entries, hsts))
+		if (wget_hashmap_remove(hsts_db_priv->entries, hsts))
 			debug_printf("removed HSTS %s:%hu\n", hsts->host, hsts->port);
 		_free_hsts(hsts);
 		hsts = NULL;
 	} else {
-		wget_hsts_t *old = wget_hashmap_get(hsts_db->entries, hsts);
+		wget_hsts_t *old = wget_hashmap_get(hsts_db_priv->entries, hsts);
 
 		if (old) {
 			if (old->created < hsts->created || old->maxage != hsts->maxage || old->include_subdomains != hsts->include_subdomains) {
@@ -229,28 +246,38 @@ static void _hsts_db_add_entry(_hsts_db_impl_t *hsts_db, wget_hsts_t *hsts)
 		} else {
 			// key and value are the same to make wget_hashmap_get() return old 'hsts'
 			// debug_printf("add HSTS %s:%hu (maxage=%lld, includeSubDomains=%d)\n", hsts->host, hsts->port, (long long)hsts->maxage, hsts->include_subdomains);
-			wget_hashmap_put_noalloc(hsts_db->entries, hsts, hsts);
+			wget_hashmap_put_noalloc(hsts_db_priv->entries, hsts, hsts);
 			// no need to free anything here
 		}
 	}
 
-	wget_thread_mutex_unlock(&hsts_db->mutex);
+	wget_thread_mutex_unlock(&hsts_db_priv->mutex);
 }
 
-void wget_hsts_db_add(wget_hsts_db_t *p_hsts_db, const char *host, uint16_t port, time_t maxage, int include_subdomains)
+/**
+ * \param[in] hsts_db a HSTS database
+ * \param[in] host Hostname from where `Strict-Transport-Security` header was received
+ * \param[in] port Port number used for connecting to the host
+ * \param[in] maxage The time from now till the entry is valid, in seconds.
+ *                   Corresponds to the `max-age` directive in `Strict-Transport-Security` header.
+ * \param[in] include_subdomains Nonzero if `includeSubDomains` directive was present in the header, zero otherwise
+ *
+ * Add an entry to the HSTS database. An entry corresponds to the `Strict-Transport-Security` HTTP response header.
+ */
+void wget_hsts_db_add(wget_hsts_db_t *hsts_db, const char *host, uint16_t port, time_t maxage, int include_subdomains)
 {
-	(* p_hsts_db->vtable->add)(p_hsts_db, host, port, maxage, include_subdomains);
+	(* hsts_db->vtable->add)(hsts_db, host, port, maxage, include_subdomains);
 }
-static void impl_hsts_db_add(wget_hsts_db_t *p_hsts_db, const char *host, uint16_t port, time_t maxage, int include_subdomains)
+static void impl_hsts_db_add(wget_hsts_db_t *hsts_db, const char *host, uint16_t port, time_t maxage, int include_subdomains)
 {
-	_hsts_db_impl_t *hsts_db = (_hsts_db_impl_t *) p_hsts_db;
+	_hsts_db_impl_t *hsts_db_priv = (_hsts_db_impl_t *) hsts_db;
 
 	wget_hsts_t *hsts = _new_hsts(host, port, maxage, include_subdomains);
 
-	_hsts_db_add_entry(hsts_db, hsts);
+	_hsts_db_add_entry(hsts_db_priv, hsts);
 }
 
-static int _hsts_db_load(_hsts_db_impl_t *hsts_db, FILE *fp)
+static int _hsts_db_load(_hsts_db_impl_t *hsts_db_priv, FILE *fp)
 {
 	wget_hsts_t hsts;
 	struct stat st;
@@ -264,8 +291,8 @@ static int _hsts_db_load(_hsts_db_impl_t *hsts_db, FILE *fp)
 	// there's no need to reload
 
 	if (fstat(fileno(fp), &st) == 0) {
-		if (st.st_mtime != hsts_db->load_time)
-			hsts_db->load_time = st.st_mtime;
+		if (st.st_mtime != hsts_db_priv->load_time)
+			hsts_db_priv->load_time = st.st_mtime;
 		else
 			return 0;
 	}
@@ -335,7 +362,7 @@ static int _hsts_db_load(_hsts_db_impl_t *hsts_db, FILE *fp)
 		}
 
 		if (ok) {
-			_hsts_db_add_entry(hsts_db, wget_memdup(&hsts, sizeof(hsts)));
+			_hsts_db_add_entry(hsts_db_priv, wget_memdup(&hsts, sizeof(hsts)));
 		} else {
 			_deinit_hsts(&hsts);
 			error_printf(_("Failed to parse HSTS line: '%s'\n"), buf);
@@ -345,32 +372,41 @@ static int _hsts_db_load(_hsts_db_impl_t *hsts_db, FILE *fp)
 	xfree(buf);
 
 	if (ferror(fp)) {
-		hsts_db->load_time = 0; // reload on next call to this function
+		hsts_db_priv->load_time = 0; // reload on next call to this function
 		return -1;
 	}
 
 	return 0;
 }
 
+/**
+ * \param[in] hsts_db a HSTS database
+ * \return 0 if the operation succeded, -1 in case of error
+ * 
+ * Performs all operations necessary to access the HSTS database entries from persistent storage
+ * using wget_hsts_host_match() for example.
+ *
+ * For database created by wget_hsts_db_init() this function will load all the entries from the file specified
+ * in `fname` parameter of wget_hsts_db_init().
+ */
+int wget_hsts_db_load(wget_hsts_db_t *hsts_db)
+{
+	return (* hsts_db->vtable->load)(hsts_db);
+}
 // Load the HSTS cache from a flat file
 // Protected by flock()
-
-int wget_hsts_db_load(wget_hsts_db_t *p_hsts_db)
+static int impl_hsts_db_load(wget_hsts_db_t *hsts_db)
 {
-	return (* p_hsts_db->vtable->load)(p_hsts_db);
-}
-static int impl_hsts_db_load(wget_hsts_db_t *p_hsts_db)
-{
-	_hsts_db_impl_t *hsts_db = (_hsts_db_impl_t *) p_hsts_db;
+	_hsts_db_impl_t *hsts_db_priv = (_hsts_db_impl_t *) hsts_db;
 
-	if (!hsts_db || !hsts_db->fname || !*hsts_db->fname)
+	if (!hsts_db_priv || !hsts_db_priv->fname || !*hsts_db_priv->fname)
 		return 0;
 
-	if (wget_update_file(hsts_db->fname, (wget_update_load_t)_hsts_db_load, NULL, hsts_db)) {
+	if (wget_update_file(hsts_db_priv->fname, (wget_update_load_t)_hsts_db_load, NULL, hsts_db_priv)) {
 		error_printf(_("Failed to read HSTS data\n"));
 		return -1;
 	} else {
-		debug_printf(_("Fetched HSTS data from '%s'\n"), hsts_db->fname);
+		debug_printf(_("Fetched HSTS data from '%s'\n"), hsts_db_priv->fname);
 		return 0;
 	}
 }
@@ -381,9 +417,9 @@ static int G_GNUC_WGET_NONNULL_ALL _hsts_save(FILE *fp, const wget_hsts_t *hsts)
 	return 0;
 }
 
-static int _hsts_db_save(void *hsts_db, FILE *fp)
+static int _hsts_db_save(void *hsts_db_priv, FILE *fp)
 {
-	wget_hashmap_t *entries = ((_hsts_db_impl_t *)hsts_db)->entries;
+	wget_hashmap_t *entries = ((_hsts_db_impl_t *)hsts_db_priv)->entries;
 
 	if (wget_hashmap_size(entries) > 0) {
 		fputs("#HSTS 1.0 file\n", fp);
@@ -399,29 +435,39 @@ static int _hsts_db_save(void *hsts_db, FILE *fp)
 	return 0;
 }
 
+//TODO: Replace all function names in documentation in this file with references
+//      Or look why function names are not getting replaced with links on their own.
+/**
+ * \param[in] hsts_db HSTS database
+ * \return 0 if the operation succeded, -1 otherwise
+ *
+ * Saves all changes to the HSTS database (via wget_hsts_db_add() for example) to persistent storage.
+ *
+ * For databases created by wget_hsts_db_init(), the data is stored into file specified by `fname` parameter 
+ * of wget_hsts_db_init().
+ */
+int wget_hsts_db_save(wget_hsts_db_t *hsts_db)
+{
+	return (* hsts_db->vtable->save)(hsts_db);
+}
 // Save the HSTS cache to a flat file
 // Protected by flock()
-
-int wget_hsts_db_save(wget_hsts_db_t *p_hsts_db)
+static int impl_hsts_db_save(wget_hsts_db_t *hsts_db)
 {
-	return (* p_hsts_db->vtable->save)(p_hsts_db);
-}
-static int impl_hsts_db_save(wget_hsts_db_t *p_hsts_db)
-{
-	_hsts_db_impl_t *hsts_db = (_hsts_db_impl_t *) p_hsts_db;
+	_hsts_db_impl_t *hsts_db_priv = (_hsts_db_impl_t *) hsts_db;
 
 	int size;
 
-	if (!hsts_db || !hsts_db->fname || !*hsts_db->fname)
+	if (!hsts_db_priv || !hsts_db_priv->fname || !*hsts_db_priv->fname)
 		return -1;
 
-	if (wget_update_file(hsts_db->fname, (wget_update_load_t)_hsts_db_load, _hsts_db_save, hsts_db)) {
-		error_printf(_("Failed to write HSTS file '%s'\n"), hsts_db->fname);
+	if (wget_update_file(hsts_db_priv->fname, (wget_update_load_t)_hsts_db_load, _hsts_db_save, hsts_db_priv)) {
+		error_printf(_("Failed to write HSTS file '%s'\n"), hsts_db_priv->fname);
 		return -1;
 	}
 
-	if ((size = wget_hashmap_size(hsts_db->entries)))
-		debug_printf(_("Saved %d HSTS entr%s into '%s'\n"), size, size != 1 ? "ies" : "y", hsts_db->fname);
+	if ((size = wget_hashmap_size(hsts_db_priv->entries)))
+		debug_printf(_("Saved %d HSTS entr%s into '%s'\n"), size, size != 1 ? "ies" : "y", hsts_db_priv->fname);
 	else
 		debug_printf(_("No HSTS entries to save. Table is empty.\n"));
 
@@ -437,30 +483,50 @@ static struct wget_hsts_db_vtable vtable = {
 	.free = impl_hsts_db_free
 };
 
-/*
+/**
+ * \param hsts_db Previously created HSTS database on which wget_hsts_db_deinit() has been called, or NULL
+ * \param fname The file where the data is stored, or NULL.
+ * \return A new wget_hsts_db_t
+ *
  * Constructor for the default implementation of HSTS database
  *
  * This function does no file IO, data is read only when \ref wget_hsts_db_load "wget_hsts_db_load()" is called.
- *
- * \param p_hsts_db TODO
- * \param fname The file where the data is stored, or NULL.
- * \return A new wget_hsts_db_t
  */
-wget_hsts_db_t *wget_hsts_db_init(wget_hsts_db_t *p_hsts_db, const char *fname)
+wget_hsts_db_t *wget_hsts_db_init(wget_hsts_db_t *hsts_db, const char *fname)
 {
-	_hsts_db_impl_t *hsts_db = (_hsts_db_impl_t *) p_hsts_db;
+	_hsts_db_impl_t *hsts_db_priv = (_hsts_db_impl_t *) hsts_db;
 
-	if (!hsts_db)
-		hsts_db = xmalloc(sizeof(_hsts_db_impl_t));
+	if (!hsts_db_priv)
+		hsts_db_priv = xmalloc(sizeof(_hsts_db_impl_t));
 
-	memset(hsts_db, 0, sizeof(*hsts_db));
-	hsts_db->parent.vtable = &vtable;
+	memset(hsts_db_priv, 0, sizeof(*hsts_db_priv));
+	hsts_db_priv->parent.vtable = &vtable;
 	if (fname)
-		hsts_db->fname = wget_strdup(fname);
-	hsts_db->entries = wget_hashmap_create(16, (wget_hashmap_hash_t)_hash_hsts, (wget_hashmap_compare_t)_compare_hsts);
-	wget_hashmap_set_key_destructor(hsts_db->entries, (wget_hashmap_key_destructor_t)_free_hsts);
-	wget_hashmap_set_value_destructor(hsts_db->entries, (wget_hashmap_value_destructor_t)_free_hsts);
-	wget_thread_mutex_init(&hsts_db->mutex);
+		hsts_db_priv->fname = wget_strdup(fname);
+	hsts_db_priv->entries = wget_hashmap_create(16, (wget_hashmap_hash_t)_hash_hsts, (wget_hashmap_compare_t)_compare_hsts);
+	wget_hashmap_set_key_destructor(hsts_db_priv->entries, (wget_hashmap_key_destructor_t)_free_hsts);
+	wget_hashmap_set_value_destructor(hsts_db_priv->entries, (wget_hashmap_value_destructor_t)_free_hsts);
+	wget_thread_mutex_init(&hsts_db_priv->mutex);
 
-	return (wget_hsts_db_t *) hsts_db;
+	return (wget_hsts_db_t *) hsts_db_priv;
 }
+
+/**
+ * \param hsts_db HSTS database created by wget_hsts_db_init().
+ * \param fname Filename where database should be stored, or NULL
+ *
+ * Changes the file where HSTS database entries are stored.
+ *
+ * Works only for the HSTS databases created by wget_hsts_db_init().
+ * This function does no file IO, data is read or written only when wget_hsts_db_load() or wget_hsts_db_save()
+ * is called.
+ */
+void wget_hsts_db_set_fname(wget_hsts_db_t *hsts_db, const char *fname)
+{
+	_hsts_db_impl_t *hsts_db_priv = (_hsts_db_impl_t *) hsts_db;
+
+	xfree(hsts_db_priv->fname);
+	if (fname)
+		hsts_db_priv->fname = wget_strdup(fname);
+}
+
