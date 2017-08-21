@@ -21,8 +21,6 @@
  *
  */
 
-//TODO: Replace function names with links if not automatically converted by doxygen
-
 #include <config.h>
 
 #include <wget.h>
@@ -685,8 +683,8 @@ static struct wget_hpkp_db_vtable vtable = {
 };
 
 /**
- * \param hpkp_db Older HPKP database already passed to wget_hpkp_db_deinit(), or NULL
- * \param fname Name of the file where the data should be stored, or NULL
+ * \param[in] hpkp_db Older HPKP database already passed to wget_hpkp_db_deinit(), or NULL
+ * \param[in] fname Name of the file where the data should be stored, or NULL
  * \return Handle (pointer) to an HPKP database
  *
  * Constructor for the default implementation of HSTS database.
@@ -731,8 +729,8 @@ wget_hpkp_db_t *wget_hpkp_db_init(wget_hpkp_db_t *hpkp_db, const char *fname)
 }
 
 /**
- * \param hpkp_db HPKP database created using wget_hpkp_db_init()
- * \param fname Name of the file where the data should be stored, or NULL
+ * \param[in] hpkp_db HPKP database created using wget_hpkp_db_init()
+ * \param[in] fname Name of the file where the data should be stored, or NULL
  *
  * Changes the file where data should be stored. Works only for databases created by wget_hpkp_db_init().
  * This function does no file IO, data is loaded when wget_hpkp_db_load() is called.

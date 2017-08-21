@@ -39,6 +39,15 @@
 #include <wget.h>
 #include "private.h"
 
+/**
+ * \file
+ * \brief HTTP Strict Transport Security (RFC 6797) routines
+ * \defgroup libwget-hsts HTTP Strict Transport Security (RFC 6797) routines
+ * @{
+ *
+ * This is an implementation of RFC 6797.
+ */
+
 typedef struct {
 	wget_hsts_db_t parent;
 
@@ -435,8 +444,6 @@ static int _hsts_db_save(void *hsts_db_priv, FILE *fp)
 	return 0;
 }
 
-//TODO: Replace all function names in documentation in this file with references
-//      Or look why function names are not getting replaced with links on their own.
 /**
  * \param[in] hsts_db HSTS database
  * \return 0 if the operation succeded, -1 otherwise
@@ -484,8 +491,8 @@ static struct wget_hsts_db_vtable vtable = {
 };
 
 /**
- * \param hsts_db Previously created HSTS database on which wget_hsts_db_deinit() has been called, or NULL
- * \param fname The file where the data is stored, or NULL.
+ * \param[in] hsts_db Previously created HSTS database on which wget_hsts_db_deinit() has been called, or NULL
+ * \param[in] fname The file where the data is stored, or NULL.
  * \return A new wget_hsts_db_t
  *
  * Constructor for the default implementation of HSTS database
@@ -512,8 +519,8 @@ wget_hsts_db_t *wget_hsts_db_init(wget_hsts_db_t *hsts_db, const char *fname)
 }
 
 /**
- * \param hsts_db HSTS database created by wget_hsts_db_init().
- * \param fname Filename where database should be stored, or NULL
+ * \param[in] hsts_db HSTS database created by wget_hsts_db_init().
+ * \param[in] fname Filename where database should be stored, or NULL
  *
  * Changes the file where HSTS database entries are stored.
  *
@@ -529,3 +536,5 @@ void wget_hsts_db_set_fname(wget_hsts_db_t *hsts_db, const char *fname)
 	if (fname)
 		hsts_db_priv->fname = wget_strdup(fname);
 }
+
+/**@}*/

@@ -25,8 +25,6 @@
  *
  */
 
-//TODO: Add new pages for documentation here
-
 #include <config.h>
 
 #include <stdio.h>
@@ -38,6 +36,15 @@
 
 #include <wget.h>
 #include "private.h"
+
+/**
+ * \file
+ * \brief Online Certificate Status Protocol (RFC 2560) routines
+ * \defgroup libwget-ocsp Online Certificate Status Protocol (RFC 2560) routines
+ * @{
+ *
+ * This is an implementation of RFC 2560.
+ */
 
 typedef struct {
 	wget_ocsp_db_t parent;
@@ -638,3 +645,5 @@ void wget_ocsp_db_set_fname(wget_ocsp_db_t *ocsp_db, const char *fname)
 	if (fname)
 		ocsp_db_priv->fname = wget_strdup(fname);
 }
+
+/**@}*/
