@@ -695,7 +695,7 @@ static struct wget_hpkp_db_vtable vtable = {
  * The entries in the file are subject to sanity checks as if they were added to the HPKP database
  * via wget_hpkp_db_add(). In particular, if an entry is expired due to `creation_time + max_age > cur_time`
  * it will not be added to the database, and a subsequent call to wget_hpkp_db_save() with the same `hpkp_db_priv`
- * handle and file name will overwrite the file without all the expired entries. 
+ * handle and file name will overwrite the file without all the expired entries.
  *
  * Since the format of the file might change without notice, hand-crafted files are discouraged.
  * To create an HPKP database file that is guaranteed to be correctly parsed by this function,
@@ -733,7 +733,7 @@ wget_hpkp_db_t *wget_hpkp_db_init(wget_hpkp_db_t *hpkp_db, const char *fname)
 /**
  * \param hpkp_db HPKP database created using wget_hpkp_db_init()
  * \param fname Name of the file where the data should be stored, or NULL
- * 
+ *
  * Changes the file where data should be stored. Works only for databases created by wget_hpkp_db_init().
  * This function does no file IO, data is loaded when wget_hpkp_db_load() is called.
  */

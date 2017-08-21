@@ -1050,7 +1050,7 @@ typedef struct _wget_hsts_db_st wget_hsts_db_t;
 
 /**
  * \addtogroup libwget-hsts
- * 
+ *
  * vtable for implementing custom HSTS databases
  */
 struct wget_hsts_db_vtable {

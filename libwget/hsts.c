@@ -181,7 +181,7 @@ static int impl_hsts_db_host_match(const wget_hsts_db_t *hsts_db, const char *ho
  * \param[in] hsts_db HSTS database created by wget_hsts_db_init()
  *
  * Frees all resources allocated for HSTS database, except for the structure itself. The hsts_db pointer can then
- * be passed to wget_hsts_db_init() for reinitialization. 
+ * be passed to wget_hsts_db_init() for reinitialization.
  *
  * This function only works with databases created by wget_hsts_db_init().
  */
@@ -382,7 +382,7 @@ static int _hsts_db_load(_hsts_db_impl_t *hsts_db_priv, FILE *fp)
 /**
  * \param[in] hsts_db a HSTS database
  * \return 0 if the operation succeded, -1 in case of error
- * 
+ *
  * Performs all operations necessary to access the HSTS database entries from persistent storage
  * using wget_hsts_host_match() for example.
  *
@@ -443,7 +443,7 @@ static int _hsts_db_save(void *hsts_db_priv, FILE *fp)
  *
  * Saves all changes to the HSTS database (via wget_hsts_db_add() for example) to persistent storage.
  *
- * For databases created by wget_hsts_db_init(), the data is stored into file specified by `fname` parameter 
+ * For databases created by wget_hsts_db_init(), the data is stored into file specified by `fname` parameter
  * of wget_hsts_db_init().
  */
 int wget_hsts_db_save(wget_hsts_db_t *hsts_db)
@@ -529,4 +529,3 @@ void wget_hsts_db_set_fname(wget_hsts_db_t *hsts_db, const char *fname)
 	if (fname)
 		hsts_db_priv->fname = wget_strdup(fname);
 }
-

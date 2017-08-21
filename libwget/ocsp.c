@@ -160,7 +160,7 @@ static int impl_ocsp_db_fingerprint_in_cache(const wget_ocsp_db_t *ocsp_db, cons
  * \return 1 if a valid host entry was found, 0 otherwise
  *
  * Checks if there exists an entry for the given host added by wget_ocsp_db_add_host() which has not expired.
- * 
+ *
  * \see wget_ocsp_add_host
  */
 int wget_ocsp_hostname_is_valid(const wget_ocsp_db_t *ocsp_db, const char *hostname)
@@ -190,7 +190,7 @@ static int impl_ocsp_db_hostname_is_valid(const wget_ocsp_db_t *ocsp_db, const c
 
 /**
  * \param[in] ocsp_db an OCSP database
- * 
+ *
  * Frees all resources allocated for the OCSP database, except for the structure.
  * Works only for databases created by wget_ocsp_db_init().
  * `ocsp_db` can then be passed to \ref wget_ocsp_db_init "wget_ocsp_db_init()".
@@ -215,7 +215,7 @@ void wget_ocsp_db_deinit(wget_ocsp_db_t *ocsp_db)
  * A double pointer is required because this function will
  * set the handle (pointer) to the HPKP database to NULL to prevent potential use-after-free conditions.
  *
- * New entries added to the database will be lost unless commited to the persistent storage using 
+ * New entries added to the database will be lost unless commited to the persistent storage using
  * wget_ocsp_db_save().
  */
 void wget_ocsp_db_free(wget_ocsp_db_t **ocsp_db)
@@ -278,7 +278,7 @@ static void _ocsp_db_add_fingerprint_entry(_ocsp_db_impl_t *ocsp_db_priv, wget_o
  * \param[in] fingerprint Public key fingerprint
  * \param[in] maxage The time till which this entry should be considered valid (in seconds from epoch)
  * \param[in] valid Whether the public key is valid according to the OCSP responder
- * 
+ *
  * Adds an OCSP response into the OCSP database.
  */
 void wget_ocsp_db_add_fingerprint(wget_ocsp_db_t *ocsp_db, const char *fingerprint, time_t maxage, int valid)
@@ -627,7 +627,7 @@ wget_ocsp_db_t *wget_ocsp_db_init(wget_ocsp_db_t *ocsp_db, const char *fname)
  * \param[in] ocsp_db an OCSP database
  * \param[in] fname The filename from where OCSP entries should be loaded, or NULL
  *
- * Changes the file from where OCSP database entries would be loaded or saved. 
+ * Changes the file from where OCSP database entries would be loaded or saved.
  * Works only with OCSP databases created with wget_ocsp_db_init().
  */
 void wget_ocsp_db_set_fname(wget_ocsp_db_t *ocsp_db, const char *fname)
