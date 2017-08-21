@@ -172,8 +172,6 @@ static int impl_ocsp_db_fingerprint_in_cache(const wget_ocsp_db_t *ocsp_db, cons
  */
 int wget_ocsp_hostname_is_valid(const wget_ocsp_db_t *ocsp_db, const char *hostname)
 {
-	//TODO: Check if there is a bug in libwget/ssl_gnutls.c:1325
-	//      or calling this with NULL is the correct behavior
 	if (! ocsp_db)
 		return 0;
 	return (* ocsp_db->vtable->hostname_is_valid)(ocsp_db, hostname);

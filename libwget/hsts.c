@@ -61,6 +61,7 @@ typedef struct {
 		load_time;
 } _hsts_db_impl_t;
 
+//TODO: Why is wget_hsts_t showing up in the documentation?
 typedef struct {
 	const char *
 		host;
