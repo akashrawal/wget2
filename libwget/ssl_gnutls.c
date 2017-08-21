@@ -130,6 +130,7 @@ void wget_ssl_set_config_string(int key, const char *value)
 	case WGET_SSL_CRL_FILE: _config.crl_file = value; break;
 	case WGET_SSL_OCSP_SERVER: _config.ocsp_server = value; break;
 	case WGET_SSL_OCSP_CACHE: _config.ocsp_cert_cache = (wget_ocsp_db_t *)value; break;
+	case WGET_SSL_OCSP_HOST_CACHE: _config.ocsp_host_cache = (wget_ocsp_db_t *)value; break;
 	case WGET_SSL_SESSION_CACHE: _config.tls_session_cache = (wget_tls_session_db_t *)value; break;
 	case WGET_SSL_HPKP_CACHE: _config.hpkp_cache = (wget_hpkp_db_t *)value; break;
 	case WGET_SSL_ALPN: _config.alpn = value; break;
@@ -792,8 +793,8 @@ static int _verify_certificate_callback(gnutls_session_t session)
 
 #ifdef HAVE_GNUTLS_OCSP_H
 	if (status & GNUTLS_CERT_REVOKED) {
-		if (_config.ocsp_cert_cache)
-			wget_ocsp_db_add_host(_config.ocsp_cert_cache, wget_ocsp_new(hostname, 0, 0)); // remove entry from cache
+		if (_config.ocsp_host_cache)
+			wget_ocsp_db_add_host(_config.ocsp_host_cache, wget_ocsp_new(hostname, 0, 0)); // remove entry from cache
 		if (ctx->ocsp_stapling) {
 			if (gnutls_x509_crt_init(&cert) == GNUTLS_E_SUCCESS) {
 				if ((cert_list = gnutls_certificate_get_peers(session, &cert_list_size))) {
@@ -931,7 +932,8 @@ static int _verify_certificate_callback(gnutls_session_t session)
 
 			_get_cert_fingerprint(cert, fingerprint, sizeof(fingerprint)); // calc hexadecimal fingerprint string
 
-			if (wget_ocsp_fingerprint_in_cache(_config.ocsp_cert_cache, fingerprint, &revoked)) {
+			if (_config.ocsp_cert_cache
+				&& wget_ocsp_fingerprint_in_cache(_config.ocsp_cert_cache, fingerprint, &revoked)) {
 				// found cert's fingerprint in cache
 				if (revoked) {
 					debug_printf("Certificate[%u] of '%s' has been revoked (cached)\n", it, hostname);
@@ -964,11 +966,15 @@ static int _verify_certificate_callback(gnutls_session_t session)
 
 			if (ocsp_ok == 1) {
 				debug_printf("Certificate[%u] of '%s' is valid (via OCSP)\n", it, hostname);
-				wget_ocsp_db_add_fingerprint(_config.ocsp_cert_cache, wget_ocsp_new(fingerprint, time(NULL) + 3600, 1)); // 1h valid
+				if (_config.ocsp_cert_cache)
+					wget_ocsp_db_add_fingerprint(_config.ocsp_cert_cache,
+							wget_ocsp_new(fingerprint, time(NULL) + 3600, 1)); // 1h valid
 				nvalid++;
 			} else if (ocsp_ok == 0) {
 				debug_printf(_("%s: Certificate[%u] of '%s' has been revoked (via OCSP)\n"), tag, it, hostname);
-				wget_ocsp_db_add_fingerprint(_config.ocsp_cert_cache, wget_ocsp_new(fingerprint, time(NULL) + 3600, 0));  // cert has been revoked
+				if (_config.ocsp_cert_cache)
+					wget_ocsp_db_add_fingerprint(_config.ocsp_cert_cache,
+							wget_ocsp_new(fingerprint, time(NULL) + 3600, 0));  // cert has been revoked
 				nrevoked++;
 			} else {
 				debug_printf("WARNING: OCSP response not available or ignored\n");
@@ -978,9 +984,13 @@ static int _verify_certificate_callback(gnutls_session_t session)
 
 	if (_config.ocsp_stapling || _config.ocsp) {
 		if (nvalid == cert_list_size) {
-			wget_ocsp_db_add_host(_config.ocsp_cert_cache, wget_ocsp_new(hostname, time(NULL) + 3600, 1)); // 1h valid
+			if (_config.ocsp_host_cache)
+				wget_ocsp_db_add_host(_config.ocsp_host_cache,
+						wget_ocsp_new(hostname, time(NULL) + 3600, 1)); // 1h valid
 		} else if (nrevoked) {
-			wget_ocsp_db_add_host(_config.ocsp_cert_cache, wget_ocsp_new(hostname, 0, 0)); // remove entry from cache
+			if (_config.ocsp_host_cache)
+				wget_ocsp_db_add_host(_config.ocsp_host_cache,
+						wget_ocsp_new(hostname, 0, 0)); // remove entry from cache
 			ret = -1;
 		}
 	}
@@ -1325,7 +1335,7 @@ int wget_ssl_open(wget_tcp_t *tcp)
 	// we don't ask for OCSP stapling to avoid unneeded IP traffic.
 	// In the unlikely case that the server's certificate chain changed right now,
 	// we fallback to OCSP responder request later.
-	if (hostname) {
+	if (_config.ocsp_host_cache && hostname) {
 		if (!(ctx->valid = !!wget_ocsp_hostname_is_valid(_config.ocsp_host_cache, hostname))) {
 #if GNUTLS_VERSION_NUMBER >= 0x030103
 			if ((rc = gnutls_ocsp_status_request_enable_client(session, NULL, 0, NULL)) == GNUTLS_E_SUCCESS)
