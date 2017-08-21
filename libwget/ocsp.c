@@ -115,12 +115,6 @@ wget_ocsp_t *wget_ocsp_new(const char *fingerprint, time_t maxage, int valid)
 
 int wget_ocsp_fingerprint_in_cache(const wget_ocsp_db_t *ocsp_db, const char *fingerprint, int *revoked)
 {
-	//TODO: Remove asserts
-	if (! ocsp_db) {
-		fprintf(stderr, __FILE__ ":%d: NULL is not valid value of ocsp_db\n", __LINE__);
-		abort();
-	}
-
 	if (ocsp_db) {
 		wget_ocsp_t ocsp, *ocspp;
 
@@ -138,11 +132,6 @@ int wget_ocsp_fingerprint_in_cache(const wget_ocsp_db_t *ocsp_db, const char *fi
 
 int wget_ocsp_hostname_is_valid(const wget_ocsp_db_t *ocsp_db, const char *hostname)
 {
-	if (! ocsp_db) {
-		fprintf(stderr, __FILE__ ":%d: NULL is not valid value of ocsp_db\n", __LINE__);
-		abort();
-	}
-
 	if (ocsp_db) {
 		wget_ocsp_t ocsp, *ocspp;
 
@@ -178,11 +167,6 @@ wget_ocsp_db_t *wget_ocsp_db_init(wget_ocsp_db_t *ocsp_db)
 
 void wget_ocsp_db_deinit(wget_ocsp_db_t *ocsp_db)
 {
-	if (! ocsp_db) {
-		fprintf(stderr, __FILE__ ":%d: NULL is not valid value of ocsp_db\n", __LINE__);
-		abort();
-	}
-
 	if (ocsp_db) {
 		wget_thread_mutex_lock(&ocsp_db->mutex);
 		wget_hashmap_free(&ocsp_db->fingerprints);
@@ -193,11 +177,6 @@ void wget_ocsp_db_deinit(wget_ocsp_db_t *ocsp_db)
 
 void wget_ocsp_db_free(wget_ocsp_db_t **ocsp_db)
 {
-	if (! ocsp_db) {
-		fprintf(stderr, __FILE__ ":%d: NULL is not valid value of ocsp_db\n", __LINE__);
-		abort();
-	}
-
 	if (ocsp_db) {
 		wget_ocsp_db_deinit(*ocsp_db);
 		xfree(*ocsp_db);
@@ -206,10 +185,6 @@ void wget_ocsp_db_free(wget_ocsp_db_t **ocsp_db)
 
 void wget_ocsp_db_add_fingerprint(wget_ocsp_db_t *ocsp_db, wget_ocsp_t *ocsp)
 {
-	if (! ocsp_db) {
-		fprintf(stderr, __FILE__ ":%d: NULL is not valid value of ocsp_db\n", __LINE__);
-		abort();
-	}
 	if (!ocsp)
 		return;
 
@@ -248,10 +223,6 @@ void wget_ocsp_db_add_fingerprint(wget_ocsp_db_t *ocsp_db, wget_ocsp_t *ocsp)
 
 void wget_ocsp_db_add_host(wget_ocsp_db_t *ocsp_db, wget_ocsp_t *ocsp)
 {
-	if (! ocsp_db) {
-		fprintf(stderr, __FILE__ ":%d: NULL is not valid value of ocsp_db\n", __LINE__);
-		abort();
-	}
 	if (!ocsp)
 		return;
 
@@ -379,10 +350,6 @@ int wget_ocsp_db_load(wget_ocsp_db_t *ocsp_db, const char *fname)
 {
 	int ret;
 
-	if (! ocsp_db) {
-		fprintf(stderr, __FILE__ ":%d: NULL is not valid value of ocsp_db\n", __LINE__);
-		abort();
-	}
 	if (!ocsp_db || !fname || !*fname)
 		return -1;
 
@@ -456,10 +423,6 @@ static int _ocsp_db_save_fingerprints(void *ocsp_db, FILE *fp)
 int wget_ocsp_db_save(wget_ocsp_db_t *ocsp_db, const char *fname)
 {
 	int ret;
-	if (! ocsp_db) {
-		fprintf(stderr, __FILE__ ":%d: NULL is not valid value of ocsp_db\n", __LINE__);
-		abort();
-	}
 
 	if (!ocsp_db || !fname || !*fname)
 		return -1;
