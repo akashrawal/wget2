@@ -197,9 +197,6 @@ void wget_ocsp_db_free(wget_ocsp_db_t **ocsp_db)
 		fprintf(stderr, __FILE__ ":%d: NULL is not valid value of ocsp_db\n", __LINE__);
 		abort();
 	}
-	//TODO: Revert
-	if (! *ocsp_db)
-		return;
 
 	if (ocsp_db) {
 		wget_ocsp_db_deinit(*ocsp_db);
