@@ -268,11 +268,13 @@ static void _hsts_db_add_entry(_hsts_db_impl_t *hsts_db_priv, wget_hsts_t *hsts)
  * \param[in] hsts_db a HSTS database
  * \param[in] host Hostname from where `Strict-Transport-Security` header was received
  * \param[in] port Port number used for connecting to the host
- * \param[in] maxage The time from now till the entry is valid, in seconds.
+ * \param[in] maxage The time from now till the entry is valid, in seconds, or 0 to remove existing entry.
  *                   Corresponds to the `max-age` directive in `Strict-Transport-Security` header.
  * \param[in] include_subdomains Nonzero if `includeSubDomains` directive was present in the header, zero otherwise
  *
  * Add an entry to the HSTS database. An entry corresponds to the `Strict-Transport-Security` HTTP response header.
+ * Any existing entry with same `host` and `port` is replaced. If `maxage` is zero, any existing entry with
+ * matching `host` and `port` is removed.
  */
 void wget_hsts_db_add(wget_hsts_db_t *hsts_db, const char *host, uint16_t port, time_t maxage, int include_subdomains)
 {

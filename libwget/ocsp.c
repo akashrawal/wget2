@@ -281,10 +281,12 @@ static void _ocsp_db_add_fingerprint_entry(_ocsp_db_impl_t *ocsp_db_priv, wget_o
 /**
  * \param[in] ocsp_db an OCSP database
  * \param[in] fingerprint Public key fingerprint
- * \param[in] maxage The time till which this entry should be considered valid (in seconds from epoch)
+ * \param[in] maxage The time till which this entry should be considered valid (in seconds from epoch),
+ *                   or 0 to remove existing entry.
  * \param[in] valid Whether the public key is valid according to the OCSP responder
  *
- * Adds an OCSP response into the OCSP database.
+ * Adds an OCSP response into the OCSP database. The new entry replaces any existing entry with same
+ * `fingerprint`. If `maxage` is 0, any entry with matching `fingerprint` is removed.
  */
 void wget_ocsp_db_add_fingerprint(wget_ocsp_db_t *ocsp_db, const char *fingerprint, time_t maxage, int valid)
 {
@@ -342,9 +344,11 @@ static void _ocsp_db_add_host_entry(_ocsp_db_impl_t *ocsp_db_priv, wget_ocsp_t *
 /**
  * \param[in] ocsp_db an OCSP database
  * \param[in] host The host to add
- * \param[in] maxage The time till which this entry should be considered valid (in seconds from epoch)
+ * \param[in] maxage The time till which this entry should be considered valid (in seconds from epoch),
+ *                   or 0 to remove existing entry.
  *
- * Adds a host entry into the given OCSP database.
+ * Adds a host entry into the given OCSP database. The new entry replaces any existing entry with same
+ * `host`. If `maxage` is 0, any entry with matching `host` is removed.
  *
  * The intended use is to serve as a cache for hosts with certificate chains for  which all OCSP responses are positive.
  * The added entries can then be queried for by wget_ocsp_hostname_is_valid(). A positive response indicates
