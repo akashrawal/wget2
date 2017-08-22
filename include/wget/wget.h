@@ -1482,10 +1482,10 @@ WGETAPI int
 #define WGET_SSL_OCSP_SERVER       15
 #define WGET_SSL_OCSP              16
 #define WGET_SSL_OCSP_CACHE        17
-#define WGET_SSL_OCSP_HOST_CACHE   18
-#define WGET_SSL_ALPN              19
-#define WGET_SSL_SESSION_CACHE     20
-#define WGET_SSL_HPKP_CACHE        21
+#define WGET_SSL_ALPN              18
+#define WGET_SSL_SESSION_CACHE     19
+#define WGET_SSL_HPKP_CACHE        20
+#define WGET_SSL_OCSP_HOST_CACHE   21
 
 WGETAPI void
 	wget_ssl_init(void);
