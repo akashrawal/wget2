@@ -578,13 +578,15 @@ static int _hpkp_db_load(_hpkp_db_impl_t *hpkp_db_priv, FILE *fp)
  */
 int wget_hpkp_db_load(wget_hpkp_db_t *hpkp_db)
 {
+	if (! hpkp_db)
+		return 0;
 	return (*hpkp_db->vtable->load)(hpkp_db);
 }
 static int impl_hpkp_db_load(wget_hpkp_db_t *hpkp_db)
 {
 	_hpkp_db_impl_t *hpkp_db_priv = (_hpkp_db_impl_t *) hpkp_db;
 
-	if (!hpkp_db_priv || !hpkp_db_priv->fname || !*hpkp_db_priv->fname)
+	if (!hpkp_db_priv->fname || !*hpkp_db_priv->fname)
 		return 0;
 
 	if (wget_update_file(hpkp_db_priv->fname, (wget_update_load_t)_hpkp_db_load, NULL, hpkp_db_priv)) {
@@ -653,6 +655,9 @@ static int _hpkp_db_save(_hpkp_db_impl_t *hpkp_db_priv, FILE *fp)
  */
 int wget_hpkp_db_save(wget_hpkp_db_t *hpkp_db)
 {
+	if (! hpkp_db)
+		return -1;
+
 	return (*hpkp_db->vtable->save)(hpkp_db);
 }
 static int impl_hpkp_db_save(wget_hpkp_db_t *hpkp_db)
@@ -661,7 +666,7 @@ static int impl_hpkp_db_save(wget_hpkp_db_t *hpkp_db)
 
 	int size;
 
-	if (!hpkp_db_priv || !hpkp_db_priv->fname || !*hpkp_db_priv->fname)
+	if (!hpkp_db_priv->fname || !*hpkp_db_priv->fname)
 		return -1;
 
 	if (wget_update_file(hpkp_db_priv->fname, (wget_update_load_t)_hpkp_db_load, (wget_update_load_t)_hpkp_db_save, hpkp_db_priv)) {

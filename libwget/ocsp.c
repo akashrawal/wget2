@@ -68,12 +68,12 @@ typedef struct {
 		mtime; // creation time
 	unsigned char
 		valid : 1; // 1=valid, 0=revoked
-} wget_ocsp_t;
+} _ocsp_t;
 
 #ifdef __clang__
 __attribute__((no_sanitize("integer")))
 #endif
-static unsigned int G_GNUC_WGET_PURE _hash_ocsp(const wget_ocsp_t *ocsp)
+static unsigned int G_GNUC_WGET_PURE _hash_ocsp(const _ocsp_t *ocsp)
 {
 	unsigned int hash = 0;
 	const unsigned char *p;
@@ -84,15 +84,15 @@ static unsigned int G_GNUC_WGET_PURE _hash_ocsp(const wget_ocsp_t *ocsp)
 	return hash;
 }
 
-static int G_GNUC_WGET_NONNULL_ALL G_GNUC_WGET_PURE _compare_ocsp(const wget_ocsp_t *h1, const wget_ocsp_t *h2)
+static int G_GNUC_WGET_NONNULL_ALL G_GNUC_WGET_PURE _compare_ocsp(const _ocsp_t *h1, const _ocsp_t *h2)
 {
 	return strcmp(h1->key, h2->key);
 }
 
-static wget_ocsp_t *_init_ocsp(wget_ocsp_t *ocsp)
+static _ocsp_t *_init_ocsp(_ocsp_t *ocsp)
 {
 	if (!ocsp)
-		ocsp = xmalloc(sizeof(wget_ocsp_t));
+		ocsp = xmalloc(sizeof(_ocsp_t));
 
 	memset(ocsp, 0, sizeof(*ocsp));
 	ocsp->mtime = time(NULL);
@@ -100,14 +100,14 @@ static wget_ocsp_t *_init_ocsp(wget_ocsp_t *ocsp)
 	return ocsp;
 }
 
-static void _deinit_ocsp(wget_ocsp_t *ocsp)
+static void _deinit_ocsp(_ocsp_t *ocsp)
 {
 	if (ocsp) {
 		xfree(ocsp->key);
 	}
 }
 
-static void _free_ocsp(wget_ocsp_t *ocsp)
+static void _free_ocsp(_ocsp_t *ocsp)
 {
 	if (ocsp) {
 		_deinit_ocsp(ocsp);
@@ -115,9 +115,9 @@ static void _free_ocsp(wget_ocsp_t *ocsp)
 	}
 }
 
-static wget_ocsp_t *_new_ocsp(const char *fingerprint, time_t maxage, int valid)
+static _ocsp_t *_new_ocsp(const char *fingerprint, time_t maxage, int valid)
 {
-	wget_ocsp_t *ocsp = _init_ocsp(NULL);
+	_ocsp_t *ocsp = _init_ocsp(NULL);
 
 	ocsp->key = wget_strdup(fingerprint);
 	ocsp->maxage = maxage;
@@ -146,16 +146,14 @@ static int impl_ocsp_db_fingerprint_in_cache(const wget_ocsp_db_t *ocsp_db, cons
 {
 	_ocsp_db_impl_t *ocsp_db_priv = (_ocsp_db_impl_t *) ocsp_db;
 
-	if (ocsp_db_priv) {
-		wget_ocsp_t ocsp, *ocspp;
+	_ocsp_t ocsp, *ocspp;
 
-		// look for an exact match
-		ocsp.key = fingerprint;
-		if ((ocspp = wget_hashmap_get(ocsp_db_priv->fingerprints, &ocsp)) && ocspp->maxage >= (int64_t) time(NULL)) {
-			if (revoked)
-				*revoked = !ocspp->valid;
-			return 1;
-		}
+	// look for an exact match
+	ocsp.key = fingerprint;
+	if ((ocspp = wget_hashmap_get(ocsp_db_priv->fingerprints, &ocsp)) && ocspp->maxage >= (int64_t) time(NULL)) {
+		if (revoked)
+			*revoked = !ocspp->valid;
+		return 1;
 	}
 
 	return 0;
@@ -180,14 +178,12 @@ static int impl_ocsp_db_hostname_is_valid(const wget_ocsp_db_t *ocsp_db, const c
 {
 	_ocsp_db_impl_t *ocsp_db_priv = (_ocsp_db_impl_t *) ocsp_db;
 
-	if (ocsp_db_priv) {
-		wget_ocsp_t ocsp, *ocspp;
+	_ocsp_t ocsp, *ocspp;
 
-		// look for an exact match
-		ocsp.key = hostname;
-		if ((ocspp = wget_hashmap_get(ocsp_db_priv->hosts, &ocsp)) && ocspp->maxage >= (int64_t) time(NULL)) {
-			return 1;
-		}
+	// look for an exact match
+	ocsp.key = hostname;
+	if ((ocspp = wget_hashmap_get(ocsp_db_priv->hosts, &ocsp)) && ocspp->maxage >= (int64_t) time(NULL)) {
+		return 1;
 	}
 
 	return 0;
@@ -234,13 +230,11 @@ static void impl_ocsp_db_free(wget_ocsp_db_t *ocsp_db)
 {
 	_ocsp_db_impl_t *ocsp_db_priv = (_ocsp_db_impl_t *) ocsp_db;
 
-	if (ocsp_db_priv) {
-		wget_ocsp_db_deinit((wget_ocsp_db_t *) ocsp_db_priv);
-		xfree(ocsp_db_priv);
-	}
+	wget_ocsp_db_deinit((wget_ocsp_db_t *) ocsp_db_priv);
+	xfree(ocsp_db_priv);
 }
 
-static void _ocsp_db_add_fingerprint_entry(_ocsp_db_impl_t *ocsp_db_priv, wget_ocsp_t *ocsp)
+static void _ocsp_db_add_fingerprint_entry(_ocsp_db_impl_t *ocsp_db_priv, _ocsp_t *ocsp)
 {
 	if (!ocsp)
 		return;
@@ -257,7 +251,7 @@ static void _ocsp_db_add_fingerprint_entry(_ocsp_db_impl_t *ocsp_db_priv, wget_o
 			debug_printf("removed OCSP cert %s\n", ocsp->key);
 		_free_ocsp(ocsp);
 	} else {
-		wget_ocsp_t *old = wget_hashmap_get(ocsp_db_priv->fingerprints, ocsp);
+		_ocsp_t *old = wget_hashmap_get(ocsp_db_priv->fingerprints, ocsp);
 
 		if (old) {
 			if (old->mtime < ocsp->mtime) {
@@ -298,12 +292,12 @@ static void impl_ocsp_db_add_fingerprint(wget_ocsp_db_t *ocsp_db, const char *fi
 {
 	_ocsp_db_impl_t *ocsp_db_priv = (_ocsp_db_impl_t *) ocsp_db;
 
-	wget_ocsp_t *ocsp = _new_ocsp(fingerprint, maxage, valid);
+	_ocsp_t *ocsp = _new_ocsp(fingerprint, maxage, valid);
 
 	_ocsp_db_add_fingerprint_entry(ocsp_db_priv, ocsp);
 }
 
-static void _ocsp_db_add_host_entry(_ocsp_db_impl_t *ocsp_db_priv, wget_ocsp_t *ocsp)
+static void _ocsp_db_add_host_entry(_ocsp_db_impl_t *ocsp_db_priv, _ocsp_t *ocsp)
 {
 	if (!ocsp)
 		return;
@@ -320,7 +314,7 @@ static void _ocsp_db_add_host_entry(_ocsp_db_impl_t *ocsp_db_priv, wget_ocsp_t *
 			debug_printf("removed OCSP host %s\n", ocsp->key);
 		_free_ocsp(ocsp);
 	} else {
-		wget_ocsp_t *old = wget_hashmap_get(ocsp_db_priv->hosts, ocsp);
+		_ocsp_t *old = wget_hashmap_get(ocsp_db_priv->hosts, ocsp);
 
 		if (old) {
 			if (old->mtime < ocsp->mtime) {
@@ -365,7 +359,7 @@ static void impl_ocsp_db_add_host(wget_ocsp_db_t *ocsp_db, const char *host, tim
 {
 	_ocsp_db_impl_t *ocsp_db_priv = (_ocsp_db_impl_t *) ocsp_db;
 
-	wget_ocsp_t *ocsp = _new_ocsp(host, maxage, 0);
+	_ocsp_t *ocsp = _new_ocsp(host, maxage, 0);
 
 	_ocsp_db_add_host_entry(ocsp_db_priv, ocsp);
 }
@@ -375,7 +369,7 @@ static void impl_ocsp_db_add_host(wget_ocsp_db_t *ocsp_db, const char *host, tim
 
 static int _ocsp_db_load(_ocsp_db_impl_t *ocsp_db_priv, FILE *fp, int load_hosts)
 {
-	wget_ocsp_t ocsp;
+	_ocsp_t ocsp;
 	char *buf = NULL, *linep, *p;
 	size_t bufsize = 0;
 	ssize_t buflen;
@@ -478,7 +472,7 @@ static int impl_ocsp_db_load(wget_ocsp_db_t *ocsp_db)
 
 	int ret;
 
-	if (!ocsp_db_priv || !ocsp_db_priv->fname || !*ocsp_db_priv->fname)
+	if (!ocsp_db_priv->fname || !*ocsp_db_priv->fname)
 		return -1;
 
 	char fname_hosts[strlen(ocsp_db_priv->fname) + 6 + 1];
@@ -498,13 +492,13 @@ static int impl_ocsp_db_load(wget_ocsp_db_t *ocsp_db)
 	return ret;
 }
 
-static int G_GNUC_WGET_NONNULL_ALL _ocsp_save_fingerprint(FILE *fp, const wget_ocsp_t *ocsp)
+static int G_GNUC_WGET_NONNULL_ALL _ocsp_save_fingerprint(FILE *fp, const _ocsp_t *ocsp)
 {
 	fprintf(fp, "%s %lld %lld %d\n", ocsp->key, (long long)ocsp->maxage, (long long)ocsp->mtime, ocsp->valid);
 	return 0;
 }
 
-static int G_GNUC_WGET_NONNULL_ALL _ocsp_save_host(FILE *fp, const wget_ocsp_t *ocsp)
+static int G_GNUC_WGET_NONNULL_ALL _ocsp_save_host(FILE *fp, const _ocsp_t *ocsp)
 {
 	fprintf(fp, "%s %lld %lld\n", ocsp->key, (long long)ocsp->maxage, (long long)ocsp->mtime);
 	return 0;
