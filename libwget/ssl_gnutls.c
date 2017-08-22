@@ -792,6 +792,8 @@ static int _verify_certificate_callback(gnutls_session_t session)
 //		_print_info(session);
 
 #ifdef HAVE_GNUTLS_OCSP_H
+	//TODO: Check what is wrong here, owner says we need to remove fingerprints from cert_cache
+	//      but in absence of immediate host->fingerprint relation...
 	if (status & GNUTLS_CERT_REVOKED) {
 		if (_config.ocsp_host_cache)
 			wget_ocsp_db_add_host(_config.ocsp_host_cache, wget_ocsp_new(hostname, 0, 0)); // remove entry from cache
