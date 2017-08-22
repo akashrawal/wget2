@@ -1046,7 +1046,7 @@ WGETAPI char *
  *
  * Structure representing HSTS database for storing HTTP Strict Transport Security (HSTS) entries
  */
-typedef struct _wget_hsts_db_st wget_hsts_db_t;
+typedef struct wget_hsts_db_st wget_hsts_db_t;
 
 /**
  * \ingroup libwget-hsts
@@ -1130,7 +1130,7 @@ struct wget_hsts_db_vtable {
 	void (*free)(wget_hsts_db_t *);
 };
 
-struct _wget_hsts_db_st {
+struct wget_hsts_db_st {
 	/// Pointer to the implementation vtable
 	struct wget_hsts_db_vtable *vtable;
 };
@@ -1161,9 +1161,8 @@ WGETAPI int
  *
  * HPKP database for storing HTTP Public Kay Pinning (HPKP) entries
  */
-typedef struct _wget_hpkp_db_st wget_hpkp_db_t;
+typedef struct wget_hpkp_db_st wget_hpkp_db_t;
 
-//TODO: See why structure entries are not showing up in doxygen
 /**
  * \ingroup libwget-hpkp
  *
@@ -1269,7 +1268,7 @@ struct wget_hpkp_db_vtable {
 	int (*check_pubkey)(wget_hpkp_db_t *, const char *, const void *, size_t);
 };
 
-struct _wget_hpkp_db_st {
+struct wget_hpkp_db_st {
 	/// Pointer to the implemetation vtable
 	struct wget_hpkp_db_vtable *vtable;
 };
@@ -1357,7 +1356,7 @@ WGETAPI int
  *
  * structure for Online Certificate Status Protocol (OCSP) entries
  */
-typedef struct _wget_ocsp_db_st wget_ocsp_db_t;
+typedef struct wget_ocsp_db_st wget_ocsp_db_t;
 
 /**
  * \ingroup libwget-ocsp
@@ -1460,7 +1459,7 @@ struct wget_ocsp_db_vtable {
 	void (*free)(wget_ocsp_db_t *);
 };
 
-struct _wget_ocsp_db_st {
+struct wget_ocsp_db_st {
 	/// Pointer to the implemetation vtable
 	struct wget_ocsp_db_vtable *vtable;
 };
