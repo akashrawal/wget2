@@ -376,7 +376,6 @@ static int _wget_hpkp_compare_pins(wget_hpkp_t *hpkp1, wget_hpkp_t *hpkp2)
 }
 */
 
-// TODO: Shouldn't the return values be put into enum?
 /**
  * \param[in] hpkp_db a HPKP database
  * \param[in] host The hostname in question.
