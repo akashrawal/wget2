@@ -189,8 +189,8 @@ static int impl_hsts_db_host_match(const wget_hsts_db_t *hsts_db, const char *ho
 /**
  * \param[in] hsts_db HSTS database created by wget_hsts_db_init()
  *
- * Frees all resources allocated for HSTS database, except for the structure itself. The hsts_db pointer can then
- * be passed to wget_hsts_db_init() for reinitialization.
+ * Frees all resources allocated for HSTS database, except for the structure itself. The `hsts_db` pointer can then
+ * be passed to wget_hsts_db_init() for reinitialization. If `hsts_db` is NULL this function does nothing.
  *
  * This function only works with databases created by wget_hsts_db_init().
  */
@@ -212,22 +212,21 @@ void wget_hsts_db_deinit(wget_hsts_db_t *hsts_db)
  * Frees all resources allocated for the HSTS database.
  * A double pointer is required because this function will
  * set the handle (pointer) to the HPKP database to NULL to prevent potential use-after-free conditions.
+ * If `hsts_db` or pointer it points to is NULL, then the function does nothing.
  *
  * Newly added entries will be lost unless commited to persistent storage using wget_hsts_db_save().
  */
 void wget_hsts_db_free(wget_hsts_db_t **hsts_db)
 {
-	if (hsts_db) {
+	if (hsts_db && *hsts_db) {
 		(* (*hsts_db)->vtable->free)(*hsts_db);
 		*hsts_db = NULL;
 	}
 }
-static void impl_hsts_db_free(wget_hsts_db_t *hsts_db_priv)
+static void impl_hsts_db_free(wget_hsts_db_t *hsts_db)
 {
-	if (hsts_db_priv) {
-		wget_hsts_db_deinit(hsts_db_priv);
-		xfree(hsts_db_priv);
-	}
+	wget_hsts_db_deinit(hsts_db);
+	xfree(hsts_db);
 }
 
 static void _hsts_db_add_entry(_hsts_db_impl_t *hsts_db_priv, _hsts_t *hsts)
@@ -399,6 +398,8 @@ static int _hsts_db_load(_hsts_db_impl_t *hsts_db_priv, FILE *fp)
  *
  * For database created by wget_hsts_db_init() this function will load all the entries from the file specified
  * in `fname` parameter of wget_hsts_db_init().
+ *
+ * If `hsts_db` is NULL this function does nothing and returns 0.
  */
 int wget_hsts_db_load(wget_hsts_db_t *hsts_db)
 {
@@ -457,6 +458,8 @@ static int _hsts_db_save(void *hsts_db_priv, FILE *fp)
  *
  * For databases created by wget_hsts_db_init(), the data is stored into file specified by `fname` parameter
  * of wget_hsts_db_init().
+ *
+ * If `hsts_db` is NULL this function does nothing.
  */
 int wget_hsts_db_save(wget_hsts_db_t *hsts_db)
 {

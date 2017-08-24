@@ -135,6 +135,8 @@ static _ocsp_t *_new_ocsp(const char *fingerprint, time_t maxage, int valid)
  *
  * Searches for a cached OCSP response in the OCSP database. OCSP responses are added using
  * wget_ocsp_db_add_fingerprint().
+ *
+ * If `ocsp_db` is NULL then this function returns 0 and does nothing else.
  */
 int wget_ocsp_fingerprint_in_cache(const wget_ocsp_db_t *ocsp_db, const char *fingerprint, int *revoked)
 {
@@ -166,6 +168,8 @@ static int impl_ocsp_db_fingerprint_in_cache(const wget_ocsp_db_t *ocsp_db, cons
  *
  * Checks if there exists an entry for the given host added by wget_ocsp_db_add_host() which has not expired.
  *
+ * If `ocsp_db` is NULL then this function returns 0 and does nothing else.
+ *
  * \see wget_ocsp_add_host
  */
 int wget_ocsp_hostname_is_valid(const wget_ocsp_db_t *ocsp_db, const char *hostname)
@@ -195,6 +199,8 @@ static int impl_ocsp_db_hostname_is_valid(const wget_ocsp_db_t *ocsp_db, const c
  * Frees all resources allocated for the OCSP database, except for the structure.
  * Works only for databases created by wget_ocsp_db_init().
  * `ocsp_db` can then be passed to \ref wget_ocsp_db_init "wget_ocsp_db_init()".
+ *
+ * If `ocsp_db` is NULL then this function does nothing.
  */
 void wget_ocsp_db_deinit(wget_ocsp_db_t *ocsp_db)
 {
@@ -218,6 +224,8 @@ void wget_ocsp_db_deinit(wget_ocsp_db_t *ocsp_db)
  *
  * New entries added to the database will be lost unless commited to the persistent storage using
  * wget_ocsp_db_save().
+ *
+ * If `ocsp_db` or the pointer it points to is NULL, then this function does nothing.
  */
 void wget_ocsp_db_free(wget_ocsp_db_t **ocsp_db)
 {
@@ -281,6 +289,8 @@ static void _ocsp_db_add_fingerprint_entry(_ocsp_db_impl_t *ocsp_db_priv, _ocsp_
  *
  * Adds an OCSP response into the OCSP database. The new entry replaces any existing entry with same
  * `fingerprint`. If `maxage` is 0, any entry with matching `fingerprint` is removed.
+ *
+ * If `ocsp_db` is NULL then this function does nothing.
  */
 void wget_ocsp_db_add_fingerprint(wget_ocsp_db_t *ocsp_db, const char *fingerprint, time_t maxage, int valid)
 {
@@ -348,6 +358,8 @@ static void _ocsp_db_add_host_entry(_ocsp_db_impl_t *ocsp_db_priv, _ocsp_t *ocsp
  * The added entries can then be queried for by wget_ocsp_hostname_is_valid(). A positive response indicates
  * fingerprints for each public key in the certificate chain are likely already added to the database, in which
  * case OCSP responses are not needed.
+ *
+ * If `ocsp_db` is NULL then this function does nothing.
  */
 void wget_ocsp_db_add_host(wget_ocsp_db_t *ocsp_db, const char *host, time_t maxage)
 {
@@ -459,6 +471,8 @@ static int _ocsp_db_load_fingerprints(void *ocsp_db_priv, FILE *fp)
  *
  * For databases created by wget_ocsp_db_init(), the data is fetched from file specified by `fname` parameter
  * of wget_ocsp_db_load().
+ *
+ * If `ocsp_db` is NULL then this function returns -1 and does nothing else.
  */
 int wget_ocsp_db_load(wget_ocsp_db_t *ocsp_db)
 {
@@ -547,6 +561,8 @@ static int _ocsp_db_save_fingerprints(void *ocsp_db_priv, FILE *fp)
  *
  * For databases created by wget_ocsp_db_init(), the data is stored into file specified by `fname` parameter
  * of wget_ocsp_db_load(), overwriting any existing content.
+ *
+ * If `ocsp_db` is NULL then this function returns -1 and does nothing else.
  */
 int wget_ocsp_db_save(wget_ocsp_db_t *ocsp_db)
 {

@@ -154,6 +154,7 @@ void wget_hpkp_pin_add(wget_hpkp_t *hpkp, const char *pin_type, const char *pin_
 /**
  * Free hpkp_t instance created by wget_hpkp_new()
  * It can be used as destructor function in vectors and hashmaps.
+ * If `hpkp` is NULL this function does nothing.
  *
  * \param[in] hpkp a HPKP database entry
  */
@@ -326,6 +327,8 @@ int wget_hpkp_get_include_subdomains(wget_hpkp_t *hpkp)
  * Frees all resources allocated for the HPKP database, except for the structure.
  * Works only for databases created by wget_hpkp_db_init().
  * `hpkp_db` can then be passed to \ref wget_hpkp_db_init "wget_hpkp_db_init()".
+ *
+ * if `hpkp_db` is NULL then this function does nothing.
  */
 void wget_hpkp_db_deinit(wget_hpkp_db_t *hpkp_db)
 {
@@ -346,10 +349,12 @@ void wget_hpkp_db_deinit(wget_hpkp_db_t *hpkp_db)
  * set the handle (pointer) to the HPKP database to NULL to prevent potential use-after-free conditions.
  *
  * Newly added entries will be lost unless commited to persistent storage using wget_hsts_db_save().
+ *
+ * If `hpkp_db` or the pointer it points to is NULL then this function does nothing.
  */
 void wget_hpkp_db_free(wget_hpkp_db_t **hpkp_db)
 {
-	if (hpkp_db) {
+	if (hpkp_db && *hpkp_db) {
 		(*(*hpkp_db)->vtable->free)(*hpkp_db);
 		*hpkp_db = NULL;
 	}
@@ -358,10 +363,8 @@ static void impl_hpkp_db_free(wget_hpkp_db_t *hpkp_db)
 {
 	_hpkp_db_impl_t *hpkp_db_priv = (_hpkp_db_impl_t *) hpkp_db;
 
-	if (hpkp_db_priv) {
-		wget_hpkp_db_deinit(hpkp_db);
-		xfree(hpkp_db_priv);
-	}
+	wget_hpkp_db_deinit(hpkp_db);
+	xfree(hpkp_db_priv);
 }
 
 /*
@@ -574,6 +577,8 @@ static int _hpkp_db_load(_hpkp_db_impl_t *hpkp_db_priv, FILE *fp)
  *
  * For databases created by wget_hpkp_db_init() data is loaded from `fname` parameter of wget_hpkp_db_init().
  * If this function cannot correctly parse the whole file, -1 is returned.
+ *
+ * If `hpkp_db` is NULL then this function returns 0 and does nothing else.
  */
 int wget_hpkp_db_load(wget_hpkp_db_t *hpkp_db)
 {
@@ -651,6 +656,8 @@ static int _hpkp_db_save(_hpkp_db_impl_t *hpkp_db_priv, FILE *fp)
  *
  * In case of databases created by wget_hpkp_db_init(), HPKP entries will be saved into file specified by
  * `fname` parameter of wget_hpkp_db_init(). In case of failure -1 will be returned with errno set.
+ *
+ * if `fname` is NULL then this function returns -1 and does nothing else.
  */
 int wget_hpkp_db_save(wget_hpkp_db_t *hpkp_db)
 {
