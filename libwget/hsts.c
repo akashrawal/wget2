@@ -179,7 +179,8 @@ static int impl_hsts_db_host_match(const wget_hsts_db_t *hsts_db, const char *ho
 	// now look for a valid subdomain match
 	for (p = host; (p = strchr(p, '.')); ) {
 		hsts.host = ++p;
-		if ((hstsp = wget_hashmap_get(hsts_db_priv->entries, &hsts)) && hstsp->include_subdomains && hstsp->expires >= now)
+		if ((hstsp = wget_hashmap_get(hsts_db_priv->entries, &hsts))
+				&& hstsp->include_subdomains && hstsp->expires >= now)
 			return 1;
 	}
 
@@ -190,7 +191,9 @@ static int impl_hsts_db_host_match(const wget_hsts_db_t *hsts_db, const char *ho
  * \param[in] hsts_db HSTS database created by wget_hsts_db_init()
  *
  * Frees all resources allocated for HSTS database, except for the structure itself. The `hsts_db` pointer can then
- * be passed to wget_hsts_db_init() for reinitialization. If `hsts_db` is NULL this function does nothing.
+ * be passed to wget_hsts_db_init() for reinitialization.
+ *
+ * If `hsts_db` is NULL this function does nothing.
  *
  * This function only works with databases created by wget_hsts_db_init().
  */
@@ -210,8 +213,10 @@ void wget_hsts_db_deinit(wget_hsts_db_t *hsts_db)
  * \param[in] hsts_db Pointer to the HSTS database handle (will be set to NULL)
  *
  * Frees all resources allocated for the HSTS database.
- * A double pointer is required because this function will
- * set the handle (pointer) to the HPKP database to NULL to prevent potential use-after-free conditions.
+ *
+ * A double pointer is required because this function will set the handle (pointer) to the HPKP database to NULL
+ * to prevent potential use-after-free conditions.
+ *
  * If `hsts_db` or pointer it points to is NULL, then the function does nothing.
  *
  * Newly added entries will be lost unless commited to persistent storage using wget_hsts_db_save().
@@ -505,7 +510,7 @@ static struct wget_hsts_db_vtable vtable = {
  * \param[in] fname The file where the data is stored, or NULL.
  * \return A new wget_hsts_db_t
  *
- * Constructor for the default implementation of HSTS database
+ * Constructor for the default implementation of HSTS database.
  *
  * This function does no file IO, data is read only when \ref wget_hsts_db_load "wget_hsts_db_load()" is called.
  */

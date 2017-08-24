@@ -1052,6 +1052,7 @@ typedef struct wget_hsts_db_st wget_hsts_db_t;
  * \ingroup libwget-hsts
  *
  * vtable for implementing custom HSTS databases.
+ *
  * Custom HSTS databases can be implemented as the following:
  *
  *     typedef struct {
@@ -1159,7 +1160,7 @@ WGETAPI int
 /**
  * \ingroup libwget-hpkp
  *
- * HPKP database for storing HTTP Public Kay Pinning (HPKP) entries
+ * HPKP database for storing HTTP Public Key Pinning (HPKP) entries
  */
 typedef struct wget_hpkp_db_st wget_hpkp_db_t;
 
@@ -1191,7 +1192,9 @@ typedef struct _wget_hpkp_st wget_hpkp_t;
  * \ingroup libwget-hpkp
  *
  * vtable for implementing custom HPKP databases.
+ *
  * Custom HPKP databases can be implemented as the following:
+ *
  *     typedef struct {
  *         wget_hpkp_db_t parent;
  *         derrived class members...
@@ -1362,7 +1365,9 @@ typedef struct wget_ocsp_db_st wget_ocsp_db_t;
  * \ingroup libwget-ocsp
  *
  * vtable for implementing custom OCSP databases.
+ *
  * Custom OCSP databases can be implemented as the following:
+ *
  *     typedef struct {
  *         wget_ocsp_db_t parent;
  *         derrived class members...

@@ -170,7 +170,7 @@ static int impl_ocsp_db_fingerprint_in_cache(const wget_ocsp_db_t *ocsp_db, cons
  *
  * If `ocsp_db` is NULL then this function returns 0 and does nothing else.
  *
- * \see wget_ocsp_add_host
+ * \see wget_ocsp_db_add_host
  */
 int wget_ocsp_hostname_is_valid(const wget_ocsp_db_t *ocsp_db, const char *hostname)
 {
@@ -219,8 +219,9 @@ void wget_ocsp_db_deinit(wget_ocsp_db_t *ocsp_db)
  * \param[in] ocsp_db pointer to an OCSP database handle
  *
  * Frees all resources allocated for the OCSP database.
- * A double pointer is required because this function will
- * set the handle (pointer) to the HPKP database to NULL to prevent potential use-after-free conditions.
+ *
+ * A double pointer is required because this function will set the handle (pointer) to the HPKP database to NULL
+ * to prevent potential use-after-free conditions.
  *
  * New entries added to the database will be lost unless commited to the persistent storage using
  * wget_ocsp_db_save().

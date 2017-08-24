@@ -438,11 +438,10 @@ static int impl_hpkp_db_check_pubkey(wget_hpkp_db_t *hpkp_db, const char *host, 
  * \param[in] hpkp_db a HPKP database
  * \param[in] hpkp pointer to HPKP database entry (will be set to NULL)
  *
- * Adds an entry to given HPKP database.
- * The database takes the ownership of the HPKP entry and the calling function must not access the entry afterwards.
- *
- * The database will replace any entry with same `host` (see wget_hpkp_set_host()).
+ * Adds an entry to given HPKP database. The entry will replace any entry with same `host` (see wget_hpkp_set_host()).
  * If `maxage` property of `hpkp` is zero, any existing entry with same `host` property will be removed.
+ *
+ * The database takes the ownership of the HPKP entry and the calling function must not access the entry afterwards.
  */
 void wget_hpkp_db_add(wget_hpkp_db_t *hpkp_db, wget_hpkp_t **_hpkp)
 {
