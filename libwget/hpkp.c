@@ -32,8 +32,8 @@
 #include "private.h"
 
 typedef struct {
-	wget_hpkp_db_t parent;
-
+	wget_hpkp_db_t
+		parent;
 	char *
 		fname;
 	wget_hashmap_t *

@@ -47,8 +47,8 @@
  */
 
 typedef struct {
-	wget_ocsp_db_t parent;
-
+	wget_ocsp_db_t
+		parent;
 	char *
 		fname;
 	wget_hashmap_t *
