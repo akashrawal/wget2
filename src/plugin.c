@@ -304,7 +304,7 @@ static struct wget_plugin_vtable vtable = {
 	.file_open_stream = impl_file_open_stream,
 	.file_get_recurse = impl_file_get_recurse,
 	.file_add_recurse_url = impl_file_add_recurse_url,
-	.register_post_processor = impl_register_post_processor
+	.register_post_processor = impl_register_post_processor,
 
 	.add_hsts_db = impl_add_hsts_db,
 	.add_hpkp_db = impl_add_hpkp_db,
