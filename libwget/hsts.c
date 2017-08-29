@@ -155,6 +155,9 @@ static _hsts_t *_new_hsts(const char *host, uint16_t port, time_t maxage, int in
  * Searches for a given host in the database for any previously added entry.
  *
  * HSTS entries older than amount of time specified by `maxage` are considered `expired` and are ignored.
+ *
+ * This function is thread-safe and can be called from multiple threads concurrently.
+ * Any implementation for this function must be thread-safe as well.
  */
 int wget_hsts_host_match(const wget_hsts_db_t *hsts_db, const char *host, uint16_t port)
 {
@@ -278,6 +281,9 @@ static void _hsts_db_add_entry(_hsts_db_impl_t *hsts_db_priv, _hsts_t *hsts)
  * Add an entry to the HSTS database. An entry corresponds to the `Strict-Transport-Security` HTTP response header.
  * Any existing entry with same `host` and `port` is replaced. If `maxage` is zero, any existing entry with
  * matching `host` and `port` is removed.
+ *
+ * This function is thread-safe and can be called from multiple threads concurrently.
+ * Any implementation for this function must be thread-safe as well.
  */
 void wget_hsts_db_add(wget_hsts_db_t *hsts_db, const char *host, uint16_t port, time_t maxage, int include_subdomains)
 {

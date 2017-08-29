@@ -390,6 +390,9 @@ static int _wget_hpkp_compare_pins(wget_hpkp_t *hpkp1, wget_hpkp_t *hpkp2)
  *         -1 for any other error condition.
  *
  * Checks the validity of the given hostname and public key combination.
+ *
+ * This function is thread-safe and can be called from multiple threads concurrently.
+ * Any implementation for this function must be thread-safe as well.
  */
 int wget_hpkp_db_check_pubkey(wget_hpkp_db_t *hpkp_db, const char *host, const void *pubkey, size_t pubkeysize)
 {
@@ -442,6 +445,9 @@ static int impl_hpkp_db_check_pubkey(wget_hpkp_db_t *hpkp_db, const char *host, 
  * If `maxage` property of `hpkp` is zero, any existing entry with same `host` property will be removed.
  *
  * The database takes the ownership of the HPKP entry and the calling function must not access the entry afterwards.
+ *
+ * This function is thread-safe and can be called from multiple threads concurrently.
+ * Any implementation for this function must be thread-safe as well.
  */
 void wget_hpkp_db_add(wget_hpkp_db_t *hpkp_db, wget_hpkp_t **_hpkp)
 {

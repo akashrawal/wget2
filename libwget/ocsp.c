@@ -137,6 +137,9 @@ static _ocsp_t *_new_ocsp(const char *fingerprint, time_t maxage, int valid)
  * wget_ocsp_db_add_fingerprint().
  *
  * If `ocsp_db` is NULL then this function returns 0 and does nothing else.
+ *
+ * This function is thread-safe and can be called from multiple threads concurrently.
+ * Any implementation for this function must be thread-safe as well.
  */
 int wget_ocsp_fingerprint_in_cache(const wget_ocsp_db_t *ocsp_db, const char *fingerprint, int *revoked)
 {
@@ -169,6 +172,9 @@ static int impl_ocsp_db_fingerprint_in_cache(const wget_ocsp_db_t *ocsp_db, cons
  * Checks if there exists an entry for the given host added by wget_ocsp_db_add_host() which has not expired.
  *
  * If `ocsp_db` is NULL then this function returns 0 and does nothing else.
+ *
+ * This function is thread-safe and can be called from multiple threads concurrently.
+ * Any implementation for this function must be thread-safe as well.
  *
  * \see wget_ocsp_db_add_host
  */
@@ -292,6 +298,9 @@ static void _ocsp_db_add_fingerprint_entry(_ocsp_db_impl_t *ocsp_db_priv, _ocsp_
  * `fingerprint`. If `maxage` is 0, any entry with matching `fingerprint` is removed.
  *
  * If `ocsp_db` is NULL then this function does nothing.
+ *
+ * This function is thread-safe and can be called from multiple threads concurrently.
+ * Any implementation for this function must be thread-safe as well.
  */
 void wget_ocsp_db_add_fingerprint(wget_ocsp_db_t *ocsp_db, const char *fingerprint, time_t maxage, int valid)
 {
@@ -361,6 +370,9 @@ static void _ocsp_db_add_host_entry(_ocsp_db_impl_t *ocsp_db_priv, _ocsp_t *ocsp
  * case OCSP responses are not needed.
  *
  * If `ocsp_db` is NULL then this function does nothing.
+ *
+ * This function is thread-safe and can be called from multiple threads concurrently.
+ * Any implementation for this function must be thread-safe as well.
  */
 void wget_ocsp_db_add_host(wget_ocsp_db_t *ocsp_db, const char *host, time_t maxage)
 {
