@@ -245,10 +245,9 @@ const char * G_GNUC_WGET_NONNULL_ALL get_local_filename(wget_iri_t *iri)
 			wget_buffer_strcat(&buf, iri->scheme);
 			wget_buffer_memcat(&buf, "/", 1);
 		}
-		if (config.host_directories && iri->host && *iri->host) {
+
+		if (config.host_directories && iri->host && *iri->host)
 			wget_buffer_strcat(&buf, iri->host);
-			wget_buffer_memcat(&buf, "/", 1);
-		}
 
 		if (config.cut_directories) {
 			// cut directories
@@ -1307,28 +1306,28 @@ static int process_response_header(wget_http_response_t *resp)
 	if (resp->code == 401) { // Unauthorized
 		job->auth_failure_count++;
 
-		if (job->auth_failure_count > 1)
-			return 0; // we already tried with credentials, they seem to be wrong. Don't try again.
-
-		if (!resp->challenges)
-			return 1; // no challenges offered, stop further processing
+		if (job->auth_failure_count > 1 || !resp->challenges) {
+			// We already tried with credentials and they are wrong OR
+			// The server sent no challenge. Don't try again.
+			set_exit_status(6);
+			return 1;
+		}
 
 		job->challenges = resp->challenges;
-
 		resp->challenges = NULL;
 		job->inuse = 0; // try again, but with challenge responses
 		return 1; // stop further processing
 	}
 
 	if (resp->code == 407) { // Proxy Authentication Required
-		if (job->proxy_challenges)
-			return 0; // we already tried with credentials, they seem to be wrong. Don't try again.
+		if (job->proxy_challenges || !resp->challenges) {
+			// We already tried with credentials and they are wrong OR
+			// The proxy server sent no challenge. Don't try again.
+			set_exit_status(6);
+			return 1;
+		}
 
-		// wget_http_free_challenges(&job->proxy_challenges);
-
-		if (!(job->proxy_challenges = resp->challenges))
-			return 1; // no challenges offered, stop further processing
-
+		job->proxy_challenges = resp->challenges;
 		resp->challenges = NULL;
 		job->inuse = 0; // try again, but with challenge responses
 		return 1; // stop further processing
@@ -1349,25 +1348,8 @@ static int process_response_header(wget_http_response_t *resp)
 
 		wget_iri_relative_to_abs(iri, resp->location, strlen(resp->location), &uri_buf);
 
-//			if (!part) {
 		add_url(job, "utf-8", uri_buf.data, URL_FLG_REDIRECTION);
 		wget_buffer_deinit(&uri_buf);
-//			break;
-//			} else {
-				// directly follow when using metalink
-/*				if (iri != dont_free)
-					wget_iri_free(&iri);
-				iri = wget_iri_parse(uri_buf.data, NULL);
-				wget_buffer_deinit(&uri_buf);
-
-				// apply the HSTS check to the location URL
-				if (config.hsts && iri && iri->scheme == WGET_IRI_SCHEME_HTTP && wget_hsts_host_match(config.hsts_db, iri->host, atoi(iri->resolv_port))) {
-					info_printf("HSTS in effect for %s:%s\n", iri->host, iri->resolv_port);
-					iri_scheme = wget_iri_set_scheme(iri, WGET_IRI_SCHEME_HTTPS);
-				} else
-					iri_scheme = NULL;
-			}
-*/
 	}
 
 	return 0;
