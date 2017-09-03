@@ -84,6 +84,11 @@ void plugin_db_forward_url(const wget_iri_t *iri, struct plugin_db_forward_url_v
 // Free's all contents of plugin_db_forward_url_verdict
 void plugin_db_forward_url_verdict_free(struct plugin_db_forward_url_verdict *verdict);
 
+// Forwards downloaded file to intrested plugins
+// Returns 0 if wget must not post-process the file, 1 otherwise
+int plugin_db_forward_downloaded_file(const wget_iri_t *iri, uint64_t size, const char *filename, const void *data,
+		wget_vector_t *recurse_iris);
+
 // Fetches the plugin-provided HSTS database, or NULL.
 // Ownership of the returned HSTS database is transferred to the caller, so it must be free'd with wget_hsts_db_free().
 wget_hsts_db_t *plugin_db_fetch_provided_hsts_db(void);
