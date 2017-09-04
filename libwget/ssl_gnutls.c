@@ -140,7 +140,7 @@ void wget_ssl_set_config_object(int key, void *value)
 	case WGET_SSL_OCSP_CACHE: _config.ocsp_cert_cache = (wget_ocsp_db_t *)value; break;
 	case WGET_SSL_SESSION_CACHE: _config.tls_session_cache = (wget_tls_session_db_t *)value; break;
 	case WGET_SSL_HPKP_CACHE: _config.hpkp_cache = (wget_hpkp_db_t *)value; break;
-	default: error_printf(_("Unknown config key %d (or value must not be a string)\n"), key);
+	default: error_printf(_("Unknown config key %d (or value must not be an object)\n"), key);
 	}
 }
 
