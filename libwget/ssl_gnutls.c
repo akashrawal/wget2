@@ -1714,6 +1714,7 @@ ssize_t wget_ssl_write_timeout(void *session, const char *buf, size_t count, int
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 void wget_ssl_set_config_string(int key, const char *value) { }
+void wget_ssl_set_config_object(int key, void *value) { }
 void wget_ssl_set_config_int(int key, int value) { }
 void wget_ssl_init(void) { }
 void wget_ssl_deinit(void) { }
