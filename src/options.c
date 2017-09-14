@@ -2071,6 +2071,10 @@ int init(int argc, const char **argv)
 		}
 	}
 
+	//TMP: Disable buffing to catch this heisenbug
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
+
 	// Initialize some configuration values which depend on the Runtime environment
 	char *home_dir = get_home_dir();
 

@@ -892,6 +892,10 @@ void wget_test_start_server(int first_key, ...)
 	size_t it;
 	va_list args;
 
+	//TMP: Disable buffing to catch this heisenbug
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
+
 	/* Skip any test that use this function if threads are not present.  */
 	if (!wget_thread_support()) {
 		wget_error_printf("THREADS NOT SUPPORTED: Skip\n");
