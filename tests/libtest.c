@@ -35,7 +35,6 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <signal.h>
 #include <utime.h>
 #include <dirent.h>
 #include <sys/stat.h>
@@ -44,57 +43,32 @@
 #include <wget.h>
 #include "libtest.h"
 
-#ifdef WITH_MICROHTTPD
-	#include <microhttpd.h>
-#endif
+#include <microhttpd.h>
 
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <netdb.h>
 
-static wget_thread_t
-	ftp_server_tid,
-	ftps_server_tid;
 static int
 	http_server_port,
 	https_server_port,
-	ftp_server_port,
-	ftps_server_port,
-	ftps_implicit,
 	keep_tmpfiles;
-static volatile sig_atomic_t
-	terminate;
-/*static const char
-	*response_code = "200 Dontcare",
-	*response_body = "";
-static WGET_VECTOR
-	*response_headers; */
 static wget_vector_t
 	*request_urls;
 static wget_test_url_t
 	*urls;
 static size_t
 	nurls;
-static wget_test_ftp_io_t
-	*ios;
-static size_t
-	nios;
-static int
-	ios_ordered;
 static char
 	tmpdir[128];
-static const char
-	*server_hello;
 static char
 	server_send_content_length = 1;
 
-#ifdef WITH_MICROHTTPD
 // MHD_Daemon instance
 static struct MHD_Daemon
 	*httpdaemon,
 	*httpsdaemon;
-#endif
 
 // for passing URL query string
 struct query_string {
@@ -113,12 +87,6 @@ enum SERVER_MODE {
 	HTTPS_MODE
 };
 
-static void sigterm_handler(int sig G_GNUC_WGET_UNUSED)
-{
-	terminate = 1;
-}
-
-#ifdef WITH_MICROHTTPD
 static char *_scan_directory(const char* data)
 {
 	char *path = strchr(data, '/');
@@ -144,10 +112,11 @@ static void _replace_space_with_plus(wget_buffer_t *buf, const char *data)
 		wget_buffer_memcat(buf, *data == ' ' ? "+" : data, 1);
 }
 
-static int _print_query_string(void *cls,
-							enum MHD_ValueKind kind G_GNUC_WGET_UNUSED,
-							const char *key,
-							const char *value)
+static int _print_query_string(
+	void *cls,
+	enum MHD_ValueKind kind G_GNUC_WGET_UNUSED,
+	const char *key,
+	const char *value)
 {
 	struct query_string *query = cls;
 
@@ -172,10 +141,11 @@ static int _print_query_string(void *cls,
     return MHD_YES;
 }
 
-static int _print_header_range(void *cls,
-							enum MHD_ValueKind kind G_GNUC_WGET_UNUSED,
-							const char *key,
-							const char *value)
+static int _print_header_range(
+	void *cls,
+	enum MHD_ValueKind kind G_GNUC_WGET_UNUSED,
+	const char *key,
+	const char *value)
 {
 	wget_buffer_t *header_range = cls;
 
@@ -195,10 +165,7 @@ struct ResponseContentCallbackParam
 	size_t response_size;
 };
 
-static ssize_t _callback (void *cls,
-						uint64_t pos,
-						char *buf,
-						size_t buf_size)
+static ssize_t _callback (void *cls, uint64_t pos, char *buf, size_t buf_size)
 {
 	size_t size_to_copy;
 	struct ResponseContentCallbackParam *const param =
@@ -224,14 +191,15 @@ static void _free_callback_param(void *cls)
 	free(cls);
 }
 
-static int _answer_to_connection(void *cls G_GNUC_WGET_UNUSED,
-					struct MHD_Connection *connection,
-					const char *url,
-					const char *method,
-					const char *version G_GNUC_WGET_UNUSED,
-					const char *upload_data G_GNUC_WGET_UNUSED,
-					size_t *upload_data_size G_GNUC_WGET_UNUSED,
-					void **con_cls G_GNUC_WGET_UNUSED)
+static int _answer_to_connection(
+	void *cls G_GNUC_WGET_UNUSED,
+	struct MHD_Connection *connection,
+	const char *url,
+	const char *method,
+	const char *version G_GNUC_WGET_UNUSED,
+	const char *upload_data G_GNUC_WGET_UNUSED,
+	size_t *upload_data_size G_GNUC_WGET_UNUSED,
+	void **con_cls G_GNUC_WGET_UNUSED)
 {
 	struct MHD_Response *response = NULL;
 	struct query_string query;
@@ -263,6 +231,7 @@ static int _answer_to_connection(void *cls G_GNUC_WGET_UNUSED,
 	if (*header_range->data) {
 		const char *from_bytes_string;
 		const char *range_string = strchr(header_range->data, '=');
+
 		to_bytes_string = strchr(range_string, '-');
 		if (strcmp(to_bytes_string, "-"))
 			to_bytes = (ssize_t) atoi(to_bytes_string + 1);
@@ -300,13 +269,11 @@ static int _answer_to_connection(void *cls G_GNUC_WGET_UNUSED,
 		wget_buffer_strcpy(url_iri, urls[it1].name);
 		MHD_http_unescape(url_iri->data);
 
-		if (!strcmp(url_full->data, url_iri->data))
-		{
+		if (!strcmp(url_full->data, url_iri->data)) {
 			// chunked encoding
-			if (!wget_strcmp(urls[it1].name + 3, "bad.txt"))
-			{
+			if (!wget_strcmp(urls[it1].name + 3, "bad.txt")) {
 				response = MHD_create_response_from_buffer(strlen(urls[it1].body),
-						(void *) urls[it1].body, MHD_RESPMEM_MUST_COPY);
+					(void *) urls[it1].body, MHD_RESPMEM_MUST_COPY);
 				ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
 				MHD_add_response_header(response, "Transfer-Encoding", "chunked");
 				MHD_add_response_header(response, "Connection", "close");
@@ -319,8 +286,7 @@ static int _answer_to_connection(void *cls G_GNUC_WGET_UNUSED,
 				if (header) {
 					const char *header_value = strchr(header, ':');
 					const char *header_key = wget_strmemdup(header, header_value - header);
-					if (!strcmp(header_key, "Transfer-Encoding") &&
-						!strcmp(header_value + 2, "chunked"))
+					if (!strcmp(header_key, "Transfer-Encoding") && !strcmp(header_value + 2, "chunked"))
 						chunked = 1;
 					wget_xfree(header_key);
 				}
@@ -336,10 +302,7 @@ static int _answer_to_connection(void *cls G_GNUC_WGET_UNUSED,
 				callback_param->response_size = (sizeof(response_text)/sizeof(char)) - 1;
 
 				response = MHD_create_response_from_callback(MHD_SIZE_UNKNOWN,
-															1024,
-															&_callback,
-															callback_param,
-															&_free_callback_param);
+					1024, &_callback, callback_param, &_free_callback_param);
 				ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
 				wget_buffer_free(&url_iri);
 				found = 1;
@@ -347,10 +310,9 @@ static int _answer_to_connection(void *cls G_GNUC_WGET_UNUSED,
 			}
 
 			// 404 with non-empty "body"
-			if (!wget_strcmp(urls[it1].code, "404 Not exist"))
-			{
+			if (!wget_strcmp(urls[it1].code, "404 Not exist")) {
 				response = MHD_create_response_from_buffer(strlen(urls[it1].body),
-							(void *) urls[it1].body, MHD_RESPMEM_MUST_COPY);
+					(void *) urls[it1].body, MHD_RESPMEM_MUST_COPY);
 				ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
 				wget_buffer_free(&url_iri);
 				found = 1;
@@ -384,10 +346,11 @@ static int _answer_to_connection(void *cls G_GNUC_WGET_UNUSED,
 				char *user = MHD_basic_auth_get_username_password(connection, &pass);
 				if ((user == NULL && pass == NULL) ||
 					(wget_strcmp(user, urls[it1].auth_username) ||
-					wget_strcmp(pass, urls[it1].auth_password))) {
+					wget_strcmp(pass, urls[it1].auth_password)))
+				{
 					response = MHD_create_response_from_buffer(strlen ("DENIED"),
-							(void *) "DENIED", MHD_RESPMEM_PERSISTENT);
-			        ret = MHD_queue_basic_auth_fail_response(connection, "basic@example.com", response);
+						(void *) "DENIED", MHD_RESPMEM_PERSISTENT);
+					ret = MHD_queue_basic_auth_fail_response(connection, "basic@example.com", response);
 					free(user);
 					free(pass);
 					wget_buffer_free(&url_iri);
@@ -416,12 +379,15 @@ static int _answer_to_connection(void *cls G_GNUC_WGET_UNUSED,
 				if ((ret == MHD_INVALID_NONCE) || (ret == MHD_NO)) {
 					response = MHD_create_response_from_buffer(strlen ("DENIED"),
 						(void *) "DENIED", MHD_RESPMEM_PERSISTENT);
-					if (response == NULL)
-						return MHD_NO;
-					ret = MHD_queue_auth_fail_response(connection, realm, TEST_OPAQUE_STR, response,
-						(ret == MHD_INVALID_NONCE) ? MHD_YES : MHD_NO);
+
+					if (response) {
+						ret = MHD_queue_auth_fail_response(connection, realm, TEST_OPAQUE_STR, response,
+							(ret == MHD_INVALID_NONCE) ? MHD_YES : MHD_NO);
+						found = 1;
+					} else
+						ret = MHD_NO;
+
 					wget_buffer_free(&url_iri);
-					found = 1;
 					break;
 				}
 			}
@@ -430,8 +396,7 @@ static int _answer_to_connection(void *cls G_GNUC_WGET_UNUSED,
 				response = MHD_create_response_from_buffer(0, (void *) "", MHD_RESPMEM_PERSISTENT);
 				ret = MHD_queue_response(connection, MHD_HTTP_NOT_MODIFIED, response);
 			}
-			else if (*header_range->data)
-			{
+			else if (*header_range->data) {
 				if (!strcmp(to_bytes_string, "-"))
 					to_bytes = strlen(urls[it1].body) - 1;
 				body_len = to_bytes - from_bytes + 1;
@@ -445,7 +410,7 @@ static int _answer_to_connection(void *cls G_GNUC_WGET_UNUSED,
 #endif
 				} else {
 					response = MHD_create_response_from_buffer(body_len,
-							(void *) (urls[it1].body + from_bytes), MHD_RESPMEM_MUST_COPY);
+						(void *) (urls[it1].body + from_bytes), MHD_RESPMEM_MUST_COPY);
 					MHD_add_response_header(response, MHD_HTTP_HEADER_ACCEPT_RANGES, "bytes");
 					sprintf(content_range, "%zd-%zd/%zu", from_bytes, to_bytes, body_len);
 					MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_RANGE, content_range);
@@ -454,9 +419,9 @@ static int _answer_to_connection(void *cls G_GNUC_WGET_UNUSED,
 					ret = MHD_queue_response(connection, MHD_HTTP_PARTIAL_CONTENT, response);
 				}
 			} else {
-			response = MHD_create_response_from_buffer(strlen(urls[it1].body),
+				response = MHD_create_response_from_buffer(strlen(urls[it1].body),
 					(void *) urls[it1].body, MHD_RESPMEM_MUST_COPY);
-			ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+				ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
 			}
 
 			// add available headers
@@ -481,7 +446,7 @@ static int _answer_to_connection(void *cls G_GNUC_WGET_UNUSED,
 	}
 
 	// 404 with empty "body"
-	if (found == 0) {
+	if (!found) {
 		response = MHD_create_response_from_buffer(0, (void *) "", MHD_RESPMEM_PERSISTENT);
 		ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
 	}
@@ -489,7 +454,7 @@ static int _answer_to_connection(void *cls G_GNUC_WGET_UNUSED,
 	wget_buffer_free(&url_full);
 	wget_buffer_free(&header_range);
 	char server_version[50];
-	sprintf(server_version, "Libmicrohttpd/%08x", (unsigned int) MHD_VERSION);
+	snprintf(server_version, sizeof(server_version), "Libmicrohttpd/%08x", (unsigned int) MHD_VERSION);
 	MHD_add_response_header(response, "Server", server_version);
 	MHD_destroy_response(response);
 	return ret;
@@ -511,10 +476,10 @@ static int _http_server_start(int SERVER_MODE)
 
 	if (SERVER_MODE == HTTP_MODE) {
 		httpdaemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY,
-					port_num, NULL, NULL, &_answer_to_connection, NULL,
-					MHD_OPTION_DIGEST_AUTH_RANDOM, sizeof(rnd), rnd,
-					MHD_OPTION_NONCE_NC_SIZE, 300,
-					MHD_OPTION_END);
+			port_num, NULL, NULL, &_answer_to_connection, NULL,
+			MHD_OPTION_DIGEST_AUTH_RANDOM, sizeof(rnd), rnd,
+			MHD_OPTION_NONCE_NC_SIZE, 300,
+			MHD_OPTION_END);
 
 		if (!httpdaemon)
 			return 1;
@@ -535,10 +500,10 @@ static int _http_server_start(int SERVER_MODE)
 #else
 		httpsdaemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY | MHD_USE_SSL,
 #endif
-					port_num, NULL, NULL, &_answer_to_connection, NULL,
-					MHD_OPTION_HTTPS_MEM_KEY, key_pem,
-					MHD_OPTION_HTTPS_MEM_CERT, cert_pem,
-					MHD_OPTION_END);
+			port_num, NULL, NULL, &_answer_to_connection, NULL,
+			MHD_OPTION_HTTPS_MEM_KEY, key_pem,
+			MHD_OPTION_HTTPS_MEM_CERT, cert_pem,
+			MHD_OPTION_END);
 
 		if (!httpsdaemon) {
 			printf("Cannot start the HTTPS server.\n");
@@ -602,134 +567,6 @@ static int _http_server_start(int SERVER_MODE)
 	}
 
 	return 0;
-}
-#endif
-
-static void *_ftp_server_thread(void *ctx)
-{
-	wget_tcp_t *tcp = NULL, *parent_tcp = ctx, *pasv_parent_tcp = NULL, *pasv_tcp = NULL;
-	char buf[4096];
-	ssize_t nbytes;
-	int pasv_port, found;
-	unsigned io_pos;
-
-#ifdef _WIN32
-	signal(SIGTERM, sigterm_handler);
-#else
-	sigaction(SIGTERM, &(struct sigaction) { .sa_handler = sigterm_handler }, NULL);
-#endif
-
-	while (!terminate) {
-		wget_tcp_deinit(&tcp);
-		wget_tcp_deinit(&pasv_tcp);
-		wget_tcp_deinit(&pasv_parent_tcp);
-
-		if ((tcp = wget_tcp_accept(parent_tcp))) {
-			io_pos = 0;
-
-			if (server_hello)
-				wget_tcp_printf(tcp, "%s\r\n", server_hello);
-
-			// as a quick hack, just assume that each line comes in one packet
-			while ((nbytes = wget_tcp_read(tcp, buf, sizeof(buf)-1)) > 0) {
-				buf[nbytes] = 0;
-
-				while (--nbytes >= 0 && (buf[nbytes] == '\r' || buf[nbytes] == '\n'))
-					buf[nbytes] = 0;
-
-				wget_debug_printf("### Got: '%s'\n", buf);
-
-				found = 0;
-				if (ios_ordered) {
-					if (!strcmp(buf, ios[io_pos].in))
-						found = 1;
-				} else {
-					for (io_pos = 0; io_pos < nios; io_pos++) {
-						if (!strcmp(buf, ios[io_pos].in)) {
-							found = 1;
-							break;
-						}
-					}
-				}
-				if (!found) {
-					wget_error_printf(_("Unexpected input: '%s'\n"), buf);
-					wget_tcp_printf(tcp, "500 Unknown command\r\n");
-					continue;
-				}
-
-				if (!strncmp(buf, "AUTH", 4)) {
-					// assume TLS auth type
-					wget_tcp_printf(tcp, "%s\r\n", ios[io_pos].out);
-					if (atoi(ios[io_pos].out)/100 == 2)
-						wget_tcp_tls_start(tcp);
-					io_pos++;
-					continue;
-				}
-
-				if (!strncmp(buf, "PASV", 4) || !strncmp(buf, "EPSV", 4)) {
-					// init FTP PASV/EPSV socket
-					// we ignore EPSV address type here, we listen on IPv4 and IPv6 anyways
-					pasv_parent_tcp=wget_tcp_init();
-					wget_tcp_set_timeout(pasv_parent_tcp, -1); // INFINITE timeout
-					if (!strncmp(buf, "EPSV", 4)) {
-						switch (atoi(buf+4)) {
-							case 1: wget_tcp_set_family(pasv_parent_tcp, WGET_NET_FAMILY_IPV4); break;
-							case 2: wget_tcp_set_family(pasv_parent_tcp, WGET_NET_FAMILY_IPV6); break;
-							default: wget_tcp_set_family(pasv_parent_tcp, WGET_NET_FAMILY_ANY); break;
-						}
-					}
-					if (wget_tcp_listen(pasv_parent_tcp, "localhost", 0, 5) != 0) {
-						wget_tcp_printf(tcp, "500 failed to open port\r\n");
-						break;
-					}
-					pasv_port = wget_tcp_get_local_port(pasv_parent_tcp);
-
-					const char *src = ios[io_pos].out;
-					char *response = wget_malloc(strlen(src) + 32 + 1);
-					char *dst = response;
-
-					while (*src) {
-						if (*src == '{') {
-							if (!strncmp(src, "{{pasvdata}}", 12)) {
-								if (!strncmp(buf, "EPSV", 4))
-									dst += sprintf(dst, "(|||%d|)", pasv_port);
-								else
-									dst += sprintf(dst, "(127,0,0,1,%d,%d)", pasv_port / 256, pasv_port % 256);
-								src += 12;
-								continue;
-							}
-						}
-						*dst++ = *src++;
-					}
-					*dst = 0;
-
-					wget_tcp_printf(tcp, "%s\r\n", response);
-					wget_xfree(response);
-
-					if (!(pasv_tcp = wget_tcp_accept(pasv_parent_tcp))) {
-						wget_error_printf(_("Failed to get PASV connection\n"));
-						break;
-					}
-				} else {
-					wget_tcp_printf(tcp, "%s\r\n", ios[io_pos].out);
-				}
-
-				if (ios[io_pos].send_url && pasv_tcp) {
-					// send data
-					wget_tcp_printf(pasv_tcp, "%s", ios[io_pos].send_url->body);
-					wget_tcp_deinit(&pasv_tcp);
-					wget_tcp_printf(tcp, "226 Transfer complete\r\n");
-				}
-
-				io_pos++;
-			}
-		} else if (!terminate)
-			wget_error_printf(_("Failed to get connection (%d)\n"), errno);
-	}
-
-	wget_tcp_deinit(&parent_tcp);
-
-	return NULL;
 }
 
 #if defined __CYGWIN__
@@ -812,13 +649,6 @@ void wget_test_stop_server(void)
 		}
 	}
 
-	// free resources - needed for valgrind testing
-	terminate = 1;
-
-	wget_thread_cancel(ftp_server_tid);
-	if (ftps_implicit)
-		wget_thread_cancel(ftps_server_tid);
-
 	if (chdir("..") != 0)
 		wget_error_printf(_("Failed to chdir ..\n"));
 
@@ -826,15 +656,12 @@ void wget_test_stop_server(void)
 		_remove_directory(tmpdir);
 
 	wget_global_deinit();
-#ifdef WITH_MICROHTTPD
 	_http_server_stop();
-#endif
 }
 
 static char *_insert_ports(const char *src)
 {
-	if (!src || (!strstr(src, "{{port}}") && !strstr(src, "{{sslport}}")
-	    && !strstr(src, "{{ftpport}}") && !strstr(src, "{{ftpsport}}")))
+	if (!src || (!strstr(src, "{{port}}") && !strstr(src, "{{sslport}}")))
 		return NULL;
 
 	char *ret = wget_malloc(strlen(src) + 1);
@@ -850,16 +677,6 @@ static char *_insert_ports(const char *src)
 			else if (!strncmp(src, "{{sslport}}", 11)) {
 				dst += sprintf(dst, "%d", https_server_port);
 				src += 11;
-				continue;
-			}
-			else if (!strncmp(src, "{{ftpport}}", 11)) {
-				dst += sprintf(dst, "%d", ftp_server_port);
-				src += 11;
-				continue;
-			}
-			else if (!strncmp(src, "{{ftpsport}}", 12)) {
-				dst += sprintf(dst, "%d", ftps_server_port);
-				src += 12;
 				continue;
 			}
 		}
@@ -887,7 +704,6 @@ static void _write_msg(const char *msg, size_t len)
 
 void wget_test_start_server(int first_key, ...)
 {
-	static wget_tcp_t *https_parent_tcp, *ftp_parent_tcp, *ftps_parent_tcp;
 	int rc, key;
 	size_t it;
 	va_list args;
@@ -895,7 +711,7 @@ void wget_test_start_server(int first_key, ...)
 	/* Skip any test that use this function if threads are not present.  */
 	if (!wget_thread_support()) {
 		wget_error_printf("THREADS NOT SUPPORTED: Skip\n");
-		exit(77);
+		exit(WGET_TEST_EXIT_SKIP);
 	}
 
 	wget_global_init(
@@ -924,24 +740,32 @@ void wget_test_start_server(int first_key, ...)
 			urls = va_arg(args, wget_test_url_t *);
 			nurls = va_arg(args, size_t);
 			break;
-		case WGET_TEST_FTP_SERVER_HELLO:
-			server_hello = va_arg(args, const char *);
-			break;
-		case WGET_TEST_FTP_IO_ORDERED:
-			ios_ordered = 1;
-			ios = va_arg(args, wget_test_ftp_io_t *);
-			nios = va_arg(args, size_t);
-			break;
-		case WGET_TEST_FTP_IO_UNORDERED:
-			ios_ordered = 0;
-			ios = va_arg(args, wget_test_ftp_io_t *);
-			nios = va_arg(args, size_t);
-			break;
-		case WGET_TEST_FTPS_IMPLICIT:
-			ftps_implicit = va_arg(args, int);
-			break;
 		case WGET_TEST_SERVER_SEND_CONTENT_LENGTH:
 			server_send_content_length = !!va_arg(args, int);
+			break;
+		case WGET_TEST_FEATURE_MHD:
+#ifndef WITH_MICROHTTPD
+			wget_error_printf(_("Test needs Libmicrohttpd. Skipping\n"));
+			exit(WGET_TEST_EXIT_SKIP);
+#endif
+			break;
+		case WGET_TEST_FEATURE_TLS:
+#ifndef WITH_GNUTLS
+			wget_error_printf(_("Test requires TLS. Skipping\n"));
+			exit(WGET_TEST_EXIT_SKIP);
+#endif
+			break;
+		case WGET_TEST_FEATURE_IDN:
+#if !defined WITH_LIBIDN && !defined WITH_LIBIDN2
+			wget_error_printf(_("Support for LibIDN not found. Skipping\n"));
+			exit(WGET_TEST_EXIT_SKIP);
+#endif
+			break;
+		case WGET_TEST_FEATURE_PLUGIN:
+#ifndef PLUGIN_SUPPORT
+			wget_error_printf(_("Plugin Support Disabled. Skipping\n"));
+			exit(WGET_TEST_EXIT_SKIP);
+#endif
 			break;
 		default:
 			wget_error_printf(_("Unknown option %d\n"), key);
@@ -967,35 +791,6 @@ void wget_test_start_server(int first_key, ...)
 	wget_ssl_set_config_string(WGET_SSL_CERT_FILE, SRCDIR "/certs/x509-server-cert.pem");
 	wget_ssl_set_config_string(WGET_SSL_KEY_FILE, SRCDIR "/certs/x509-server-key.pem");
 
-	// init HTTPS server socket
-	https_parent_tcp = wget_tcp_init();
-	wget_tcp_set_ssl(https_parent_tcp, 1); // switch SSL on
-	wget_tcp_set_timeout(https_parent_tcp, -1); // INFINITE timeout
-	wget_tcp_set_preferred_family(https_parent_tcp, WGET_NET_FAMILY_IPV4); // to have a defined order of IPs
-	if (wget_tcp_listen(https_parent_tcp, "localhost", 0, 5) != 0)
-		exit(1);
-	https_server_port = wget_tcp_get_local_port(https_parent_tcp);
-
-	// init FTP server socket
-	ftp_parent_tcp = wget_tcp_init();
-	wget_tcp_set_timeout(ftp_parent_tcp, -1); // INFINITE timeout
-	wget_tcp_set_preferred_family(ftp_parent_tcp, WGET_NET_FAMILY_IPV4); // to have a defined order of IPs
-	if (wget_tcp_listen(ftp_parent_tcp, "localhost", 0, 5) != 0)
-		exit(1);
-	ftp_server_port = wget_tcp_get_local_port(ftp_parent_tcp);
-
-	if (ftps_implicit) {
-		// init FTPS server socket
-		ftps_parent_tcp = wget_tcp_init();
-		wget_tcp_set_ssl(ftps_parent_tcp, 1); // switch SSL on
-		wget_tcp_set_timeout(ftps_parent_tcp, -1); // INFINITE timeout
-		wget_tcp_set_preferred_family(ftps_parent_tcp, WGET_NET_FAMILY_IPV4); // to have a defined order of IPs
-		if (wget_tcp_listen(ftps_parent_tcp, "localhost", 0, 5) != 0)
-			exit(1);
-		ftps_server_port = wget_tcp_get_local_port(ftps_parent_tcp);
-	}
-
-#ifdef WITH_MICROHTTPD
 	// start HTTP server
 	if ((rc = _http_server_start(HTTP_MODE)) != 0)
 		wget_error_printf_exit(_("Failed to start HTTP server, error %d\n"), rc);
@@ -1004,7 +799,6 @@ void wget_test_start_server(int first_key, ...)
 	// start HTTPS server
 	if ((rc = _http_server_start(HTTPS_MODE)) != 0)
 		wget_error_printf_exit(_("Failed to start HTTPS server, error %d\n"), rc);
-#endif
 #endif
 
 	// now replace {{port}} in the body by the actual server port
@@ -1024,16 +818,6 @@ void wget_test_start_server(int first_key, ...)
 				url->header_alloc[it] = 1;
 			}
 		}
-	}
-
-	// start thread for FTP
-	if ((rc = wget_thread_start(&ftp_server_tid, _ftp_server_thread, ftp_parent_tcp, 0)) != 0)
-		wget_error_printf_exit(_("Failed to start FTP server, error %d\n"), rc);
-
-	// start thread for FTPS
-	if (ftps_implicit) {
-		if ((rc = wget_thread_start(&ftps_server_tid, _ftp_server_thread, ftps_parent_tcp, 0)) != 0)
-			wget_error_printf_exit(_("Failed to start FTP server, error %d\n"), rc);
 	}
 }
 
@@ -1130,7 +914,6 @@ void wget_test(int first_key, ...)
 		server_send_content_length_old = server_send_content_length;
 
 	keep_tmpfiles = 0;
-	server_hello = "220 FTP server ready";
 
 	if (!request_urls)
 		request_urls = wget_vector_create(8,8,NULL);
@@ -1163,9 +946,6 @@ void wget_test(int first_key, ...)
 			break;
 		case WGET_TEST_EXECUTABLE:
 			executable = va_arg(args, const char *);
-			break;
-		case WGET_TEST_FTP_SERVER_HELLO:
-			server_hello = va_arg(args, const char *);
 			break;
 		case WGET_TEST_SERVER_SEND_CONTENT_LENGTH:
 			server_send_content_length = !!va_arg(args, int);
@@ -1224,10 +1004,6 @@ void wget_test(int first_key, ...)
 		wget_buffer_printf_append(cmd, " \"http://localhost:%d/%s\"",
 			http_server_port, (char *)wget_vector_get(request_urls, it));
 	}
-//	for (it = 0; it < (size_t)wget_vector_size(ftp_files); it++) {
-//		wget_buffer_printf_append2(cmd, " 'ftp://localhost:%d/%s'",
-//			ftp_server_port, (char *)wget_vector_get(ftp_files, it));
-//	}
 	wget_buffer_strcat(cmd, " 2>&1");
 
 	wget_info_printf("cmd=%s\n", cmd->data);
@@ -1311,16 +1087,6 @@ int wget_test_get_http_server_port(void)
 int wget_test_get_https_server_port(void)
 {
 	return https_server_port;
-}
-
-int wget_test_get_ftp_server_port(void)
-{
-	return ftp_server_port;
-}
-
-int wget_test_get_ftps_server_port(void)
-{
-	return ftps_server_port;
 }
 
 // assume that we are in 'tmpdir'

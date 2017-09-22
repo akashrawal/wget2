@@ -596,6 +596,8 @@ typedef int (*wget_vector_destructor_t)(void *elem);
 
 WGETAPI wget_vector_t *
 	wget_vector_create(int max, int off, wget_vector_compare_t cmp) G_GNUC_WGET_MALLOC;
+WGETAPI void
+	wget_vector_deinit(wget_vector_t *v);
 WGETAPI int
 	wget_vector_find(const wget_vector_t *v, const void *elem) G_GNUC_WGET_NONNULL((2));
 WGETAPI int
@@ -807,12 +809,12 @@ typedef int (*wget_decompressor_sink_t)(void *context, const char *data, size_t 
 typedef int (*wget_decompressor_error_handler_t)(wget_decompressor_t *dc, int err);
 
 enum {
-	wget_content_encoding_identity,
-	wget_content_encoding_gzip,
-	wget_content_encoding_deflate,
-	wget_content_encoding_lzma,
-	wget_content_encoding_bzip2,
-	wget_content_encoding_brotli,
+	wget_content_encoding_identity = 0,
+	wget_content_encoding_gzip = 1,
+	wget_content_encoding_deflate = 2,
+	wget_content_encoding_lzma = 3,
+	wget_content_encoding_bzip2 = 4,
+	wget_content_encoding_brotli = 5
 };
 
 WGETAPI wget_decompressor_t *
@@ -1715,9 +1717,9 @@ WGETAPI void
 	wget_tcp_set_ssl_key_file(wget_tcp_t *tcp, const char *certfile, const char *keyfile);
 WGETAPI int
 	wget_tcp_get_dns_caching(wget_tcp_t *tcp) G_GNUC_WGET_PURE;
-WGETAPI int
+WGETAPI char
 	wget_tcp_get_tcp_fastopen(wget_tcp_t *tcp) G_GNUC_WGET_PURE;
-WGETAPI int
+WGETAPI char
 	wget_tcp_get_tls_false_start(wget_tcp_t *tcp) G_GNUC_WGET_PURE;
 WGETAPI int
 	wget_tcp_get_family(wget_tcp_t *tcp) G_GNUC_WGET_PURE;
@@ -1741,10 +1743,6 @@ WGETAPI struct addrinfo *
 	wget_tcp_resolve(wget_tcp_t *tcp, const char *restrict name, uint16_t port);
 WGETAPI int
 	wget_tcp_connect(wget_tcp_t *tcp, const char *host, uint16_t port);
-WGETAPI int
-	wget_tcp_listen(wget_tcp_t *tcp, const char *host, uint16_t port, int backlog);
-WGETAPI wget_tcp_t
-	*wget_tcp_accept(wget_tcp_t *parent_tcp);
 WGETAPI int
 	wget_tcp_tls_start(wget_tcp_t *tcp);
 WGETAPI void
@@ -1809,14 +1807,6 @@ WGETAPI void
 	wget_ssl_close(void **session);
 WGETAPI void
 	wget_ssl_set_check_certificate(char value);
-WGETAPI void
-	wget_ssl_server_init(void);
-WGETAPI void
-	wget_ssl_server_deinit(void);
-WGETAPI int
-	wget_ssl_server_open(wget_tcp_t *tcp);
-WGETAPI void
-	wget_ssl_server_close(void **session);
 WGETAPI ssize_t
 	wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeout) G_GNUC_WGET_NONNULL_ALL;
 WGETAPI ssize_t
@@ -1959,7 +1949,8 @@ struct wget_http_response_t {
 	char
 		hsts_include_subdomains;
 	unsigned char
-		hsts : 1; // if hsts_maxage and hsts_include_subdomains are valid
+		hsts : 1, // if hsts_maxage and hsts_include_subdomains are valid
+		csp : 1;
 	size_t
 		cur_downloaded;
 };
@@ -2504,7 +2495,7 @@ wget_plugin_register_post_processor(wget_plugin_t *plugin, wget_plugin_post_proc
  * \ingroup libwget-plugin
  *
  * vtable for implementing plugin API in wget
- */
+*/
 struct wget_plugin_vtable
 {
 	const char * (* get_name)(wget_plugin_t *);
@@ -2530,6 +2521,102 @@ struct wget_plugin_vtable
 	void (* add_hpkp_db)(wget_plugin_t *, wget_hpkp_db_t *, int);
 	void (* add_ocsp_db)(wget_plugin_t *, wget_ocsp_db_t *, int);
 };
+
+/*
+ * Statistics
+*/
+
+typedef enum {
+	WGET_STATS_TYPE_DNS = 0,
+	WGET_STATS_TYPE_TLS = 1,
+	WGET_STATS_TYPE_SERVER = 2,
+	WGET_STATS_TYPE_OCSP = 3,
+	WGET_STATS_TYPE_SITE = 4
+} wget_stats_type_t;
+
+typedef enum {
+	WGET_STATS_FORMAT_HUMAN = 0,
+	WGET_STATS_FORMAT_CSV = 1,
+	WGET_STATS_FORMAT_JSON = 2,
+	WGET_STATS_FORMAT_TREE = 3
+} wget_stats_format_t;
+
+typedef enum {
+	WGET_STATS_DNS_HOST = 0,
+	WGET_STATS_DNS_IP = 1,
+	WGET_STATS_DNS_PORT = 2,
+	WGET_STATS_DNS_SECS = 3
+} wget_dns_stats_t;
+
+typedef enum {
+	WGET_STATS_TLS_HOSTNAME = 0,
+	WGET_STATS_TLS_VERSION = 1,
+	WGET_STATS_TLS_FALSE_START = 2,
+	WGET_STATS_TLS_TFO = 3,
+	WGET_STATS_TLS_ALPN_PROTO = 4,
+	WGET_STATS_TLS_SECS = 5,
+	WGET_STATS_TLS_CON = 6,
+	WGET_STATS_TLS_RESUMED = 7,
+	WGET_STATS_TLS_TCP_PROTO = 8,
+	WGET_STATS_TLS_CERT_CHAIN_SIZE = 9
+} wget_tls_stats_t;
+
+typedef enum {
+	WGET_STATS_SERVER_HOSTNAME = 0,
+	WGET_STATS_SERVER_IP = 1,
+	WGET_STATS_SERVER_SCHEME = 2,
+	WGET_STATS_SERVER_HPKP = 3,
+	WGET_STATS_SERVER_HPKP_NEW = 4,
+	WGET_STATS_SERVER_HSTS = 5,
+	WGET_STATS_SERVER_CSP = 6
+} wget_server_stats_t;
+
+typedef enum {
+	WGET_STATS_HPKP_NO = 0,
+	WGET_STATS_HPKP_MATCH = 1,
+	WGET_STATS_HPKP_NOMATCH = 2,
+	WGET_STATS_HPKP_ERROR = 3
+} wget_hpkp_stats_t;
+
+typedef enum {
+	WGET_STATS_OCSP_HOSTNAME = 0,
+	WGET_STATS_OCSP_VALID = 1,
+	WGET_STATS_OCSP_REVOKED = 2,
+	WGET_STATS_OCSP_IGNORED = 3
+} wget_ocsp_stats_t;
+
+typedef void
+	(*wget_stats_callback_t)(wget_stats_type_t type, const void *stats);
+
+WGETAPI void
+	wget_tcp_set_stats_dns(wget_stats_callback_t fn);
+
+WGETAPI const void *
+	wget_tcp_get_stats_dns(wget_dns_stats_t type, const void *stats);
+
+WGETAPI void
+	wget_tcp_set_stats_tls(wget_stats_callback_t fn);
+
+WGETAPI const void *
+	wget_tcp_get_stats_tls(wget_tls_stats_t type, const void *stats);
+
+WGETAPI void
+	wget_tcp_set_stats_server(wget_stats_callback_t fn);
+
+WGETAPI const void *
+	wget_tcp_get_stats_server(wget_server_stats_t type, const void *stats);
+
+WGETAPI void
+	wget_tcp_set_stats_ocsp(wget_stats_callback_t fn);
+
+WGETAPI const void *
+	wget_tcp_get_stats_ocsp(wget_ocsp_stats_t type, const void *stats);
+
+WGETAPI void
+	wget_tcp_set_stats_site(bool stats_site_switch);
+
+WGETAPI void
+	host_ips_free(void);
 
 WGET_END_DECLS
 

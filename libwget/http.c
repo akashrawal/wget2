@@ -54,6 +54,7 @@
 #include <wget.h>
 #include "private.h"
 #include "http.h"
+#include "net.h"
 
 static char
 	_abort_indicator;
@@ -62,6 +63,33 @@ static wget_vector_t
 	*http_proxies,
 	*https_proxies,
 	*no_proxies;
+
+static wget_hashmap_t
+	*hosts;
+static wget_thread_mutex_t
+	hosts_mutex = WGET_THREAD_MUTEX_INITIALIZER;
+
+typedef struct {
+	const char
+		*hostname,
+		*ip,
+		*scheme;
+} HOST;
+
+typedef struct
+{
+	const char
+		*hostname,
+		*ip,
+		*scheme;
+	char
+		hsts,
+		csp,
+		hpkp_new;
+	wget_hpkp_stats_t hpkp;
+} _stats_data_t;
+
+static wget_stats_callback_t stats_callback;
 
 // This is the default function for collecting body data
 static int _body_callback(wget_http_response_t *resp, void *user_data G_GNUC_WGET_UNUSED, const char *data, size_t length)
@@ -509,6 +537,96 @@ static void setup_nghttp2_callbacks(nghttp2_session_callbacks *callbacks)
 }
 #endif
 
+static int _host_compare(const HOST *host1, const HOST *host2)
+{
+	int n;
+
+	if ((n = wget_strcmp(host1->hostname, host2->hostname)))
+		return n;
+
+	if ((n = wget_strcmp(host1->ip, host2->ip)))
+		return n;
+
+	return wget_strcmp(host1->scheme, host2->scheme);
+}
+
+#ifdef __clang__
+__attribute__((no_sanitize("integer")))
+#endif
+static unsigned int _host_hash(const HOST *host)
+{
+	unsigned int hash = 0; // use 0 as SALT if hash table attacks doesn't matter
+	const unsigned char *p;
+
+	for (p = (unsigned char *)host->hostname; p && *p; p++)
+			hash = hash * 101 + *p;
+
+	for (p = (unsigned char *)host->ip; p && *p; p++)
+		hash = hash * 101 + *p;
+
+	for (p = (unsigned char *)host->scheme; p && *p; p++)
+			hash = hash * 101 + *p;
+
+	return hash;
+}
+
+static void _free_host_entry(HOST *host)
+{
+	if (host) {
+		wget_xfree(host->hostname);
+		wget_xfree(host->ip);
+		wget_xfree(host->scheme);
+		wget_xfree(host);
+	}
+}
+
+static const HOST *host_add(const HOST *hostp)
+{
+	if (!hosts) {
+		hosts = wget_hashmap_create(16, (wget_hashmap_hash_t)_host_hash, (wget_hashmap_compare_t)_host_compare);
+		wget_hashmap_set_key_destructor(hosts, (wget_hashmap_key_destructor_t)_free_host_entry);
+	}
+
+	wget_hashmap_put_noalloc(hosts, hostp, hostp);
+
+	return hostp;
+}
+
+void host_ips_free(void)
+{
+	// We don't need mutex locking here - this function is called on exit when all threads have ceased.
+	if (stats_callback)
+		wget_hashmap_free(&hosts);
+}
+
+static void _server_stats_add(wget_http_connection_t *conn, wget_http_response_t *resp)
+{
+	wget_thread_mutex_lock(&hosts_mutex);
+
+	HOST *hostp = wget_malloc(sizeof(HOST));
+	hostp->hostname = wget_strdup(wget_http_get_host(conn));
+	hostp->ip = wget_strdup(conn->tcp->ip);
+	hostp->scheme = wget_strdup(conn->scheme);
+
+	if (!hosts || !wget_hashmap_contains(hosts, hostp)) {
+		_stats_data_t stats;
+
+		stats.hostname = hostp->hostname;
+		stats.ip = hostp->ip;
+		stats.scheme = hostp->scheme;
+		stats.hpkp = conn->tcp->hpkp;
+		stats.hpkp_new = resp ? (resp->hpkp ? 1 : 0): -1;
+		stats.hsts = resp ? (resp->hsts ? 1 : 0) : -1;
+		stats.csp = resp ? (resp->csp ? 1 : 0) : -1;
+
+		stats_callback(WGET_STATS_TYPE_SERVER, &stats);
+		host_add(hostp);
+	} else
+		_free_host_entry(hostp);
+
+	wget_thread_mutex_unlock(&hosts_mutex);
+}
+
 int wget_http_open(wget_http_connection_t **_conn, const wget_iri_t *iri)
 {
 	static int next_http_proxy = -1;
@@ -601,6 +719,9 @@ int wget_http_open(wget_http_connection_t **_conn, const wget_iri_t *iri)
 		conn->pending_requests = wget_vector_create(16, -2, NULL);
 #endif
 	} else {
+		if (stats_callback && (rc == WGET_E_CERTIFICATE))
+			_server_stats_add(conn, NULL);
+
 		wget_http_close(_conn);
 	}
 
@@ -838,6 +959,9 @@ wget_http_response_t *wget_http_get_response_cb(wget_http_connection_t *conn)
 			}
 		}
 
+		if (stats_callback)
+			_server_stats_add(conn, resp);
+
 		return resp;
 	}
 #endif
@@ -891,6 +1015,9 @@ wget_http_response_t *wget_http_get_response_cb(wget_http_connection_t *conn)
 			}
 
 			resp->req = req;
+
+			if (stats_callback)
+				_server_stats_add(conn, resp);
 
 			if (req->header_callback) {
 				if (req->header_callback(resp, req->header_user_data))
@@ -1272,4 +1399,45 @@ void wget_http_abort_connection(wget_http_connection_t *conn)
 		conn->abort_indicator = 1; // stop single connection
 	else
 		_abort_indicator = 1; // stop all connections
+}
+
+/**
+ * \param[in] fn A `wget_stats_callback_t` callback function used to collect Server statistics
+ *
+ * Set callback function to be called once Server statistics for a host are collected
+ */
+void wget_tcp_set_stats_server(wget_stats_callback_t fn)
+{
+	stats_callback = fn;
+}
+
+/**
+ * \param[in] type A `wget_server_stats_t` constant representing Server statistical info to return
+ * \param[in] _stats An internal  pointer sent to callback function
+ * \return Server statistical info in question
+ *
+ * Get the specific Server statistics information
+ */
+const void *wget_tcp_get_stats_server(wget_server_stats_t type, const void *_stats)
+{
+	const _stats_data_t *stats = (_stats_data_t *) _stats;
+
+	switch(type) {
+	case WGET_STATS_SERVER_HOSTNAME:
+		return stats->hostname;
+	case WGET_STATS_SERVER_IP:
+		return stats->ip;
+	case WGET_STATS_SERVER_SCHEME:
+		return stats->scheme;
+	case WGET_STATS_SERVER_HPKP:
+		return &(stats->hpkp);
+	case WGET_STATS_SERVER_HPKP_NEW:
+		return &(stats->hpkp_new);
+	case WGET_STATS_SERVER_HSTS:
+		return &(stats->hsts);
+	case WGET_STATS_SERVER_CSP:
+		return &(stats->csp);
+	default:
+		return NULL;
+	}
 }

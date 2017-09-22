@@ -35,6 +35,7 @@
 #include "wget_host.h"
 #include "wget_options.h"
 #include "wget_job.h"
+#include "wget_stats.h"
 
 static wget_hashmap_t
 	*hosts;
@@ -87,6 +88,8 @@ static void _free_host_entry(HOST *host)
 	if (host) {
 		host_queue_free(host);
 		wget_robots_free(&host->robots);
+		wget_hashmap_free(&host->host_docs);
+		wget_hashmap_free(&host->tree_docs);
 		wget_xfree(host);
 	}
 }
@@ -98,6 +101,7 @@ HOST *host_add(wget_iri_t *iri)
 	if (!hosts) {
 		hosts = wget_hashmap_create(16, (wget_hashmap_hash_t)_host_hash, (wget_hashmap_compare_t)_host_compare);
 		wget_hashmap_set_key_destructor(hosts, (wget_hashmap_key_destructor_t)_free_host_entry);
+		stats_set_hosts(hosts, &hosts_mutex);
 	}
 
 	HOST *hostp = NULL, host = { .scheme = iri->scheme, .host = iri->host, .port = iri->port };
@@ -119,11 +123,10 @@ HOST *host_get(wget_iri_t *iri)
 
 	wget_thread_mutex_lock(&hosts_mutex);
 
-	if (hosts) {
+	if (hosts)
 		hostp = wget_hashmap_get(hosts, &host);
-	} else {
+	else
 		hostp = NULL;
-	}
 
 	wget_thread_mutex_unlock(&hosts_mutex);
 
@@ -281,11 +284,11 @@ JOB *host_add_job(HOST *host, JOB *job)
 	return jobp;
 }
 
-JOB *host_add_robotstxt_job(HOST *host, wget_iri_t *iri, const char *encoding)
+JOB *host_add_robotstxt_job(HOST *host, wget_iri_t *iri)
 {
 	JOB *job;
 
-	job = job_init(NULL, wget_iri_parse_base(iri, "/robots.txt", encoding));
+	job = job_init(NULL, iri);
 	job->host = host;
 	job->robotstxt = 1;
 	job->local_filename = get_local_filename(job->iri);
@@ -344,7 +347,7 @@ void host_remove_job(HOST *host, JOB *job)
 			}
 		}
 
-		wget_iri_free(&job->iri);
+//		wget_iri_free(&job->iri);
 		job_free(job);
 		xfree(host->robot_job);
 	} else {

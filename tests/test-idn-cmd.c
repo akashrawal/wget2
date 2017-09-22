@@ -32,7 +32,9 @@
 
 // Kon'nichiwa <dot> Japan
 #define euc_jp_hostname "\272\243\306\374\244\317.\306\374\313\334"
-#define utf8_hostname "\344\273\212\346\227\245\343\201\257.\346\227\245\346\234\254"
+#ifndef _WIN32
+#  define utf8_hostname "\344\273\212\346\227\245\343\201\257.\346\227\245\346\234\254"
+#endif
 #define punycoded_hostname "xn--v9ju72g90p.xn--wgv71a"
 
 int main(void)
@@ -49,13 +51,11 @@ int main(void)
 
 	char options[256];
 
-#if !defined WITH_LIBIDN && !defined WITH_LIBIDN2
-	exit(77);
-#endif
-
 	// functions won't come back if an error occurs
 	wget_test_start_server(
 		WGET_TEST_RESPONSE_URLS, &urls, countof(urls),
+		WGET_TEST_FEATURE_MHD,
+		WGET_TEST_FEATURE_IDN,
 		0);
 
 	// test-idn-cmd
@@ -73,6 +73,8 @@ int main(void)
 			{	NULL } },
 		0);
 
+// UTF-8 command line characters are mangled on MinGW on C locale
+#ifndef _WIN32
 	// test-idn-cmd
 	snprintf(options, sizeof(options),
 		"--iri -rH -e http_proxy=localhost:%d --local-encoding=UTF-8 " utf8_hostname,
@@ -87,6 +89,7 @@ int main(void)
 			{ punycoded_hostname "/index.html", urls[0].body },
 			{	NULL } },
 		0);
+#endif
 
 	exit(0);
 }
