@@ -40,8 +40,9 @@ struct wget_tcp_st {
 		bind_addrinfo;
 	struct addrinfo *
 		connect_addrinfo; // needed for TCP_FASTOPEN delayed connect
-	const char *
-		ssl_hostname; // if set, do SSL hostname checking
+	const char
+		*ssl_hostname, // if set, do SSL hostname checking
+		*ip;
 	int
 		sockfd,
 		// timeouts in milliseconds
@@ -52,9 +53,11 @@ struct wget_tcp_st {
 		family,
 		preferred_family,
 		protocol; // WGET_PROTOCOL_HTTP1_1, WGET_PROTOCOL_HTTP2_0
+	wget_hpkp_stats_t
+		hpkp; // hpkp stats
+
 	unsigned char
 		ssl : 1,
-		passive : 1,
 		caching : 1,
 		addrinfo_allocated : 1,
 		bind_addrinfo_allocated : 1,

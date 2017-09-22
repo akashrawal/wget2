@@ -135,9 +135,20 @@ static struct wget_tcp_st _global_tcp = {
 	.tcp_fastopen = 1,
 #elif defined TCP_FASTOPEN_LINUX
 	.tcp_fastopen = 1,
-	.first_send = 1
+	.first_send = 1,
 #endif
 };
+
+typedef struct
+{
+	const char
+		*hostname,
+		*ip;
+	uint16_t port;
+	long long dns_secs;	// milliseconds
+} _stats_data_t;
+
+static wget_stats_callback_t stats_callback;
 
 /* Resolver / DNS cache container */
 static wget_vector_t
@@ -265,9 +276,7 @@ static int _wget_tcp_resolve(wget_tcp_t *tcp, const char *host, uint16_t port, s
 	memset(&hints, 0 ,sizeof(hints));
 	hints.ai_family = tcp->family;
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_ADDRCONFIG
-		| (port ? AI_NUMERICSERV : 0)
-		| (tcp->passive ? AI_PASSIVE : 0);
+	hints.ai_flags = AI_ADDRCONFIG | (port ? AI_NUMERICSERV : 0);
 
 	if (port) {
 		snprintf(s_port, sizeof(s_port), "%hu", port);
@@ -334,10 +343,15 @@ struct addrinfo *wget_tcp_resolve(wget_tcp_t *tcp, const char *host, uint16_t po
 		mutex = WGET_THREAD_MUTEX_INITIALIZER;
 	struct addrinfo *addrinfo = NULL;
 	int rc = 0;
+	char adr[NI_MAXHOST], sport[NI_MAXSERV];
+	long long before_millisecs = 0;
+	_stats_data_t stats;
 
 	if (!tcp)
 		tcp = &_global_tcp;
 
+	if (stats_callback)
+		before_millisecs = wget_get_timemillis();
 	// get the IP address for the server
 	for (int tries = 0, max = 3; tries < max; tries++) {
 		if (tcp->caching) {
@@ -366,6 +380,13 @@ struct addrinfo *wget_tcp_resolve(wget_tcp_t *tcp, const char *host, uint16_t po
 		}
 	}
 
+	if (stats_callback) {
+		long long after_millisecs = wget_get_timemillis();
+		stats.dns_secs = after_millisecs - before_millisecs;
+		stats.hostname = host;
+		stats.port = port;
+	}
+
 	if (rc) {
 		error_printf(_("Failed to resolve %s (%s)\n"),
 				(host ? host : ""), gai_strerror(rc));
@@ -373,17 +394,29 @@ struct addrinfo *wget_tcp_resolve(wget_tcp_t *tcp, const char *host, uint16_t po
 		if (tcp->caching)
 			wget_thread_mutex_unlock(&mutex);
 
+		if (stats_callback) {
+			stats.ip = NULL;
+			stats_callback(WGET_STATS_TYPE_DNS, &stats);
+		}
+
 		return NULL;
 	}
 
 	if (tcp->family == AF_UNSPEC && tcp->preferred_family != AF_UNSPEC)
 		addrinfo = _wget_sort_preferred(addrinfo, tcp->preferred_family);
 
+	if (stats_callback) {
+		if ((rc = getnameinfo(addrinfo->ai_addr, addrinfo->ai_addrlen, adr, sizeof(adr), sport, sizeof(sport), NI_NUMERICHOST | NI_NUMERICSERV)) == 0)
+			stats.ip = adr;
+		else
+			stats.ip = "???";
+
+		stats_callback(WGET_STATS_TYPE_DNS, &stats);
+	}
+
 	/* Finally, print the address list to the debug pipe if enabled */
 	if (wget_logger_is_active(wget_get_logger(WGET_LOGGER_DEBUG))) {
 		for (struct addrinfo *ai = addrinfo; ai; ai = ai->ai_next) {
-			char adr[NI_MAXHOST], sport[NI_MAXSERV];
-
 			if ((rc = getnameinfo(ai->ai_addr, ai->ai_addrlen, adr, sizeof(adr), sport, sizeof(sport), NI_NUMERICHOST | NI_NUMERICSERV)) == 0)
 				debug_printf("has %s:%s\n", adr, sport);
 			else
@@ -437,12 +470,16 @@ static int G_GNUC_WGET_CONST _family_to_value(int family)
  *
  * If \p tcp is NULL, TCP Fast Open is enabled or disabled globally.
  */
+#if defined TCP_FASTOPEN_OSX || defined TCP_FASTOPEN_LINUX
 void wget_tcp_set_tcp_fastopen(wget_tcp_t *tcp, int tcp_fastopen)
 {
-#if defined TCP_FASTOPEN_OSX || defined TCP_FASTOPEN_LINUX
 	(tcp ? tcp : &_global_tcp)->tcp_fastopen = !!tcp_fastopen;
-#endif
 }
+#else
+void wget_tcp_set_tcp_fastopen(wget_tcp_t G_GNUC_WGET_UNUSED *tcp, int G_GNUC_WGET_UNUSED tcp_fastopen)
+{
+}
+#endif
 
 /**
  * \param[in] tcp A `wget_tcp_t` structure representing a TCP connection, returned by wget_tcp_init(). Might be NULL.
@@ -452,7 +489,7 @@ void wget_tcp_set_tcp_fastopen(wget_tcp_t *tcp, int tcp_fastopen)
  *
  * You can enable and disable it with wget_tcp_set_tcp_fastopen().
  */
-int wget_tcp_get_tcp_fastopen(wget_tcp_t *tcp)
+char wget_tcp_get_tcp_fastopen(wget_tcp_t *tcp)
 {
 	return (tcp ? tcp : &_global_tcp)->tcp_fastopen;
 }
@@ -478,7 +515,7 @@ void wget_tcp_set_tls_false_start(wget_tcp_t *tcp, int false_start)
  *
  * You can enable and disable it with wget_tcp_set_tls_false_start().
  */
-int wget_tcp_get_tls_false_start(wget_tcp_t *tcp)
+char wget_tcp_get_tls_false_start(wget_tcp_t *tcp)
 {
 	return (tcp ? tcp : &_global_tcp)->tls_false_start;
 }
@@ -611,6 +648,41 @@ int wget_tcp_get_local_port(wget_tcp_t *tcp)
 	}
 
 	return 0;
+}
+
+/**
+ * \param[in] fn A `wget_stats_callback_t` callback function used to collect DNS statistics
+ *
+ * Set callback function to be called once DNS statistics for a host are collected
+ */
+void wget_tcp_set_stats_dns(wget_stats_callback_t fn)
+{
+	stats_callback = fn;
+}
+
+/**
+ * \param[in] type A `wget_dns_stats_t` constant representing DNS statistical info to return
+ * \param[in] _stats An internal  pointer sent to callback function
+ * \return DNS statistical info in question
+ *
+ * Get the specific DNS statistics information
+ */
+const void *wget_tcp_get_stats_dns(const wget_dns_stats_t type, const void *_stats)
+{
+	const _stats_data_t *stats = (_stats_data_t *) _stats;
+
+	switch(type) {
+	case WGET_STATS_DNS_HOST:
+		return stats->hostname;
+	case WGET_STATS_DNS_IP:
+		return stats->ip;
+	case WGET_STATS_DNS_PORT:
+		return &(stats->port);
+	case WGET_STATS_DNS_SECS:
+		return &(stats->dns_secs);
+	default:
+		return NULL;
+	}
 }
 
 /**
@@ -836,6 +908,7 @@ void wget_tcp_deinit(wget_tcp_t **_tcp)
 		}
 
 		xfree(tcp->ssl_hostname);
+		xfree(tcp->ip);
 		xfree(tcp);
 
 		if (_tcp)
@@ -924,7 +997,8 @@ int wget_tcp_connect(wget_tcp_t *tcp, const char *host, uint16_t port)
 	if (tcp->addrinfo_allocated)
 		freeaddrinfo(tcp->addrinfo);
 
-	tcp->addrinfo = wget_tcp_resolve(tcp, host, port);
+	ai = tcp->addrinfo = wget_tcp_resolve(tcp, host, port);
+
 	tcp->addrinfo_allocated = !tcp->caching;
 
 	for (ai = tcp->addrinfo; ai; ai = ai->ai_next) {
@@ -1008,203 +1082,18 @@ int wget_tcp_connect(wget_tcp_t *tcp, const char *host, uint16_t port)
 					}
 				}
 
+				if ((rc = getnameinfo(ai->ai_addr, ai->ai_addrlen, adr, sizeof(adr), s_port, sizeof(s_port), NI_NUMERICHOST | NI_NUMERICSERV)) == 0)
+					tcp->ip = wget_strdup(adr);
+				else
+					tcp->ip = wget_strdup("???");
+
 				return WGET_E_SUCCESS;
 			}
-		} else {
+		} else
 			error_printf(_("Failed to create socket (%d)\n"), errno);
-		}
 	}
 
 	return ret;
-}
-
-/**
- * \param[in] tcp A `wget_tcp_t` structure representing a TCP connection, returned by wget_tcp_init().
- * \param[in] host Name or IP address to listen on.
- * \param[in] port Port number
- * \param[in] backlog Maximum number of pending connections allowed (see `listen(2)`).
- * \return 0 on success, -1 on error.
- *
- * Open a new TCP socket for listening.
- *
- * The socket will be bound to the specified \p host and \p port.
- *
- * This function will use wget_tcp_resolve() to get a suitable IP address for listening
- * (which may or may not be equal to \p host). This means all the options that can be set on \p tcp
- * for that function can also be set here. Namely:
- *
- *  - You can enable or disable DNS caching with wget_tcp_set_dns_caching().
- *  - You can force it to use a certain address family (such as `AF_INET` or `AF_INET6`)
- *  with wget_tcp_set_family(), or you can establish a preferred family with wget_tcp_set_preferred_family().
- *
- * While wget_tcp_resolve() allows it, \p tcp **cannot be NULL** here.
- *
- * Additionally, this function will try to use TCP Fast Open if available and enabled. You can enable it
- * with wget_tcp_set_tcp_fastopen().
- *
- * This function will return 0 after a successful call to `listen(2)` (so the socket is listening),
- * or -1 on error. Error conditions include:
- *
- *  - The call to `bind(2)` failed.
- *  - wget_tcp_resolve() couldn't find a suitable address to listen on.
- *
- * Once the socket is listening, you can accept incoming connections with wget_tcp_accept().
- */
-int wget_tcp_listen(wget_tcp_t *tcp, const char *host, uint16_t port, int backlog)
-{
-	struct addrinfo *ai;
-	int sockfd = -1, rc;
-	char adr[NI_MAXHOST], s_port[NI_MAXSERV];
-	int debug = wget_logger_is_active(wget_get_logger(WGET_LOGGER_DEBUG));
-
-	if (unlikely(!tcp || backlog < 0))
-		return -1;
-
-	if (tcp->bind_addrinfo_allocated)
-		freeaddrinfo(tcp->bind_addrinfo);
-
-	tcp->passive = 1;
-	tcp->bind_addrinfo = wget_tcp_resolve(tcp, host, port);
-	tcp->bind_addrinfo_allocated = !tcp->caching;
-
-	for (ai = tcp->bind_addrinfo; ai; ai = ai->ai_next) {
-		if (debug) {
-			rc = getnameinfo(ai->ai_addr, ai->ai_addrlen,
-					adr, sizeof(adr),
-					s_port, sizeof(s_port),
-					NI_NUMERICHOST | NI_NUMERICSERV);
-
-			if (rc == 0)
-				debug_printf("try to listen on %s:%s...\n", adr, s_port);
-			else
-				debug_printf("failed to listen on %s:%s (%s)...\n", host ? host : "", s_port, gai_strerror(rc));
-		}
-
-		if ((sockfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)) != -1) {
-			_set_async(sockfd);
-			_set_socket_options(sockfd);
-
-#ifdef TCP_FASTOPEN_LINUX
-			/* Enable TCP Fast Open, if required by the user and available */
-			if (tcp->tcp_fastopen)  {
-				int on = 1;
-
-				if (setsockopt(sockfd, IPPROTO_TCP, TCP_FASTOPEN, &on, sizeof(on)) == -1)
-					error_printf(_("Failed to set socket option FASTOPEN\n"));
-
-				tcp->first_send = 0;
-			}
-#endif
-
-			if (bind(sockfd, ai->ai_addr, ai->ai_addrlen) != 0) {
-				error_printf(_("Failed to bind (%d)\n"), errno);
-				close(sockfd);
-
-				return -1;
-			}
-
-			if (listen(sockfd, backlog) == 0) {
-				tcp->sockfd = sockfd;
-
-				/*
-				 * We're now listening.
-				 * Print some debug information and return a success code.
-				 */
-				if (debug) {
-					if (!port)
-						snprintf(s_port, sizeof(s_port), "%d", wget_tcp_get_local_port(tcp));
-					else
-						snprintf(s_port, sizeof(s_port), "%d", port);
-
-					rc = getnameinfo(ai->ai_addr, ai->ai_addrlen,
-						adr, sizeof(adr),
-						NULL, 0,
-						NI_NUMERICHOST);
-
-					if (rc == 0) {
-						debug_printf("%ssecure listen on %s:%s...\n",
-							tcp->ssl ? "" : "in",
-							adr, s_port);
-					} else {
-						debug_printf("%ssecure listen on %s:%s (%s)...\n",
-							tcp->ssl ? "" : "in",
-							adr, s_port,
-							gai_strerror(rc));
-					}
-				}
-
-				return 0;
-			} else {
-				error_printf(_("Failed to listen (%d)\n"), errno);
-				close(sockfd);
-			}
-		} else {
-			error_printf(_("Failed to create socket (%d)\n"), errno);
-		}
-	}
-
-	return -1;
-}
-
-/**
- * \param[in] parent_tcp A listening TCP connection (you can start listening with wget_tcp_listen()).
- * \return A new `wget_tcp_t` structure representing the new incoming connection, or NULL.
- *
- * Accept an incoming connection from a listening socket.
- *
- * You can start a listening socket with wget_tcp_listen().
- *
- * If TLS was enabled on this `wget_tcp_t` (with wget_tcp_set_ssl()), this function will expect
- * the client to perform a TLS handshake. If it doesn't, the connection will be closed and **NULL
- * will be returned**.
- *
- * You can use wget_tcp_set_timeout() to set how long should this function wait (in milliseconds)
- * until someone connects. The default timeout is -1, which means to wait indefinitely.
- *
- * The following two values are special:
- *
- *  - `0`: No timeout, immediate.
- *  - `-1`: Infinite timeout. Wait indefinitely until a new connection comes.
- *
- *  This function will return NULL if the timeout elapsed and no connections came in.
- */
-wget_tcp_t *wget_tcp_accept(wget_tcp_t *parent_tcp)
-{
-	int sockfd;
-
-	if (unlikely(!parent_tcp))
-		return NULL;
-
-	if (parent_tcp->timeout) {
-		if (wget_ready_2_read(parent_tcp->sockfd, parent_tcp->timeout) <= 0)
-			return NULL;
-	}
-
-	sockfd = accept(parent_tcp->sockfd,
-			parent_tcp->bind_addrinfo->ai_addr,
-			&parent_tcp->bind_addrinfo->ai_addrlen);
-
-	if (sockfd != -1) {
-		wget_tcp_t *tcp = xmalloc(sizeof(wget_tcp_t));
-
-		*tcp = *parent_tcp;
-		tcp->sockfd = sockfd;
-		tcp->ssl_hostname = NULL;
-		tcp->addrinfo = NULL;
-		tcp->bind_addrinfo = NULL;
-
-		if (tcp->ssl) {
-			/* If the TLS handshake fails, we close the connection and return NULL */
-			if (wget_tcp_tls_start(tcp))
-				wget_tcp_deinit(&tcp);
-		}
-
-		return tcp;
-	}
-
-	error_printf(_("Failed to accept (%d)\n"), errno);
-
-	return NULL;
 }
 
 /**
@@ -1221,10 +1110,7 @@ wget_tcp_t *wget_tcp_accept(wget_tcp_t *parent_tcp)
  */
 int wget_tcp_tls_start(wget_tcp_t *tcp)
 {
-	if (likely(tcp) && tcp->passive)
-		return wget_ssl_server_open(tcp);
-	else
-		return wget_ssl_open(tcp);
+	return wget_ssl_open(tcp);
 }
 
 /**
@@ -1234,9 +1120,7 @@ int wget_tcp_tls_start(wget_tcp_t *tcp)
  */
 void wget_tcp_tls_stop(wget_tcp_t *tcp)
 {
-	if (likely(tcp) && tcp->passive)
-		wget_ssl_server_close(&tcp->ssl_session);
-	else
+	if (tcp)
 		wget_ssl_close(&tcp->ssl_session);
 }
 

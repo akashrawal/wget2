@@ -53,6 +53,7 @@ int main(void)
 	// functions won't come back if an error occurs
 	wget_test_start_server(
 		WGET_TEST_RESPONSE_URLS, &urls, countof(urls),
+		WGET_TEST_FEATURE_MHD,
 		0);
 
 	wget_test(
@@ -75,6 +76,16 @@ int main(void)
 		0);
 
 	wget_test(
+		WGET_TEST_OPTIONS, "-r --cut-dirs=1",
+		WGET_TEST_REQUEST_URL, "subdir/page2.html",
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_KEEP_TMPFILES, 1,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "localhost/page2.html", urls[1].body },
+			{ NULL } },
+		0);
+
+	wget_test(
 		WGET_TEST_OPTIONS, "-r -nH --cut-dirs=1",
 		WGET_TEST_REQUEST_URL, "subdir/page2.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
@@ -89,6 +100,16 @@ int main(void)
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{ "page2.html", urls[1].body },
+			{ NULL } },
+		0);
+
+	wget_test(
+		WGET_TEST_OPTIONS, "-r --cut-dirs=2",
+		WGET_TEST_REQUEST_URL, "subdir/page2.html",
+		WGET_TEST_KEEP_TMPFILES, 1,
+		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
+			{ "localhost/page2.html", urls[1].body },
 			{ NULL } },
 		0);
 

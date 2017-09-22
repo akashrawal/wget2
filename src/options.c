@@ -60,13 +60,14 @@
 #include "wget_options.h"
 #include "wget_dl.h"
 #include "wget_plugin.h"
+#include "wget_stats.h"
 
 typedef enum {
 	SECTION_STARTUP = 0,
-	SECTION_DOWNLOAD,
-	SECTION_HTTP,
-	SECTION_SSL,
-	SECTION_DIRECTORY
+	SECTION_DOWNLOAD = 1,
+	SECTION_HTTP = 2,
+	SECTION_SSL = 3,
+	SECTION_DIRECTORY = 4
 } help_section_t;
 
 typedef const struct optionw *option_t; // forward declaration
@@ -451,9 +452,7 @@ static int parse_taglist(option_t opt, const char *val, G_GNUC_WGET_UNUSED const
 static int parse_bool(option_t opt, const char *val, const char invert)
 {
 	if (opt->var) {
-		if (!val)
-			*((char *) opt->var) = !invert;
-		else if (!strcmp(val, "1") || !wget_strcasecmp_ascii(val, "y") || !wget_strcasecmp_ascii(val, "yes") || !wget_strcasecmp_ascii(val, "on"))
+		if (!val || !strcmp(val, "1") || !wget_strcasecmp_ascii(val, "y") || !wget_strcasecmp_ascii(val, "yes") || !wget_strcasecmp_ascii(val, "on"))
 			*((char *) opt->var) = !invert;
 		else if (!*val || !strcmp(val, "0") || !wget_strcasecmp_ascii(val, "n") || !wget_strcasecmp_ascii(val, "no") || !wget_strcasecmp_ascii(val, "off"))
 			*((char *) opt->var) = invert;
@@ -612,6 +611,54 @@ static int parse_prefer_family(option_t opt, const char *val, G_GNUC_WGET_UNUSED
 		*((char *)opt->var) = WGET_NET_FAMILY_IPV6;
 	else
 		error_printf_exit("Unknown address family '%s'\n", val);
+
+	return 0;
+}
+
+static int parse_stats(option_t opt, const char *val, const char invert)
+{
+	int status, format = WGET_STATS_FORMAT_HUMAN;
+	char *filename = NULL;
+
+	if (!val || !strcmp(val, "1") || !wget_strcasecmp_ascii(val, "y") || !wget_strcasecmp_ascii(val, "yes") || !wget_strcasecmp_ascii(val, "on"))
+		status = !invert;
+	else if (!*val || !strcmp(val, "0") || !wget_strcasecmp_ascii(val, "n") || !wget_strcasecmp_ascii(val, "no") || !wget_strcasecmp_ascii(val, "off"))
+		status = invert;
+	else {
+		status = !invert;
+
+		char *p;
+		if ((p = strchr(val, ':'))) {
+			if (!wget_strncasecmp_ascii("human", val, p - val) || !wget_strncasecmp_ascii("h", val, p - val))
+				;//empty statement
+			else if (!wget_strncasecmp_ascii("csv", val, p - val))
+				format = WGET_STATS_FORMAT_CSV;
+			else if (!wget_strncasecmp_ascii("json", val, p - val))
+				format = WGET_STATS_FORMAT_JSON;
+			else if ((int) (ptrdiff_t)opt->var == WGET_STATS_TYPE_SITE && !wget_strncasecmp_ascii("tree", val, p - val))
+				format = WGET_STATS_FORMAT_TREE;
+			else
+				error_printf_exit("Unknown stats format\n");
+
+			val = p + 1;
+		}
+
+		if (val)
+			filename = _shell_expand(val);
+	}
+
+	stats_set_option((int) (ptrdiff_t) opt->var, status, format, filename);
+
+	return 0;
+}
+
+static int parse_stats_all(option_t opt, const char *val, const char invert)
+{
+	parse_bool(opt, "1", invert);
+
+	if (config.stats_all)
+		for (int it = 1; it <= 5; it++)	// Get rid of magic number
+			parse_stats(opt + it, val, invert);
 
 	return 0;
 }
@@ -1472,6 +1519,42 @@ static const struct optionw options[] = {
 		{ "Enable web spider mode. (default: off)\n"
 		}
 	},
+	{ "stats-all", &config.stats_all, parse_stats_all, -1, 0,
+		SECTION_STARTUP,
+		{ "Print all stats (default: off)\n",
+		  "Additional format supported: --stats-all[=[FORMAT:]FILE]\n"
+		}
+	},
+	{ "stats-dns", (void *) WGET_STATS_TYPE_DNS, parse_stats, -1, 0,
+		SECTION_STARTUP,
+		{ "Print DNS stats. (default: off)\n",
+		  "Additional format supported: --stats-dns[=[FORMAT:]FILE]\n"
+		}
+	},
+	{ "stats-ocsp", (void *) WGET_STATS_TYPE_OCSP, parse_stats, -1, 0,
+		SECTION_STARTUP,
+		{ "Print OCSP stats. (default: off)\n",
+		  "Additional format supported: --stats-ocsp[=[FORMAT:]FILE]\n"
+		}
+	},
+	{ "stats-server", (void *) WGET_STATS_TYPE_SERVER, parse_stats, -1, 0,
+		SECTION_STARTUP,
+		{ "Print server stats. (default: off)\n",
+		  "Additional format supported: --stats-server[=[FORMAT:]FILE]\n"
+		}
+	},
+	{ "stats-site", (void *) WGET_STATS_TYPE_SITE, parse_stats, -1, 0,
+		SECTION_STARTUP,
+		{ "Print site stats. (default: off)\n",
+		  "Additional format supported: --stats-site[=[FORMAT:]FILE]\n"
+		}
+	},
+	{ "stats-tls", (void *) WGET_STATS_TYPE_TLS, parse_stats, -1, 0,
+		SECTION_STARTUP,
+		{ "Print TLS stats. (default: off)\n",
+		  "Additional format supported: --stats-tls[=[FORMAT:]FILE]\n"
+		}
+	},
 	{ "strict-comments", &config.strict_comments, parse_bool, -1, 0,
 		SECTION_DOWNLOAD,
 		{ "A dummy option. Parsing always works non-strict.\n"
@@ -2296,6 +2379,8 @@ int init(int argc, const char **argv)
 	if (config.mirror)
 		config.metalink = 0;
 
+	config.stats_site = stats_is_enabled(WGET_STATS_TYPE_SITE);
+
 	if ((rc = wget_net_init()))
 		wget_error_printf_exit(_("Failed to init networking (%d)"), rc);
 
@@ -2426,6 +2511,8 @@ void deinit(void)
 	xfree(config.http_proxy_password);
 	xfree(config.post_data);
 	xfree(config.post_file);
+
+	stats_exit();
 
 	wget_iri_free(&config.base);
 
