@@ -576,6 +576,7 @@ static void *watchdog_timer(G_GNUC_WGET_UNUSED void *ignored)
 {
 	const int timer = 60 * 4;
 	//sleep(timer);
+	sleep(1);
 	wget_error_printf_exit
 		("wget::watchdog_timer: %d s timer expired, stopping the tests\n",
 		 timer);
