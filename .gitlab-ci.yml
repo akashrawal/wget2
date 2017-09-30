@@ -129,7 +129,7 @@ MinGW64:
   - echo "WINEPATH=$WINEPATH"
   - ./configure --build=x86_64-pc-linux-gnu --host=$PREFIX --enable-shared
   - make -j$(nproc)
-  - make check -j1 LOG_COMPILER=wine
+  - make check -j$(nproc) LOG_COMPILER=wine
   tags:
   - shared
   - docker
