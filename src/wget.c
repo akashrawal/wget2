@@ -1716,9 +1716,8 @@ static void process_response(wget_http_response_t *resp)
 
 enum actions {
 	ACTION_GET_JOB = 1,
-//	ACTION_WAIT_JOB,
-	ACTION_GET_RESPONSE,
-	ACTION_ERROR
+	ACTION_GET_RESPONSE = 2,
+	ACTION_ERROR = 3
 };
 
 void *downloader_thread(void *p)
