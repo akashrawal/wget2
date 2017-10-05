@@ -1068,6 +1068,7 @@ int main(int argc, const char **argv)
 	wget_thread_cond_signal(&worker_cond);
 	wget_thread_mutex_unlock(&main_mutex);
 
+	debug_printf("TMP: nthreads=%d\n", nthreads);
 	for (n = 0; n < nthreads; n++) {
 		//		struct timespec ts;
 		//		gettime(&ts);
@@ -1075,6 +1076,7 @@ int main(int argc, const char **argv)
 		// if the thread is not detached, we have to call pthread_join()/pthread_timedjoin_np()
 		// else we will have a huge memory leak
 		//		if ((rc=pthread_timedjoin_np(downloader[n].tid, NULL, &ts))!=0)
+		debug_printf("TMP: Joining thread %d\n", n);
 		if ((rc = wget_thread_join(downloaders[n].tid)) != 0)
 			error_printf(_("Failed to wait for downloader #%d (%d %d)\n"), n, rc, errno);
 	}
