@@ -1079,6 +1079,7 @@ int main(int argc, const char **argv)
 		debug_printf("TMP: Joining thread %d\n", n);
 		if ((rc = wget_thread_join(downloaders[n].tid)) != 0)
 			error_printf(_("Failed to wait for downloader #%d (%d %d)\n"), n, rc, errno);
+		debug_printf("TMP: Thread %d joined\n", n);
 	}
 
 	if (config.progress)
