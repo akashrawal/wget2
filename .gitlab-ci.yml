@@ -122,7 +122,7 @@ pages:
 
 MinGW64:
 #WARNING: hardcoded image name
-  image: $CI_REGISTRY/akash_rawal/buildenv/wget2_mingw_w64
+  image: $CI_REGISTRY/akash_rawal/buildenv:wget2_mingw_w64
   script:
   - ./bootstrap --gnulib-srcdir=/src/gnulib
   - export WINEPATH="/usr/$PREFIX/bin"
