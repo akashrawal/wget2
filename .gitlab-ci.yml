@@ -125,6 +125,7 @@ MinGW64:
   image: $CI_REGISTRY/akash_rawal/buildenv:wget2_mingw_w64
   script:
   - ./bootstrap --gnulib-srcdir=/src/gnulib
+  - export PREFIX="x86_64-w64-mingw32"
   - export WINEPATH="/usr/$PREFIX/bin"
   - echo "WINEPATH=$WINEPATH"
   - mkdir build
