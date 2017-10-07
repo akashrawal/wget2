@@ -121,14 +121,15 @@ pages:
     - tmp-online-fuzz-coverage
 
 MinGW64:
-  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$MINGW_BUILD
+#WARNING: hardcoded image name
+  image: $CI_REGISTRY/akash_rawal/buildenv/wget2_mingw_w64
   script:
-  - uname -a
-  - ./bootstrap
-  - export GCCLIB=$(dirname $(find /usr/lib/gcc/$PREFIX -name libgcc_s_seh-1.dll|grep posix))
-  - export WINEPATH="$WINEPATH;/usr/$PREFIX/bin;/usr/$PREFIX/lib;$PWD/libwget/.libs;$GCCLIB"
+  - ./bootstrap --gnulib-srcdir=/src/gnulib
+  - export WINEPATH="/usr/$PREFIX/bin"
   - echo "WINEPATH=$WINEPATH"
-  - ./configure --build=x86_64-pc-linux-gnu --host=$PREFIX --enable-shared
+  - mkdir build
+  - cd build
+  - $PREFIX-configure
   - make -j$(nproc)
   - make check -j$(nproc) LOG_COMPILER=wine
   tags:
