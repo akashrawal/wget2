@@ -1,0 +1,32 @@
+#!/bin/bash
+
+set -x
+set -e
+
+#Install zlib
+echo "Building zlib"
+wget -c http://www.zlib.net/zlib-1.2.11.tar.xz
+tar -axf zlib-1.2.11.tar.xz
+mv zlib-1.2.11 zlib
+cd zlib
+#proxychains ./autogen.sh
+./configure  --prefix=$INSTALLDIR -shared -static
+
+sed -e "s,dllwrap,${PREFIX}-dllwrap," win32/Makefile.gcc > Makefile.gcc.patched
+
+make -f Makefile.gcc.patched -j$(nproc) \
+      PREFIX="${PREFIX}-" \
+      CFLAGS="$CFLAGS"
+
+install -d "${INSTALLDIR}/"{bin,include,lib}
+install -m644 -t "${INSTALLDIR}/include" zlib.h zconf.h
+install -m644 -t "${INSTALLDIR}/lib" libz.a libz.dll.a
+install -m755 -t "${INSTALLDIR}/bin" zlib1.dll
+install -d "${INSTALLDIR}/lib/pkgconfig"
+
+sed "s,@prefix@,${INSTALLDIR},;\
+s,@exec_prefix@,\${prefix},;\
+s,@libdir@,\${exec_prefix}/lib,;\
+s,@sharedlibdir@,\${libdir},;\
+s,@includedir@,\${prefix}/include,;\
+s,@VERSION@,1.2.11," < zlib.pc.in > "${INSTALLDIR}/lib/pkgconfig/zlib.pc"
