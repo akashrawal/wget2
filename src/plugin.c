@@ -351,7 +351,7 @@ static plugin_t *_load_plugin(const char *name, const char *path, dl_error_t *e)
 	priv->argp = NULL;
 	priv->url_filter = NULL;
 	priv->post_processor = NULL;
-	strcpy(priv->name_buf, name);
+	wget_strlcpy(priv->name_buf, name, name_len + 1);
 
 	// Initialize public members
 	plugin->parent.plugin_data = NULL;
@@ -417,16 +417,16 @@ void plugin_db_load_from_envvar(void)
 	dl_error_t e[1];
 	wget_vector_t *v;
 	const char *str;
-#ifdef _WIN32
-	char sep = ';';
-#else
-	char sep = ':';
-#endif
 
 	// Fetch from environment variable
 	str = getenv(plugin_list_envvar);
 
 	if (str) {
+#ifdef _WIN32
+	char sep = ';';
+#else
+	char sep = ':';
+#endif
 		dl_error_init(e);
 
 		// Split the value

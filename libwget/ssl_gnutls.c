@@ -411,9 +411,8 @@ _generate_ocsp_data(gnutls_x509_crt_t cert, gnutls_x509_crt_t issuer,
 		  gnutls_datum_t * rdata, gnutls_datum_t *nonce)
 {
 	gnutls_ocsp_req_t req;
-	int ret = -1;
+	int ret = gnutls_ocsp_req_init(&req);
 
-	ret = gnutls_ocsp_req_init(&req);
 	if (ret < 0) {
 		error_printf("ocsp_req_init: %s", gnutls_strerror(ret));
 		return -1;
@@ -440,10 +439,9 @@ _generate_ocsp_data(gnutls_x509_crt_t cert, gnutls_x509_crt_t issuer,
 	}
 
 	ret = 0;
-
 error:
 	gnutls_ocsp_req_deinit(req);
-	return -1;
+	return ret;
 }
 
 /* Returns 0 on ok, and -1 on error */
@@ -455,7 +453,7 @@ static int send_ocsp_request(const char *server,
 	int server_allocated = 0;
 	gnutls_datum_t body;
 	wget_iri_t *iri;
-	wget_http_request_t *req;
+	wget_http_request_t *req = NULL;
 
 	if (!server) {
 		/* try to read URL from issuer certificate */
@@ -492,9 +490,12 @@ static int send_ocsp_request(const char *server,
 	if (!iri)
 		return -1;
 
-	_generate_ocsp_data(cert, issuer, &body, nonce);
+	if (_generate_ocsp_data(cert, issuer, &body, nonce))
+		goto out;
 
-	req = wget_http_create_request(iri, "POST");
+	if (!(req = wget_http_create_request(iri, "POST")))
+		goto out;
+
 	wget_http_add_header(req, "Accept-Encoding", "identity");
 	wget_http_add_header(req, "Accept", "*/*");
 	wget_http_add_header(req, "Connection", "close");
@@ -516,9 +517,11 @@ static int send_ocsp_request(const char *server,
 		wget_http_close(&conn);
 	}
 
+	gnutls_free(body.data);
+
+out:
 	wget_http_free_request(&req);
 	wget_iri_free(&iri);
-	gnutls_free(body.data);
 	return ret;
 }
 
@@ -1110,11 +1113,11 @@ static void _set_credentials(gnutls_certificate_credentials_t *credentials)
 
 void wget_ssl_init(void)
 {
-	int ncerts = -1, rc;
-
 	wget_thread_mutex_lock(&_mutex);
 
 	if (!_init) {
+		int rc, ncerts = -1;
+
 		debug_printf("GnuTLS init\n");
 		gnutls_global_init();
 		gnutls_certificate_allocate_credentials(&_credentials);

@@ -292,14 +292,10 @@ static int _answer_to_connection(
 				}
 			}
 			if (chunked == 1) {
-				struct ResponseContentCallbackParam *callback_param;
-				callback_param = malloc(sizeof(struct ResponseContentCallbackParam));
+				struct ResponseContentCallbackParam *callback_param = malloc(sizeof(struct ResponseContentCallbackParam));
 
-				static char response_text[44];
-				strcpy(response_text, urls[it1].body);
-
-				callback_param->response_data = response_text;
-				callback_param->response_size = (sizeof(response_text)/sizeof(char)) - 1;
+				callback_param->response_data = urls[it1].body;
+				callback_param->response_size = strlen(urls[it1].body);
 
 				response = MHD_create_response_from_callback(MHD_SIZE_UNKNOWN,
 					1024, &_callback, callback_param, &_free_callback_param);
@@ -412,9 +408,9 @@ static int _answer_to_connection(
 					response = MHD_create_response_from_buffer(body_len,
 						(void *) (urls[it1].body + from_bytes), MHD_RESPMEM_MUST_COPY);
 					MHD_add_response_header(response, MHD_HTTP_HEADER_ACCEPT_RANGES, "bytes");
-					sprintf(content_range, "%zd-%zd/%zu", from_bytes, to_bytes, body_len);
+					snprintf(content_range, sizeof(content_range), "%zd-%zd/%zu", from_bytes, to_bytes, body_len);
 					MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_RANGE, content_range);
-					sprintf(content_len, "%zu", body_len);
+					snprintf(content_len, sizeof(content_len), "%zu", body_len);
 					MHD_add_response_header(response, MHD_HTTP_HEADER_CONTENT_LENGTH, content_len);
 					ret = MHD_queue_response(connection, MHD_HTTP_PARTIAL_CONTENT, response);
 				}
@@ -471,10 +467,11 @@ static void _http_server_stop(void)
 
 static int _http_server_start(int SERVER_MODE)
 {
-	static char rnd[8] = "realrnd"; // fixed 'random' value
 	uint16_t port_num = 0;
 
 	if (SERVER_MODE == HTTP_MODE) {
+		static char rnd[8] = "realrnd"; // fixed 'random' value
+
 		httpdaemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY,
 			port_num, NULL, NULL, &_answer_to_connection, NULL,
 			MHD_OPTION_DIGEST_AUTH_RANDOM, sizeof(rnd), rnd,
@@ -551,10 +548,11 @@ static int _http_server_start(int SERVER_MODE)
 		struct sockaddr_storage addr_store;
 		struct sockaddr *addr = (struct sockaddr *)&addr_store;
 		socklen_t addr_len = sizeof(addr_store);
-		char s_port[NI_MAXSERV];
 
 		// get automatic retrieved port number
 		if (getsockname(sock_fd, addr, &addr_len) == 0) {
+			char s_port[NI_MAXSERV];
+
 			if (getnameinfo(addr, addr_len, NULL, 0, s_port, sizeof(s_port), NI_NUMERICSERV) == 0) {
 				port_num = (uint16_t)atoi(s_port);
 				if (SERVER_MODE == HTTP_MODE)
@@ -594,10 +592,11 @@ static void _remove_directory(const char *dirname);
 static void _empty_directory(const char *dirname)
 {
 	DIR *dir;
-	struct dirent *dp;
 	size_t dirlen = strlen(dirname);
 
 	if ((dir = opendir(dirname))) {
+		struct dirent *dp;
+
 		while ((dp = readdir(dir))) {
 			if (*dp->d_name == '.' && (dp->d_name[1] == 0 || (dp->d_name[1] == '.' && dp->d_name[2] == 0)))
 				continue;
@@ -664,18 +663,19 @@ static char *_insert_ports(const char *src)
 	if (!src || (!strstr(src, "{{port}}") && !strstr(src, "{{sslport}}")))
 		return NULL;
 
-	char *ret = wget_malloc(strlen(src) + 1);
+	size_t ret_len = strlen(src) + 1;
+	char *ret = wget_malloc(ret_len);
 	char *dst = ret;
 
 	while (*src) {
 		if (*src == '{') {
 			if (!strncmp(src, "{{port}}", 8)) {
-				dst += sprintf(dst, "%d", http_server_port);
+				dst += snprintf(dst, ret_len - (dst - ret), "%d", http_server_port);
 				src += 8;
 				continue;
 			}
 			else if (!strncmp(src, "{{sslport}}", 11)) {
-				dst += sprintf(dst, "%d", https_server_port);
+				dst += snprintf(dst, ret_len - (dst - ret), "%d", https_server_port);
 				src += 11;
 				continue;
 			}
@@ -744,10 +744,6 @@ void wget_test_start_server(int first_key, ...)
 			server_send_content_length = !!va_arg(args, int);
 			break;
 		case WGET_TEST_FEATURE_MHD:
-#ifndef WITH_MICROHTTPD
-			wget_error_printf(_("Test needs Libmicrohttpd. Skipping\n"));
-			exit(WGET_TEST_EXIT_SKIP);
-#endif
 			break;
 		case WGET_TEST_FEATURE_TLS:
 #ifndef WITH_GNUTLS
@@ -824,13 +820,14 @@ void wget_test_start_server(int first_key, ...)
 static void _scan_for_unexpected(const char *dirname, const wget_test_file_t *expected_files)
 {
 	DIR *dir;
-	struct dirent *dp;
 	struct stat st;
-	size_t it, dirlen = strlen(dirname);
+	size_t dirlen = strlen(dirname);
 
 	wget_info_printf("Entering %s\n", dirname);
 
 	if ((dir = opendir(dirname))) {
+		struct dirent *dp;
+
 		while ((dp = readdir(dir))) {
 			char fname[dirlen + 1 + strlen(dp->d_name) + 1];
 
@@ -838,9 +835,9 @@ static void _scan_for_unexpected(const char *dirname, const wget_test_file_t *ex
 				continue;
 
 			if (*dirname == '.' && dirname[1] == 0)
-				sprintf(fname, "%s", dp->d_name);
+				snprintf(fname, sizeof(fname), "%s", dp->d_name);
 			else
-				sprintf(fname, "%s/%s", dirname, dp->d_name);
+				snprintf(fname, sizeof(fname), "%s/%s", dirname, dp->d_name);
 
 			wget_info_printf(" - %s/%s\n", dirname, dp->d_name);
 			if (stat(fname, &st) == 0 && S_ISDIR(st.st_mode)) {
@@ -853,6 +850,8 @@ static void _scan_for_unexpected(const char *dirname, const wget_test_file_t *ex
 // Example: cedilla (%C3%A7) will be converted to c+composed_cedilla (%63%CC%A7)
 // Since there are a few pitfalls with Apple's NFD, just skip the check here.
 #if !(defined __APPLE__ && defined __MACH__)
+				size_t it;
+
 				wget_info_printf("search %s\n", fname);
 
 				for (it = 0; expected_files[it].name; it++) {
@@ -895,7 +894,7 @@ void wget_test(int first_key, ...)
 	const char
 		*request_url,
 		*options="",
-		*executable="../../src/wget2_noinstall" EXEEXT " -d --no-config --max-threads=1 --prefer-family=ipv4 --no-proxy";
+		*executable="../../src/wget2_noinstall" EXEEXT " -d --no-config --no-local-db --max-threads=1 --prefer-family=ipv4 --no-proxy";
 	const wget_test_file_t
 		*expected_files = NULL,
 		*existing_files = NULL;

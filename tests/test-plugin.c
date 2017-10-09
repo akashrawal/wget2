@@ -25,6 +25,7 @@
 
 #include <stdlib.h> // exit()
 #include <string.h> // strlen()
+#include <unistd.h> // access()
 #include "libtest.h"
 
 // #define LARGEFILE (11 << 20)
@@ -33,6 +34,8 @@
 
 #if defined _WIN32
 #define LOCAL_NAME(x) OBJECT_DIR "/lib" x ".dll"
+#elif defined __CYGWIN__
+#define LOCAL_NAME(x) OBJECT_DIR "/cyg" x ".dll"
 #else
 #define LOCAL_NAME(x) OBJECT_DIR "/lib" x ".so"
 #endif
@@ -190,6 +193,11 @@ int main(void)
 			}
 		}
 	};
+
+	if (access(".libs/libpluginname.so", R_OK) != 0
+		&& access(".libs/libpluginname.dll", R_OK) != 0
+		&& access(".libs/cygpluginname.dll", R_OK) != 0)
+		exit(77); // likely a static build
 
 	wget_test_start_server(
 			WGET_TEST_RESPONSE_URLS, &urls, countof(urls),
@@ -682,12 +690,24 @@ int main(void)
 
 	// Check whether priority based database selection works correctly
 	wget_test(
-		WGET_TEST_OPTIONS, "--local-plugin=" LOCAL_NAME("plugindb"),
+		WGET_TEST_OPTIONS,
+			"--hpkp --hpkp-file=hpkp.db "
+			"--hsts --hsts-file=hsts.db "
+			"--ocsp --ocsp-file=ocsp.db "
+			"--local-plugin=" LOCAL_NAME("plugindb"),
 		WGET_TEST_REQUEST_URL, "index.html",
 		WGET_TEST_EXPECTED_ERROR_CODE, 0,
+		WGET_TEST_EXISTING_FILES, &(wget_test_file_t []) {
+			{ "hpkp.db", "# HPKP 1.0 file\nexample.com 1491338542 1 1488746542\n*sha256 8dNiZZueNzmyaf3pTkXxDgOzLkjKvI+Nza0ACF5IDwg=" },
+			{ "hsts.db", "#HSTS 1.0 file\nexample.com 443 1 1499023633 63072000" },
+			{ "ocsp.db", "#OCSP 1.0 file\n" },
+			{ NULL } },
 		WGET_TEST_EXPECTED_FILES, &(wget_test_file_t []) {
 			{ "index.html", urls[0].body },
-			{	NULL } },
+			{ "hpkp.db", NULL },
+			{ "hsts.db", NULL },
+			{ "ocsp.db", NULL },
+			{ NULL } },
 		0);
 
 	exit(0);

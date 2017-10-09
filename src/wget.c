@@ -732,7 +732,7 @@ static void add_url(JOB *job, const char *encoding, const char *url, int flags)
 		new_job->sitemap = 1;
 
 	// now add the new job to the queue (thread-safe))
-	new_job = host_add_job(host, new_job);
+	host_add_job(host, new_job);
 
 	// and wake up all waiting threads
 	wget_thread_cond_signal(&worker_cond);
@@ -1714,9 +1714,8 @@ static void process_response(wget_http_response_t *resp)
 
 enum actions {
 	ACTION_GET_JOB = 1,
-//	ACTION_WAIT_JOB,
-	ACTION_GET_RESPONSE,
-	ACTION_ERROR
+	ACTION_GET_RESPONSE = 2,
+	ACTION_ERROR = 3
 };
 
 void *downloader_thread(void *p)
@@ -3219,9 +3218,9 @@ int set_file_metadata(const char *origin_url, const char *referrer_url,
 	if (!origin_url || !fname)
 		return retval;
 
-	retval = write_xattr_metadata("user.xdg.origin.url", origin_url, fname);
-	retval = write_xattr_metadata("user.xdg.referrer.url", referrer_url, fname);
-	retval = write_xattr_metadata("user.mime_type", mime_type, fname);
+	write_xattr_metadata("user.xdg.origin.url", origin_url, fname);
+	write_xattr_metadata("user.xdg.referrer.url", referrer_url, fname);
+	write_xattr_metadata("user.mime_type", mime_type, fname);
 	retval = write_xattr_metadata("user.charset", charset, fname);
 
 	return retval;
