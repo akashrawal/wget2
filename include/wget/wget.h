@@ -256,7 +256,7 @@ WGET_BEGIN_DECLS
 typedef void (*wget_global_get_func_t)(const char *, size_t);
 
 WGETAPI void
-	wget_global_init(int key, ...) G_GNUC_WGET_NULL_TERMINATED;
+	wget_global_init(int key, ...);
 WGETAPI void
 	wget_global_deinit(void);
 WGETAPI const void *
@@ -573,8 +573,8 @@ WGETAPI void
 	wget_error_vprintf(const char *fmt, va_list args) G_GNUC_WGET_NONNULL_ALL G_GNUC_WGET_PRINTF_FORMAT(1,0);
 WGETAPI void
 	wget_error_printf(const char *fmt, ...) G_GNUC_WGET_NONNULL((1)) G_GNUC_WGET_PRINTF_FORMAT(1,2);
-WGETAPI void
-	wget_error_printf_exit(const char *fmt, ...) G_GNUC_WGET_NONNULL((1)) G_GNUC_WGET_NORETURN G_GNUC_WGET_PRINTF_FORMAT(1,2);
+WGETAPI void G_GNUC_WGET_NONNULL((1)) G_GNUC_WGET_NORETURN G_GNUC_WGET_PRINTF_FORMAT(1,2)
+	wget_error_printf_exit(const char *fmt, ...);
 WGETAPI void
 	wget_debug_vprintf(const char *fmt, va_list args) G_GNUC_WGET_NONNULL_ALL G_GNUC_WGET_PRINTF_FORMAT(1,0);
 WGETAPI void
@@ -2114,7 +2114,7 @@ WGETAPI ssize_t
  */
 
 WGETAPI wget_http_response_t *
-	wget_http_get(int first_key, ...) G_GNUC_WGET_NULL_TERMINATED;
+	wget_http_get(int first_key, ...);
 WGETAPI wget_vector_t
 	*wget_get_css_urls(const char *data);
 
