@@ -31,11 +31,7 @@
 
 #include <dirent.h>
 
-#ifdef _WIN32
-#  define SLASH '\\'
-#else
-#  define SLASH '/'
-#endif
+const char *slashes = "/\\";
 
 static int test_all_from(const char *dirname)
 {
@@ -91,8 +87,13 @@ int main(int argc, char **argv)
 		WGET_INFO_STREAM, stdout,
 		0);
 
-	const char *target = strrchr(argv[0], SLASH);
-	target = target ? target + 1 : argv[0];
+	const char *target = argv[0];
+	for (const char *it = slashes; *it; it++)
+	{
+		const char *ptr = strrchr(target, *it);
+		if (ptr)
+			target = ptr + 1;
+	}
 	size_t target_len;
 
 	if (strncmp(target, "lt-", 3) == 0)
