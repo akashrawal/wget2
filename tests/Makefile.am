@@ -40,7 +40,7 @@ libtest_la_LIBADD = ../libwget/libwget.la\
  $(LIB_SELECT) $(LTLIBICONV) $(LTLIBINTL) $(LTLIBTHREAD) $(SERVENT_LIB) @INTL_MACOSX_LIBS@\
  $(LIBS) ../lib/libgnu.la
 
-EXTRA_DIST = libtest.h certs
+EXTRA_DIST = libtest.h stats-test-util.h certs
 
 clean-local:
 	rm -rf $(srcdir)/.test_*
