@@ -32,15 +32,27 @@
 #define concat2(x, y) x ## y
 #define concat(x, y) concat2(x, y)
 
+static void strcpy_safe(char *dest, const char *src, size_t len)
+{
+	size_t i;
+	for (i = 0; i < (len - 1) && src[i]; i++)
+		dest[i] = src[i];
+	dest[i] = 0;
+}
+
 WGET_EXPORT void dl_test_write_param(char *buf, size_t len);
 WGET_EXPORT void concat(dl_test_fn_, PARAM)(char *buf, size_t len);
 
 void dl_test_write_param(char *buf, size_t len)
 {
-	wget_strlcpy(buf, stringify(PARAM), len);
+	//TODO: Check out clang static analyser issue fixed by @rootkea
+	//      Problem with replacing strcpy with wget_strlcpy is, that libwget is not available here.
+	//wget_strlcpy(buf, stringify(PARAM), len);
+	strcpy_safe(buf, stringify(PARAM), len - 1);
 }
 
 void concat(dl_test_fn_, PARAM)(char *buf, size_t len)
 {
-	wget_strlcpy(buf, stringify(PARAM), len);
+	//wget_strlcpy(buf, stringify(PARAM), len);
+	strcpy_safe(buf, stringify(PARAM), len - 1);
 }
