@@ -37,7 +37,7 @@ test_stats_site_SOURCES = test-stats-site.c stats-test-util.h
 test_stats_tls_SOURCES = test-stats-tls.c stats-test-util.h
 
 noinst_LTLIBRARIES = libtest.la
-libtest_la_SOURCES = libtest.c
+libtest_la_SOURCES = libtest.c libtest.h
 libtest_la_CPPFLAGS = -I$(srcdir) -I$(top_srcdir)/include/wget -I$(top_builddir)/lib -I$(top_srcdir)/lib $(CFLAG_VISIBILITY) -DBUILDING_LIBWGET \
  -DWGETVER_FILE=\"$(top_builddir)/include/wget/wgetver.h\"
 libtest_la_LIBADD = ../libwget/libwget.la\
@@ -46,7 +46,7 @@ libtest_la_LIBADD = ../libwget/libwget.la\
  $(LIB_SELECT) $(LTLIBICONV) $(LTLIBINTL) $(LTLIBTHREAD) $(SERVENT_LIB) @INTL_MACOSX_LIBS@\
  $(LIBS) ../lib/libgnu.la
 
-EXTRA_DIST = libtest.h certs
+EXTRA_DIST = certs
 
 clean-local:
 	rm -rf $(srcdir)/.test_*
